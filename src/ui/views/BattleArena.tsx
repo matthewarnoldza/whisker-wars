@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import GameCard from '../components/GameCard'
 import Dice from '../components/Dice'
 import StatBar from '../components/StatBar'
 import ParticleSystem from '../components/ParticleSystem'
+import Modal from '../components/Modal'
 import { useGame } from '../../game/store'
 import { DOGS } from '../../game/data'
 import { rollD20 } from '../../game/dice'
@@ -20,6 +21,8 @@ export default function BattleArena() {
   const healAllCats = useGame(s => s.healAllCats)
   const addXpToCat = useGame(s => s.addXpToCat)
   const recordBattleResult = useGame(s => s.recordBattleResult)
+  const setView = useGame(s => s.setView)
+  const stats = useGame(s => s.stats)
 
   const [dogHp, setDogHp] = useState(DOGS[dogIndex].health)
   const [turn, setTurn] = useState<'player' | 'enemy'>('player')
@@ -32,6 +35,8 @@ export default function BattleArena() {
   const [particleActive, setParticleActive] = useState(false)
   const [shaking, setShaking] = useState(false)
   const [attackingId, setAttackingId] = useState<string | null>(null)
+  const [showDefeatModal, setShowDefeatModal] = useState(false)
+  const logRef = useRef<HTMLDivElement>(null)
 
   const dog = DOGS[dogIndex]
 
@@ -44,6 +49,13 @@ export default function BattleArena() {
     setSelectedCatId(null)
   }, [dogIndex])
 
+  // Auto-scroll log to bottom when updated
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight
+    }
+  }, [log])
+
   // Enemy Turn Logic
   useEffect(() => {
     if (turn === 'enemy' && !battleEnded && dogHp > 0) {
@@ -54,8 +66,8 @@ export default function BattleArena() {
 
   const addLog = (t: string, type?: 'damage' | 'heal' | 'crit' | 'info') => {
     setLog(l => [...l, { text: t, type }])
-    // Keep log short
-    if (log.length > 5) setLog(l => l.slice(1))
+    // Keep log manageable (show last 20 messages)
+    if (log.length > 20) setLog(l => l.slice(-20))
   }
 
   const showDamage = (value: number, x: number, y: number) => {
@@ -121,6 +133,28 @@ export default function BattleArena() {
       return
     }
 
+    // Speed ability - extra attack on roll >= 14
+    if (cat.ability.effect === 'speed' && v >= 14) {
+      addLog(`⚡ ${cat.name} attacks with lightning speed!`, 'crit')
+      setDogHp(h => Math.max(0, h - dmg))
+      showDamage(dmg, window.innerWidth / 2, 100)
+
+      setShaking(true)
+      setTimeout(() => setShaking(false), 400)
+      setParticleActive(true)
+      setTimeout(() => setParticleActive(false), 100)
+
+      // Check Victory
+      if (dogHp - dmg <= 0) {
+        handleVictory()
+        return
+      }
+
+      // Speed means player goes again
+      setAttackingId(null)
+      return
+    }
+
     setDogHp(h => Math.max(0, h - dmg))
     showDamage(dmg, window.innerWidth / 2, 100)
 
@@ -160,16 +194,32 @@ export default function BattleArena() {
     }
 
     const t = targets[Math.floor(Math.random() * targets.length)]
-    const newHp = Math.max(0, t.currentHp - dmg)
+
+    // Apply defensive abilities
+    let actualDamage = dmg
+
+    // Shield ability - 25% chance to dodge/reduce damage
+    if (t.ability.effect === 'shield' && Math.random() < 0.25) {
+      actualDamage = Math.floor(actualDamage * 0.5)
+      addLog(`${t.name}'s shield deflects some damage! 🛡️`, 'info')
+    }
+
+    // Armor ability - Reduce all damage by 2 (minimum 1)
+    if (t.ability.effect === 'armor') {
+      actualDamage = Math.max(1, actualDamage - 2)
+      addLog(`${t.name}'s armor absorbs damage! 🛡️`, 'info')
+    }
+
+    const newHp = Math.max(0, t.currentHp - actualDamage)
     updateCatHp(t.id, newHp)
 
     // Find target position (approximate)
     const targetIndex = party.findIndex(c => c.id === t.id)
     // This is a bit hacky for positioning, but works for now
     const xPos = (window.innerWidth / 3) * (targetIndex + 0.5)
-    showDamage(dmg, xPos, window.innerHeight - 200)
+    showDamage(actualDamage, xPos, window.innerHeight - 200)
 
-    addLog(`${dog.name} hits ${t.name} for ${dmg}!`, 'damage')
+    addLog(`${dog.name} hits ${t.name} for ${actualDamage}!`, 'damage')
 
     setAttackingId(null)
 
@@ -201,12 +251,29 @@ export default function BattleArena() {
     setBattleEnded(true)
     addLog(`💀 DEFEAT!`, 'info')
     recordBattleResult(false, 0)
+    setTimeout(() => setShowDefeatModal(true), 1000)
   }
 
   return (
     <div className="relative min-h-[80vh] flex flex-col">
-      {/* Top Area: Enemy */}
-      <div className="flex-1 flex justify-center items-start pt-8 relative">
+      {/* Top Area: Enemy & Battle Log */}
+      <div className="flex-1 flex justify-center items-start pt-8 relative gap-8">
+        {/* Battle Log - Left Side */}
+        <div
+          ref={logRef}
+          className="w-64 h-48 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy mt-4 custom-scrollbar"
+        >
+          {log.map((l, i) => (
+            <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
+                l.type === 'damage' ? 'text-red-400' :
+                  l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
+              }`}>
+              {l.text}
+            </div>
+          ))}
+        </div>
+
+        {/* Enemy Card - Center */}
         <div className="relative z-10 flex flex-col items-center">
           <motion.div
             variants={shakeVariants}
@@ -244,20 +311,8 @@ export default function BattleArena() {
         </div>
       </div>
 
-      {/* Middle Area: Dice & Log & Controls */}
+      {/* Middle Area: Dice & Controls */}
       <div className="flex justify-center items-center gap-8 my-4 z-20">
-        {/* Log */}
-        <div className="w-64 h-32 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-hidden border border-slate-700 text-xs font-mono shadow-fantasy">
-          {log.map((l, i) => (
-            <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
-                l.type === 'damage' ? 'text-red-400' :
-                  l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
-              }`}>
-              {l.text}
-            </div>
-          ))}
-        </div>
-
         {/* Dice */}
         <div className="flex flex-col items-center">
           <Dice value={dice} rolling={rolling} />
@@ -352,6 +407,67 @@ export default function BattleArena() {
         count={20}
         colors={['#FF0000', '#FF4444', '#FF6666']}
       />
+
+      {/* Defeat Modal */}
+      <Modal
+        isOpen={showDefeatModal}
+        onClose={() => {
+          setShowDefeatModal(false)
+          healAllCats()
+          setView('collection')
+        }}
+        title="💀 DEFEAT"
+        size="sm"
+      >
+        <div className="text-center py-6">
+          <div className="text-6xl mb-4">😿</div>
+          <h3 className="text-2xl font-bold text-red-400 mb-2">All cats defeated!</h3>
+          <p className="text-slate-300 mb-6">
+            Your party has fallen in battle. Heal up and try again!
+          </p>
+
+          <div className="bg-slate-800/50 rounded-lg p-4 mb-6 border border-slate-700">
+            <div className="text-sm text-slate-400 mb-2">Battle Statistics</div>
+            <div className="flex justify-around">
+              <div>
+                <div className="text-2xl font-bold text-gold-400">{stats.totalWins}</div>
+                <div className="text-xs text-slate-500">WINS</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-400">{stats.totalBattles}</div>
+                <div className="text-xs text-slate-500">BATTLES</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-red-400">{stats.totalBattles - stats.totalWins}</div>
+                <div className="text-xs text-slate-500">LOSSES</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => {
+                setShowDefeatModal(false)
+                healAllCats()
+                setView('collection')
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all hover:scale-105"
+            >
+              📚 Collection
+            </button>
+            <button
+              onClick={() => {
+                setShowDefeatModal(false)
+                healAllCats()
+                setView('bait')
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
+            >
+              🎣 Baiting Area
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

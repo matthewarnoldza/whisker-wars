@@ -7,6 +7,7 @@ import Collection from './views/Collection'
 import BattleArena from './views/BattleArena'
 import AnimatedBackground from './components/AnimatedBackground'
 import Modal from './components/Modal'
+import ProfileSelector from './components/ProfileSelector'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 
@@ -129,14 +130,28 @@ export default function App() {
   const load = useGame(s => s.load)
   const claimDailyReward = useGame(s => s.claimDailyReward)
   const stats = useGame(s => s.stats)
-  const [showDailyReward, setShowDailyReward] = useState(false)
+  const getCurrentProfile = useGame(s => s.getCurrentProfile)
+  const getProfiles = useGame(s => s.getProfiles)
 
+  const [showDailyReward, setShowDailyReward] = useState(false)
+  const [showProfileSelector, setShowProfileSelector] = useState(false)
+  const [profileLoaded, setProfileLoaded] = useState(false)
+
+  // Check for profiles on mount
   useEffect(() => {
-    load()
-    // Check for daily reward
-    const canClaim = claimDailyReward()
-    if (canClaim) {
-      setTimeout(() => setShowDailyReward(true), 1000)
+    const profiles = getProfiles()
+    const currentProfile = getCurrentProfile()
+
+    if (profiles.length === 0 || !currentProfile) {
+      setShowProfileSelector(true)
+    } else {
+      load()
+      setProfileLoaded(true)
+      // Check for daily reward
+      const canClaim = claimDailyReward()
+      if (canClaim) {
+        setTimeout(() => setShowDailyReward(true), 1000)
+      }
     }
   }, [])
 
@@ -176,6 +191,21 @@ export default function App() {
               </motion.div>
 
               <div className="flex items-center gap-4">
+                {profileLoaded && (
+                  <motion.button
+                    onClick={() => setShowProfileSelector(true)}
+                    className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-purple-500/50 transition-all"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">👤</span>
+                      <span className="text-sm font-bold text-purple-300">
+                        {getCurrentProfile()?.name}
+                      </span>
+                    </div>
+                  </motion.button>
+                )}
                 <motion.div
                   className="px-6 py-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative overflow-hidden group"
                   whileHover={{ scale: 1.05 }}
@@ -288,6 +318,20 @@ export default function App() {
         isOpen={showDailyReward}
         onClose={() => setShowDailyReward(false)}
       />
+
+      {showProfileSelector && (
+        <ProfileSelector
+          onProfileSelected={() => {
+            setShowProfileSelector(false)
+            setProfileLoaded(true)
+            load()
+            const canClaim = claimDailyReward()
+            if (canClaim) {
+              setTimeout(() => setShowDailyReward(true), 1000)
+            }
+          }}
+        />
+      )}
     </>
   )
 }

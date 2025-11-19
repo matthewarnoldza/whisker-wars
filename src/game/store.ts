@@ -34,6 +34,18 @@ export interface GameStats {
   highestDogDefeated: number
 }
 
+export interface ProfileMeta {
+  id: string
+  name: string
+  created: number
+  lastPlayed: number
+}
+
+export interface ProfilesData {
+  profiles: ProfileMeta[]
+  activeProfileId: string
+}
+
 interface GameState {
   view: View
   coins: number
@@ -64,6 +76,13 @@ interface GameState {
   save: ()=>void
   load: ()=>void
   setTheme: (t:'light'|'dark')=>void
+  // Profile management
+  getCurrentProfile: ()=>ProfileMeta | null
+  getProfiles: ()=>ProfileMeta[]
+  createProfile: (name:string)=>string
+  loadProfile: (profileId:string)=>void
+  deleteProfile: (profileId:string)=>void
+  renameProfile: (profileId:string, name:string)=>void
 }
 
 const rand = (min:number, max:number)=> Math.floor(Math.random()*(max-min+1))+min
@@ -83,6 +102,44 @@ const calculateXpForLevel = (level:number): number => {
 
 const calculateStatBoost = (baseValue:number, level:number): number => {
   return Math.floor(baseValue + (level - 1) * (baseValue * 0.15))
+}
+
+// Profile management helpers
+const PROFILES_META_KEY = 'whiskerwars-profiles'
+const PROFILE_KEY_PREFIX = 'whiskerwars-profile-'
+
+const getProfilesData = (): ProfilesData => {
+  const raw = localStorage.getItem(PROFILES_META_KEY)
+  if (!raw) {
+    // Migrate existing save to profile-1 if it exists
+    const oldSave = localStorage.getItem('whiskerwars')
+    if (oldSave) {
+      const profile: ProfileMeta = {
+        id: 'profile-1',
+        name: 'Player 1',
+        created: Date.now(),
+        lastPlayed: Date.now()
+      }
+      localStorage.setItem(`${PROFILE_KEY_PREFIX}profile-1`, oldSave)
+      localStorage.removeItem('whiskerwars')
+      const data: ProfilesData = {
+        profiles: [profile],
+        activeProfileId: 'profile-1'
+      }
+      localStorage.setItem(PROFILES_META_KEY, JSON.stringify(data))
+      return data
+    }
+    return { profiles: [], activeProfileId: '' }
+  }
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return { profiles: [], activeProfileId: '' }
+  }
+}
+
+const saveProfilesData = (data: ProfilesData) => {
+  localStorage.setItem(PROFILES_META_KEY, JSON.stringify(data))
 }
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -333,6 +390,9 @@ export const useGame = create<GameState>((set, get) => ({
   }),
 
   save: ()=> {
+    const profilesData = getProfilesData()
+    if (!profilesData.activeProfileId) return
+
     const s = get()
     const payload = JSON.stringify({
       coins: s.coins,
@@ -344,10 +404,20 @@ export const useGame = create<GameState>((set, get) => ({
       stats: s.stats,
       lastDailyReward: s.lastDailyReward,
     })
-    localStorage.setItem('whiskerwars', payload)
+    localStorage.setItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`, payload)
+
+    // Update lastPlayed timestamp
+    profilesData.profiles = profilesData.profiles.map(p =>
+      p.id === profilesData.activeProfileId ? { ...p, lastPlayed: Date.now() } : p
+    )
+    saveProfilesData(profilesData)
   },
+
   load: ()=> {
-    const raw = localStorage.getItem('whiskerwars')
+    const profilesData = getProfilesData()
+    if (!profilesData.activeProfileId) return
+
+    const raw = localStorage.getItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`)
     if (!raw) return
     try {
       const d = JSON.parse(raw)
@@ -371,6 +441,58 @@ export const useGame = create<GameState>((set, get) => ({
     } catch {}
   },
   setTheme: (t)=> set({ theme: t }),
+
+  // Profile management implementations
+  getCurrentProfile: ()=> {
+    const data = getProfilesData()
+    return data.profiles.find(p => p.id === data.activeProfileId) || null
+  },
+
+  getProfiles: ()=> {
+    return getProfilesData().profiles
+  },
+
+  createProfile: (name)=> {
+    const data = getProfilesData()
+    const profileNumber = data.profiles.length + 1
+    const newProfile: ProfileMeta = {
+      id: `profile-${profileNumber}`,
+      name: name || `Player ${profileNumber}`,
+      created: Date.now(),
+      lastPlayed: Date.now()
+    }
+    data.profiles.push(newProfile)
+    saveProfilesData(data)
+    return newProfile.id
+  },
+
+  loadProfile: (profileId)=> {
+    const data = getProfilesData()
+    const profile = data.profiles.find(p => p.id === profileId)
+    if (!profile) return
+
+    data.activeProfileId = profileId
+    saveProfilesData(data)
+    get().load()
+  },
+
+  deleteProfile: (profileId)=> {
+    const data = getProfilesData()
+    data.profiles = data.profiles.filter(p => p.id !== profileId)
+    if (data.activeProfileId === profileId) {
+      data.activeProfileId = data.profiles[0]?.id || ''
+    }
+    localStorage.removeItem(`${PROFILE_KEY_PREFIX}${profileId}`)
+    saveProfilesData(data)
+  },
+
+  renameProfile: (profileId, name)=> {
+    const data = getProfilesData()
+    data.profiles = data.profiles.map(p =>
+      p.id === profileId ? { ...p, name } : p
+    )
+    saveProfilesData(data)
+  },
 }))
 
 // Auto-save every 1.5 seconds

@@ -300,14 +300,26 @@ export default function BattleArena() {
               key={cat.id}
               variants={attackVariants}
               animate={attackingId === cat.id ? 'attack' : 'idle'}
-              className="relative group"
+              className="relative group cursor-pointer"
+              onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.id)}
             >
+              {/* Health Bar Above Card */}
+              <div className="absolute -top-8 left-0 right-0 px-2">
+                <StatBar
+                  current={cat.currentHp}
+                  max={cat.maxHp}
+                  type="hp"
+                  showNumbers={true}
+                  label={cat.name}
+                />
+              </div>
+
               <div className={`transition-all duration-300 ${isSelected ? 'transform -translate-y-4 scale-105' : 'hover:-translate-y-2'}`}>
                 <GameCard
                   character={cat}
                   selected={isSelected}
                   disabled={isDead || (turn !== 'player' && !isSelected)}
-                  onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.id)}
+                  showStats={true}
                 />
               </div>
 
@@ -315,7 +327,7 @@ export default function BattleArena() {
               {isSelected && (
                 <motion.div
                   layoutId="active-indicator"
-                  className="absolute -top-12 left-0 right-0 flex justify-center"
+                  className="absolute -top-20 left-0 right-0 flex justify-center"
                 >
                   <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
                     READY

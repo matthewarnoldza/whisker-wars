@@ -27,12 +27,12 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             onClick={onClose}
             className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50"
           />
-          <div className="fixed inset-0 z-[100] pointer-events-none">
+          <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center p-4">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, x: '-50%', y: '-40%' }}
-              animate={{ scale: 1, opacity: 1, x: '-50%', y: '-50%' }}
-              exit={{ scale: 0.9, opacity: 0, x: '-50%', y: '-40%' }}
-              className={`absolute top-1/2 left-1/2 w-full ${sizeClasses[size]} bg-slate-900 border border-gold-500/30 rounded-2xl shadow-premium-lg overflow-hidden pointer-events-auto flex flex-col max-h-[70vh]`}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`w-full ${sizeClasses[size]} bg-slate-900 border border-gold-500/30 rounded-2xl shadow-premium-lg overflow-hidden pointer-events-auto flex flex-col max-h-[85vh]`}
             >
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-800 shrink-0">

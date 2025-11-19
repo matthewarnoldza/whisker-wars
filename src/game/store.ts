@@ -49,6 +49,7 @@ interface GameState {
   buyBait: (baitId:string)=>void
   useBait: (baitId:string)=>Cat | null
   befriendCat: (cat:Cat)=>void
+  releaseCat: (catId:string)=>void
   toggleSelectCat: (id:string)=>void
   nextDog: ()=>void
   addXpToCat: (catId:string, amount:number)=>void
@@ -172,6 +173,12 @@ export const useGame = create<GameState>((set, get) => ({
     }, 100)
 
     return { owned: newOwned, view: 'collection', stats: newStats }
+  }),
+
+  releaseCat: (catId)=> set(s=> {
+    const newOwned = s.owned.filter(cat => cat.id !== catId)
+    const newSelected = s.selectedForBattle.filter(id => id !== catId)
+    return { owned: newOwned, selectedForBattle: newSelected }
   }),
 
   toggleSelectCat: (id)=> set(s=>{

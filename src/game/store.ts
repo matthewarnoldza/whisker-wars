@@ -20,6 +20,7 @@ export interface Achievement {
   name: string
   description: string
   unlocked: boolean
+  claimed: boolean
   progress: number
   maxProgress: number
 }
@@ -54,11 +55,12 @@ interface GameState {
   nextDog: ()=>void
   addXpToCat: (catId:string, amount:number)=>void
   healCat: (catId:string, amount:number)=>void
-  healAllCats: ()=>void
+  healAllCats: ()=>boolean
   updateCatHp: (catId:string, newHp:number)=>void
   recordBattleResult: (won:boolean, xpEarned:number)=>void
   claimDailyReward: ()=>boolean
   unlockAchievement: (id:string)=>void
+  claimAchievement: (id:string)=>void
   save: ()=>void
   load: ()=>void
   setTheme: (t:'light'|'dark')=>void
@@ -84,16 +86,16 @@ const calculateStatBoost = (baseValue:number, level:number): number => {
 }
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
-  { id:'first-cat', name:'First Friend', description:'Befriend your first cat', unlocked:false, progress:0, maxProgress:1 },
-  { id:'cat-collector', name:'Cat Collector', description:'Befriend 10 cats', unlocked:false, progress:0, maxProgress:10 },
-  { id:'cat-master', name:'Cat Master', description:'Befriend 25 cats', unlocked:false, progress:0, maxProgress:25 },
-  { id:'first-victory', name:'First Victory', description:'Win your first battle', unlocked:false, progress:0, maxProgress:1 },
-  { id:'veteran', name:'Veteran', description:'Win 25 battles', unlocked:false, progress:0, maxProgress:25 },
-  { id:'champion', name:'Champion', description:'Win 100 battles', unlocked:false, progress:0, maxProgress:100 },
-  { id:'legendary-catch', name:'Legendary Catch', description:'Catch a Legendary or Mythical cat', unlocked:false, progress:0, maxProgress:1 },
-  { id:'level-10', name:'Power Up', description:'Level a cat to level 10', unlocked:false, progress:0, maxProgress:1 },
-  { id:'coin-hoarder', name:'Coin Hoarder', description:'Accumulate 1000 coins', unlocked:false, progress:0, maxProgress:1000 },
-  { id:'dog-slayer', name:'Dog Slayer', description:'Defeat all dog enemies', unlocked:false, progress:0, maxProgress:DOGS.length },
+  { id:'first-cat', name:'First Friend', description:'Befriend your first cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
+  { id:'cat-collector', name:'Cat Collector', description:'Befriend 10 cats', unlocked:false, claimed:false, progress:0, maxProgress:10 },
+  { id:'cat-master', name:'Cat Master', description:'Befriend 25 cats', unlocked:false, claimed:false, progress:0, maxProgress:25 },
+  { id:'first-victory', name:'First Victory', description:'Win your first battle', unlocked:false, claimed:false, progress:0, maxProgress:1 },
+  { id:'veteran', name:'Veteran', description:'Win 25 battles', unlocked:false, claimed:false, progress:0, maxProgress:25 },
+  { id:'champion', name:'Champion', description:'Win 100 battles', unlocked:false, claimed:false, progress:0, maxProgress:100 },
+  { id:'legendary-catch', name:'Legendary Catch', description:'Catch a Legendary or Mythical cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
+  { id:'level-10', name:'Power Up', description:'Level a cat to level 10', unlocked:false, claimed:false, progress:0, maxProgress:1 },
+  { id:'coin-hoarder', name:'Coin Hoarder', description:'Accumulate 1000 coins', unlocked:false, claimed:false, progress:0, maxProgress:1000 },
+  { id:'dog-slayer', name:'Dog Slayer', description:'Defeat all dog enemies', unlocked:false, claimed:false, progress:0, maxProgress:DOGS.length },
 ]
 
 export const useGame = create<GameState>((set, get) => ({
@@ -241,9 +243,16 @@ export const useGame = create<GameState>((set, get) => ({
     )
   })),
 
-  healAllCats: ()=> set(s=> ({
-    owned: s.owned.map(cat => ({ ...cat, currentHp: cat.maxHp }))
-  })),
+  healAllCats: ()=> {
+    const state = get()
+    const HEAL_COST = 20
+    if (state.coins < HEAL_COST) return false
+    set(s=> ({
+      coins: s.coins - HEAL_COST,
+      owned: s.owned.map(cat => ({ ...cat, currentHp: cat.maxHp }))
+    }))
+    return true
+  },
 
   updateCatHp: (catId, newHp)=> set(s=> ({
     owned: s.owned.map(cat =>
@@ -302,13 +311,25 @@ export const useGame = create<GameState>((set, get) => ({
   unlockAchievement: (id)=> set(s=> {
     const achievements = s.achievements.map(ach => {
       if (ach.id === id && !ach.unlocked) {
-        // Grant reward for unlocking achievement
-        setTimeout(() => get().addCoins(50), 0)
         return { ...ach, unlocked: true, progress: ach.maxProgress }
       }
       return ach
     })
     return { achievements }
+  }),
+
+  claimAchievement: (id)=> set(s=> {
+    const ach = s.achievements.find(a => a.id === id)
+    if (!ach || !ach.unlocked || ach.claimed) return {}
+
+    const achievements = s.achievements.map(a =>
+      a.id === id ? { ...a, claimed: true } : a
+    )
+
+    return {
+      achievements,
+      coins: s.coins + 100
+    }
   }),
 
   save: ()=> {

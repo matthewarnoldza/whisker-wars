@@ -35,6 +35,7 @@ function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 function AchievementsButton() {
   const [showAchievements, setShowAchievements] = useState(false)
   const achievements = useGame(s => s.achievements)
+  const claimAchievement = useGame(s => s.claimAchievement)
   const unlockedCount = achievements.filter(a => a.unlocked).length
 
   return (
@@ -99,6 +100,19 @@ function AchievementsButton() {
                     </span>
                   </div>
                 </div>
+                {ach.unlocked && !ach.claimed && (
+                  <button
+                    onClick={() => claimAchievement(ach.id)}
+                    className="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-lg shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+                  >
+                    Claim 100 💰
+                  </button>
+                )}
+                {ach.claimed && (
+                  <div className="px-4 py-2 bg-slate-700/50 text-slate-400 font-bold rounded-lg whitespace-nowrap">
+                    Claimed ✓
+                  </div>
+                )}
               </div>
             </div>
           ))}

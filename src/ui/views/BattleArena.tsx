@@ -36,6 +36,8 @@ export default function BattleArena() {
   const [shaking, setShaking] = useState(false)
   const [attackingId, setAttackingId] = useState<string | null>(null)
   const [showDefeatModal, setShowDefeatModal] = useState(false)
+  const [showVictoryModal, setShowVictoryModal] = useState(false)
+  const [victoryRewards, setVictoryRewards] = useState({ coins: 0, xp: 0 })
   const logRef = useRef<HTMLDivElement>(null)
 
   const dog = DOGS[dogIndex]
@@ -97,6 +99,18 @@ export default function BattleArena() {
     addLog(`${cat.name} attacks!`, 'info')
 
     const v = await roll()
+
+    // Special D20 and D1 rolls
+    if (v === 20) {
+      addLog(`🎲 NATURAL 20! ⚡ LEGENDARY STRIKE! ⚡`, 'crit')
+      addLog(`✨ MAXIMUM POWER UNLEASHED! ✨`, 'crit')
+    } else if (v === 1) {
+      addLog(`🎲 CRITICAL FAIL! 💥 Attack MISSES! 💥`, 'damage')
+      addLog(`${cat.name} stumbles and deals NO damage!`, 'damage')
+      setAttackingId(null)
+      setTurn('enemy')
+      return
+    }
 
     // Base damage
     let dmg = cat.currentAttack + Math.floor(v / 5)
@@ -233,24 +247,25 @@ export default function BattleArena() {
 
   const handleVictory = () => {
     setBattleEnded(true)
-    const xpEarned = 30 + dogIndex * 10
+    const xpEarned = 50 + (dogIndex * 25)
+    const coinsEarned = 250 + (dogIndex * 50)
+
     addLog(`🎉 VICTORY!`, 'info')
-    addLog(`+${xpEarned} XP, +40 Coins`, 'info')
+    addLog(`+${xpEarned} XP, +${coinsEarned} Coins`, 'info')
 
     party.forEach(cat => addXpToCat(cat.id, xpEarned))
-    addCoins(40)
+    addCoins(coinsEarned)
     recordBattleResult(true, xpEarned)
-    healAllCats()
 
-    setTimeout(() => {
-      nextDog()
-    }, 3000)
+    setVictoryRewards({ coins: coinsEarned, xp: xpEarned })
+    setTimeout(() => setShowVictoryModal(true), 1000)
   }
 
   const handleDefeat = () => {
     setBattleEnded(true)
     addLog(`💀 DEFEAT!`, 'info')
     recordBattleResult(false, 0)
+    // Don't auto-heal - player must heal manually for 20 coins
     setTimeout(() => setShowDefeatModal(true), 1000)
   }
 
@@ -413,7 +428,6 @@ export default function BattleArena() {
         isOpen={showDefeatModal}
         onClose={() => {
           setShowDefeatModal(false)
-          healAllCats()
           setView('collection')
         }}
         title="💀 DEFEAT"
@@ -423,7 +437,7 @@ export default function BattleArena() {
           <div className="text-6xl mb-4">😿</div>
           <h3 className="text-2xl font-bold text-red-400 mb-2">All cats defeated!</h3>
           <p className="text-slate-300 mb-6">
-            Your party has fallen in battle. Heal up and try again!
+            Your party has fallen in battle. Visit Collection to heal your cats for 20 coins!
           </p>
 
           <div className="bg-slate-800/50 rounded-lg p-4 mb-6 border border-slate-700">
@@ -448,7 +462,6 @@ export default function BattleArena() {
             <button
               onClick={() => {
                 setShowDefeatModal(false)
-                healAllCats()
                 setView('collection')
               }}
               className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all hover:scale-105"
@@ -458,7 +471,6 @@ export default function BattleArena() {
             <button
               onClick={() => {
                 setShowDefeatModal(false)
-                healAllCats()
                 setView('bait')
               }}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
@@ -466,6 +478,55 @@ export default function BattleArena() {
               🎣 Baiting Area
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Victory Modal */}
+      <Modal
+        isOpen={showVictoryModal}
+        onClose={() => {
+          setShowVictoryModal(false)
+          nextDog()
+        }}
+        title="🎉 VICTORY!"
+        size="sm"
+      >
+        <div className="text-center py-6">
+          <div className="text-6xl mb-4 animate-bounce">🏆</div>
+          <h3 className="text-2xl font-bold text-gold-400 mb-2">Epic Victory!</h3>
+          <p className="text-slate-300 mb-6">
+            You have defeated {dog.name}! Your cats grow stronger!
+          </p>
+
+          <div className="bg-slate-800/50 rounded-lg p-6 mb-6 border border-gold-500/30">
+            <div className="text-sm text-slate-400 mb-4 uppercase tracking-wider">Rewards Earned</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-4xl">💰</span>
+                <div>
+                  <div className="text-3xl font-black text-gold-400">+{victoryRewards.coins}</div>
+                  <div className="text-xs text-slate-500">COINS</div>
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-4xl">⭐</span>
+                <div>
+                  <div className="text-3xl font-black text-cyan-400">+{victoryRewards.xp}</div>
+                  <div className="text-xs text-slate-500">EXPERIENCE</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setShowVictoryModal(false)
+              nextDog()
+            }}
+            className="w-full px-6 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-black text-lg rounded-xl shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95"
+          >
+            Continue to Next Battle →
+          </button>
         </div>
       </Modal>
     </div>

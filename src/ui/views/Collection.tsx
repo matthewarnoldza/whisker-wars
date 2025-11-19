@@ -18,6 +18,7 @@ export default function Collection() {
   const selected = useGame(s => s.selectedForBattle)
   const healAllCats = useGame(s => s.healAllCats)
   const releaseCat = useGame(s => s.releaseCat)
+  const coins = useGame(s => s.coins)
 
   const [sortBy, setSortBy] = useState<SortOption>('level')
   const [filterBy, setFilterBy] = useState<FilterOption>('all')
@@ -90,14 +91,25 @@ export default function Collection() {
           </div>
 
           <motion.button
-            onClick={healAllCats}
-            className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all"
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              const success = healAllCats()
+              if (!success) {
+                alert('Not enough coins! Need 20 coins to heal all cats.')
+              }
+            }}
+            disabled={coins < 20}
+            className={`px-8 py-4 font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all ${
+              coins < 20
+                ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+            }`}
+            whileHover={coins >= 20 ? { scale: 1.05, y: -2 } : {}}
+            whileTap={coins >= 20 ? { scale: 0.95 } : {}}
           >
             <span className="flex items-center gap-2">
               <span className="text-xl">💊</span>
               Heal All Cats
+              <span className="text-sm opacity-80">(20 💰)</span>
             </span>
           </motion.button>
         </div>
@@ -211,18 +223,6 @@ export default function Collection() {
                     onClick={() => toggle(cat.id)}
                     disabled={!isSelected && selected.length >= 3}
                   />
-
-                  {/* XP Bar */}
-                  {cat.level < 10 && (
-                    <div className="absolute -bottom-3 left-6 right-6 h-2 bg-slate-900/80 rounded-full overflow-hidden border border-blue-500/30 shadow-inner">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${xpPercent}%` }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    </div>
-                  )}
 
                   {/* Selection Overlay */}
                   <div className={`absolute inset-0 flex flex-col items-center justify-center gap-2 transition-opacity duration-200 ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto pointer-events-none'

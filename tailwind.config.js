@@ -1,0 +1,72 @@
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        'slate': {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617',
+        },
+        'gold': {
+          100: '#fef9c3',
+          200: '#fef08a',
+          300: '#fde047',
+          400: '#facc15',
+          500: '#eab308',
+          600: '#ca8a04',
+          700: '#a16207',
+          800: '#854d0e',
+          900: '#713f12',
+        },
+        'purple': {
+          400: '#c084fc',
+          500: '#a855f7',
+          600: '#9333ea',
+          700: '#7e22ce',
+          800: '#6b21a8',
+          900: '#581c87',
+        },
+      },
+      boxShadow: {
+        'premium': '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        'premium-lg': '0 12px 48px rgba(0, 0, 0, 0.6), 0 0 40px rgba(234, 179, 8, 0.2)',
+        'glow-gold': '0 0 20px rgba(234, 179, 8, 0.4), 0 0 40px rgba(234, 179, 8, 0.2)',
+        'glow-purple': '0 0 20px rgba(168, 85, 247, 0.4), 0 0 40px rgba(168, 85, 247, 0.2)',
+        'inner-glow': 'inset 0 0 20px rgba(234, 179, 8, 0.1)',
+      },
+      backgroundImage: {
+        'premium-gradient': 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+        'gold-gradient': 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
+        'purple-gradient': 'linear-gradient(135deg, #a855f7 0%, #9333ea 50%, #7e22ce 100%)',
+        'card-shine': 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
+      },
+      animation: {
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'shimmer': 'shimmer 3s linear infinite',
+        'float': 'float 6s ease-in-out infinite',
+        'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+      },
+      fontFamily: {
+        'sans': ['Inter', 'system-ui', 'sans-serif'],
+        'heading': ['Cinzel', 'serif'],
+      },
+      backdropBlur: {
+        'xs': '2px',
+        'xl': '20px',
+      },
+    },
+  },
+  darkMode: 'class',
+  plugins: [],
+}

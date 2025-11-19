@@ -1,0 +1,165 @@
+import { motion } from 'framer-motion'
+import Avatar from './Avatar'
+import type { Cat, Dog } from '../../game/data'
+
+interface GameCardProps {
+    character: Cat | Dog
+    isEnemy?: boolean
+    onClick?: () => void
+    selected?: boolean
+    disabled?: boolean
+    showStats?: boolean
+    animate?: boolean
+}
+
+export default function GameCard({
+    character,
+    isEnemy = false,
+    onClick,
+    selected = false,
+    disabled = false,
+    showStats = true,
+    animate = true
+}: GameCardProps) {
+
+    const isCat = !isEnemy
+    const rarity = (character as Cat).rarity || 'Common'
+
+    const getRarityGradient = (r: string) => {
+        switch (r) {
+            case 'Common': return 'from-slate-500 to-slate-600'
+            case 'Uncommon': return 'from-green-500 to-emerald-600'
+            case 'Rare': return 'from-blue-500 to-cyan-600'
+            case 'Epic': return 'from-purple-500 to-fuchsia-600'
+            case 'Legendary': return 'from-orange-500 to-amber-600'
+            case 'Mythical': return 'from-red-600 to-rose-700'
+            default: return 'from-slate-500 to-slate-600'
+        }
+    }
+
+    const getRarityGlow = (r: string) => {
+        switch (r) {
+            case 'Common': return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
+            case 'Uncommon': return 'drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]'
+            case 'Rare': return 'drop-shadow-[0_0_25px_rgba(59,130,246,0.9)]'
+            case 'Epic': return 'drop-shadow-[0_0_30px_rgba(168,85,247,1)]'
+            case 'Legendary': return 'drop-shadow-[0_0_35px_rgba(251,146,60,1.2)]'
+            case 'Mythical': return 'drop-shadow-[0_0_40px_rgba(239,68,68,1.3)]'
+            default: return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
+        }
+    }
+
+    const rarityGradient = getRarityGradient(rarity)
+    const rarityGlow = getRarityGlow(rarity)
+
+    return (
+        <motion.div
+            className={`relative w-52 h-80 select-none cursor-pointer ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            whileHover={!disabled && animate ? { scale: 1.05, y: -8 } : {}}
+            whileTap={!disabled && animate ? { scale: 0.98 } : {}}
+            onClick={!disabled ? onClick : undefined}
+            initial={animate ? { opacity: 0, y: 20 } : {}}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ transformStyle: 'preserve-3d' }}
+        >
+            {/* Selection Glow */}
+            {selected && (
+                <div className="absolute -inset-3 bg-gradient-to-r from-gold-500/50 via-purple-500/50 to-gold-500/50 rounded-2xl blur-xl animate-pulse-glow" />
+            )}
+
+            {/* Card Container with Rarity Glow */}
+            <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow}`}>
+
+                {/* Full-Bleed Character Art - No Border */}
+                <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                    {character.imageUrl ? (
+                        <img
+                            src={character.imageUrl}
+                            alt={character.name}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 scale-150">
+                            <Avatar seed={character.id} kind={isEnemy ? 'dog' : 'cat'} />
+                        </div>
+                    )}
+
+                    {/* Minimal Gradient Overlays - only at top and bottom */}
+                    <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                </div>
+
+                {/* Card Content Overlay */}
+                <div className="relative z-10 h-full flex flex-col justify-between p-4">
+
+                    {/* Top: Enhanced Name Badge */}
+                    <div className="flex flex-col items-center gap-1">
+                        <div className={`px-4 py-2 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-lg border-2 border-white/40 backdrop-blur-sm`}>
+                            <h3 className="font-black text-sm tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
+                                {character.name}
+                            </h3>
+                        </div>
+                        {isCat && (
+                            <div className="px-3 py-1 rounded-md bg-black/70 backdrop-blur-md border border-white/20 shadow-md">
+                                <span className="text-[9px] text-slate-200 uppercase tracking-widest font-bold">
+                                    {(character as Cat).breed}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Bottom Section: Ability + Stats */}
+                    <div className="flex flex-col gap-2.5">
+                        {/* Enhanced Ability */}
+                        {character.ability && (
+                            <div className="px-3 py-2 bg-black/75 backdrop-blur-md rounded-xl border-2 border-white/20 shadow-lg">
+                                <div className="text-[10px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-md">
+                                    {character.ability.name}
+                                </div>
+                                <p className="text-[9px] text-slate-200 leading-tight text-center line-clamp-1 mt-1">
+                                    {character.ability.description}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Enhanced Stats */}
+                        {showStats && (
+                            <div className="flex justify-between items-center px-1">
+                                {/* Attack */}
+                                <div className="flex flex-col items-center gap-1">
+                                    <div className="w-11 h-11 bg-gradient-to-br from-red-500 to-red-700 rounded-full border-3 border-white/40 flex items-center justify-center shadow-lg">
+                                        <span className="font-black text-white text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{character.attack}</span>
+                                    </div>
+                                    <span className="text-[9px] text-red-200 font-black tracking-wider uppercase bg-black/60 px-2 py-0.5 rounded-full border border-red-400/30">ATK</span>
+                                </div>
+
+                                {/* Level */}
+                                {(character as any).level && (
+                                    <div className="px-3 py-1.5 bg-gradient-to-br from-gold-400 to-gold-600 rounded-xl shadow-lg border-2 border-white/40">
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-[8px] text-gold-900 font-black tracking-wider leading-none">LVL</span>
+                                            <span className="text-xl font-black text-white leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{(character as any).level}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Health */}
+                                <div className="flex flex-col items-center gap-1">
+                                    <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full border-3 border-white/40 flex items-center justify-center shadow-lg">
+                                        <span className="font-black text-white text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{character.health}</span>
+                                    </div>
+                                    <span className="text-[9px] text-emerald-200 font-black tracking-wider uppercase bg-black/60 px-2 py-0.5 rounded-full border border-emerald-400/30">HP</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Hover Shine Effect */}
+                {!disabled && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/20 to-white/0 opacity-0 hover:opacity-30 transition-opacity pointer-events-none" />
+                )}
+            </div>
+        </motion.div>
+    )
+}

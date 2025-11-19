@@ -37,7 +37,7 @@ function AchievementsButton() {
   const [showAchievements, setShowAchievements] = useState(false)
   const achievements = useGame(s => s.achievements)
   const claimAchievement = useGame(s => s.claimAchievement)
-  const unlockedCount = achievements.filter(a => a.unlocked).length
+  const unclaimedCount = achievements.filter(a => a.unlocked && !a.claimed).length
 
   return (
     <>
@@ -54,9 +54,9 @@ function AchievementsButton() {
             Achievements
           </span>
         </div>
-        {unlockedCount > 0 && (
+        {unclaimedCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/20">
-            {unlockedCount}
+            {unclaimedCount}
           </span>
         )}
       </motion.button>

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
     lg: 'max-w-4xl',
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -25,9 +26,9 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999]"
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[999999]"
           />
-          <div className="fixed inset-0 z-[10000] pointer-events-none overflow-y-auto">
+          <div className="fixed inset-0 z-[1000000] pointer-events-none overflow-y-auto">
             <div className="min-h-screen flex items-start justify-center p-4 pt-24">
               <motion.div
                 initial={{ scale: 0.9, opacity: 0, y: -20 }}
@@ -57,6 +58,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

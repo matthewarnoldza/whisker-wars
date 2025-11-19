@@ -225,32 +225,28 @@ export default function Collection() {
                   )}
 
                   {/* Selection Overlay */}
-                  <div className={`absolute inset-0 flex flex-col items-center justify-center gap-2 transition-opacity duration-200 pointer-events-none ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center gap-2 transition-opacity duration-200 ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto pointer-events-none'
                     }`}>
-                    <motion.button
+                    <button
                       onClick={(e) => { e.stopPropagation(); toggle(cat.id); }}
-                      className={`pointer-events-auto px-8 py-3 rounded-full font-black shadow-premium-lg transform translate-y-8 border-2 border-white/20 ${isSelected
+                      className={`px-8 py-3 rounded-full font-black shadow-premium-lg transform translate-y-8 border-2 border-white/20 transition-all hover:scale-110 active:scale-95 ${isSelected
                           ? 'bg-red-600 text-white hover:bg-red-500 shadow-glow-purple'
                           : 'bg-gold-500 text-slate-900 hover:bg-gold-400 shadow-glow-gold'
                         }`}
-                      whileHover={{ scale: 1.1, y: -4 }}
-                      whileTap={{ scale: 0.95 }}
                     >
                       {isSelected ? 'REMOVE' : 'SELECT'}
-                    </motion.button>
-                    <motion.button
+                    </button>
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         if (window.confirm(`Release ${cat.name}? This cannot be undone!`)) {
                           releaseCat(cat.id);
                         }
                       }}
-                      className="pointer-events-auto px-6 py-2 rounded-full font-bold shadow-lg transform translate-y-8 border border-white/20 bg-slate-700 text-slate-200 hover:bg-slate-600"
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
+                      className="px-6 py-2 rounded-full font-bold shadow-lg transform translate-y-8 border border-white/20 bg-slate-700 text-slate-200 hover:bg-slate-600 transition-all hover:scale-105 active:scale-95"
                     >
                       Release
-                    </motion.button>
+                    </button>
                   </div>
                 </motion.div>
               </motion.div>

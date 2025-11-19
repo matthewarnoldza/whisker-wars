@@ -291,7 +291,7 @@ export default function BattleArena() {
       </div>
 
       {/* Bottom Area: Player Party */}
-      <div className="flex-1 flex justify-center items-end pb-8 gap-4">
+      <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-16">
         {party.map(cat => {
           const isSelected = selectedCatId === cat.id
           const isDead = cat.currentHp <= 0
@@ -304,7 +304,7 @@ export default function BattleArena() {
               onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.id)}
             >
               {/* Health Bar Above Card */}
-              <div className="absolute -top-8 left-0 right-0 px-2">
+              <div className="absolute -top-12 left-0 right-0 px-2 z-20">
                 <StatBar
                   current={cat.currentHp}
                   max={cat.maxHp}
@@ -327,7 +327,7 @@ export default function BattleArena() {
               {isSelected && (
                 <motion.div
                   layoutId="active-indicator"
-                  className="absolute -top-20 left-0 right-0 flex justify-center"
+                  className="absolute -top-24 left-0 right-0 flex justify-center z-30"
                 >
                   <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
                     READY

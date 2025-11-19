@@ -122,33 +122,33 @@ export default function GameCard({
                             </div>
                         )}
 
-                        {/* Enhanced Stats */}
+                        {/* Vintage Stats */}
                         {showStats && (
                             <div className="flex justify-between items-center px-1">
                                 {/* Attack */}
-                                <div className="flex flex-col items-center gap-1">
-                                    <div className="w-11 h-11 bg-gradient-to-br from-red-500 to-red-700 rounded-full border-3 border-white/40 flex items-center justify-center shadow-lg">
-                                        <span className="font-black text-white text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{character.attack}</span>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded border border-amber-700/50 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                        <span className="font-black text-amber-200 text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{character.attack}</span>
                                     </div>
-                                    <span className="text-[9px] text-red-200 font-black tracking-wider uppercase bg-black/60 px-2 py-0.5 rounded-full border border-red-400/30">ATK</span>
+                                    <span className="text-[8px] text-amber-300/90 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
 
                                 {/* Level */}
                                 {(character as any).level && (
-                                    <div className="px-3 py-1.5 bg-gradient-to-br from-gold-400 to-gold-600 rounded-xl shadow-lg border-2 border-white/40">
+                                    <div className="px-2.5 py-1 bg-gradient-to-br from-slate-700/80 to-slate-800/90 rounded border border-slate-600/50 shadow-md backdrop-blur-sm">
                                         <div className="flex flex-col items-center">
-                                            <span className="text-[8px] text-gold-900 font-black tracking-wider leading-none">LVL</span>
-                                            <span className="text-xl font-black text-white leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{(character as any).level}</span>
+                                            <span className="text-[7px] text-slate-400 font-bold tracking-wide leading-none">LVL</span>
+                                            <span className="text-lg font-black text-slate-200 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{(character as any).level}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Health */}
-                                <div className="flex flex-col items-center gap-1">
-                                    <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full border-3 border-white/40 flex items-center justify-center shadow-lg">
-                                        <span className="font-black text-white text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{character.health}</span>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded border border-emerald-700/50 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                        <span className="font-black text-emerald-200 text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{character.health}</span>
                                     </div>
-                                    <span className="text-[9px] text-emerald-200 font-black tracking-wider uppercase bg-black/60 px-2 py-0.5 rounded-full border border-emerald-400/30">HP</span>
+                                    <span className="text-[8px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>
                                 </div>
                             </div>
                         )}

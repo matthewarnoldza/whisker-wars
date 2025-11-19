@@ -27,13 +27,14 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             onClick={onClose}
             className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50"
           />
-          <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full ${sizeClasses[size]} bg-slate-900 border border-gold-500/30 rounded-2xl shadow-premium-lg overflow-hidden pointer-events-auto flex flex-col max-h-[85vh]`}
-            >
+          <div className="fixed inset-0 z-[100] pointer-events-none overflow-y-auto">
+            <div className="min-h-screen flex items-start justify-center p-4 pt-24">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: -20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: -20 }}
+                className={`w-full ${sizeClasses[size]} bg-slate-900 border border-gold-500/30 rounded-2xl shadow-premium-lg overflow-hidden pointer-events-auto flex flex-col max-h-[calc(100vh-8rem)] my-4`}
+              >
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-800 shrink-0">
                 <h2 className="text-xl font-black text-gold-400 font-heading tracking-wide flex items-center gap-2">
@@ -52,6 +53,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                 {children}
               </div>
             </motion.div>
+            </div>
           </div>
         </>
       )}

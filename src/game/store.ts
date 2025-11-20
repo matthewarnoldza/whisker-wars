@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
 
-export type View = 'bait' | 'collection' | 'battle'
+export type View = 'bait' | 'collection' | 'battle' | 'stats'
 
 export interface OwnedCat extends Cat {
   instanceId: string // Unique identifier for this specific cat instance
@@ -53,9 +53,11 @@ interface GameState {
   baits: Record<string, number> // baitId -> qty
   owned: OwnedCat[]
   selectedForBattle: string[]
+  favorites: string[] // instanceIds of favorite cats
   dogIndex: number
   difficultyLevel: number // Difficulty multiplier for multi-dog battles
   theme: 'light' | 'dark'
+  soundEnabled: boolean // Toggle for dice roll sounds
   achievements: Achievement[]
   stats: GameStats
   lastDailyReward: number
@@ -66,6 +68,7 @@ interface GameState {
   befriendCat: (cat:Cat)=>void
   releaseCat: (catId:string)=>void
   toggleSelectCat: (id:string)=>void
+  toggleFavorite: (instanceId:string)=>void
   nextDog: ()=>void
   addXpToCat: (catId:string, amount:number)=>void
   healCat: (catId:string, amount:number)=>void
@@ -78,6 +81,7 @@ interface GameState {
   save: ()=>void
   load: ()=>void
   setTheme: (t:'light'|'dark')=>void
+  toggleSound: ()=>void
   // Profile management
   getCurrentProfile: ()=>ProfileMeta | null
   getProfiles: ()=>ProfileMeta[]
@@ -167,8 +171,10 @@ const getInitialGameState = () => ({
   baits: { 'toy-mouse': 1, 'silver-sardine': 1 },
   owned: [],
   selectedForBattle: [],
+  favorites: [],
   dogIndex: 0,
   theme: 'dark' as 'light' | 'dark',
+  soundEnabled: true,
   achievements: INITIAL_ACHIEVEMENTS,
   stats: {
     totalBattles: 0,
@@ -257,6 +263,13 @@ export const useGame = create<GameState>((set, get) => ({
     if (sel.has(instanceId)) sel.delete(instanceId)
     else if (sel.size < 3) sel.add(instanceId)
     return { selectedForBattle: [...sel] }
+  }),
+
+  toggleFavorite: (instanceId)=> set(s=>{
+    const fav = new Set(s.favorites)
+    if (fav.has(instanceId)) fav.delete(instanceId)
+    else fav.add(instanceId)
+    return { favorites: [...fav] }
   }),
 
   nextDog: ()=> set(s=> {
@@ -425,6 +438,7 @@ export const useGame = create<GameState>((set, get) => ({
       owned: s.owned,
       dogIndex: s.dogIndex,
       difficultyLevel: s.difficultyLevel,
+      favorites: s.favorites,
       theme: s.theme,
       achievements: s.achievements,
       stats: s.stats,
@@ -453,6 +467,7 @@ export const useGame = create<GameState>((set, get) => ({
         owned: d.owned || [],
         dogIndex: d.dogIndex || 0,
         difficultyLevel: d.difficultyLevel || 0,
+        favorites: d.favorites || [],
         theme: d.theme || 'dark',
         achievements: d.achievements || INITIAL_ACHIEVEMENTS,
         stats: d.stats || {
@@ -468,6 +483,7 @@ export const useGame = create<GameState>((set, get) => ({
     } catch {}
   },
   setTheme: (t)=> set({ theme: t }),
+  toggleSound: ()=> set(s=> ({ soundEnabled: !s.soundEnabled })),
 
   // Profile management implementations
   getCurrentProfile: ()=> {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import GameCard from '../components/GameCard'
-import Dice from '../components/Dice'
+import D20Dice from '../components/D20Dice'
 import StatBar from '../components/StatBar'
 import ParticleSystem from '../components/ParticleSystem'
 import Modal from '../components/Modal'
@@ -24,6 +24,8 @@ export default function BattleArena() {
   const recordBattleResult = useGame(s => s.recordBattleResult)
   const setView = useGame(s => s.setView)
   const stats = useGame(s => s.stats)
+  const soundEnabled = useGame(s => s.soundEnabled)
+  const toggleSound = useGame(s => s.toggleSound)
 
   const [dogHp, setDogHp] = useState(DOGS[dogIndex].health)
   const [turn, setTurn] = useState<'player' | 'enemy'>('player')
@@ -330,15 +332,22 @@ export default function BattleArena() {
       </div>
 
       {/* Middle Area: Dice & Controls */}
-      <div className="flex justify-center items-center gap-8 my-4 z-20">
-        {/* Dice */}
-        <div className="flex flex-col items-center">
-          <Dice value={dice} rolling={rolling} />
+      <div className="flex justify-center items-center gap-8 my-8 z-20">
+        {/* Dice with Sound Toggle */}
+        <div className="flex flex-col items-center gap-4">
+          <D20Dice value={dice} rolling={rolling} soundEnabled={soundEnabled} />
           {turn === 'player' && !battleEnded && (
             <div className="mt-2 text-gold-400 font-bold animate-pulse font-heading tracking-widest">
               YOUR TURN
             </div>
           )}
+          <button
+            onClick={toggleSound}
+            className="px-3 py-1 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-gold-500/50 transition-all text-xs font-bold text-slate-400 hover:text-gold-400"
+            title={soundEnabled ? 'Mute dice sounds' : 'Enable dice sounds'}
+          >
+            {soundEnabled ? '🔊 Sound On' : '🔇 Sound Off'}
+          </button>
         </div>
 
         {/* Action Button */}

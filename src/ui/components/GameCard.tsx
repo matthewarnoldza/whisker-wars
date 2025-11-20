@@ -52,6 +52,10 @@ export default function GameCard({
     const rarityGradient = getRarityGradient(rarity)
     const rarityGlow = getRarityGlow(rarity)
 
+    // Determine if card should have special animations
+    const hasSpecialGlow = rarity === 'Mythical' || rarity === 'Legendary'
+    const rarityAnimationClass = rarity === 'Mythical' ? 'mythical-glow' : rarity === 'Legendary' ? 'legendary-glow' : ''
+
     return (
         <motion.div
             className={`relative w-52 h-80 select-none cursor-pointer ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
@@ -67,8 +71,20 @@ export default function GameCard({
                 <div className="absolute -inset-3 bg-gradient-to-r from-gold-500/50 via-purple-500/50 to-gold-500/50 rounded-2xl blur-xl animate-pulse-glow" />
             )}
 
-            {/* Card Container with Rarity Glow */}
-            <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow}`}>
+            {/* Mythical Particles */}
+            {rarity === 'Mythical' && (
+                <>
+                    <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s' }} />
+                    <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s' }} />
+                    <div className="absolute bottom-12 left-8 w-2 h-2 bg-rose-500 rounded-full mythical-particle" style={{ animationDelay: '1s' }} />
+                    <div className="absolute bottom-6 right-4 w-2 h-2 bg-red-600 rounded-full mythical-particle" style={{ animationDelay: '1.5s' }} />
+                </>
+            )}
+
+            {/* Card Container with Rarity Glow and Shine */}
+            <div className={`card-shine relative w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
+                style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite` } : {}}
+            >
 
                 {/* Full-Bleed Character Art - No Border */}
                 <div className="absolute inset-0 rounded-2xl overflow-hidden">

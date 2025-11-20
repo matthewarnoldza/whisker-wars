@@ -197,9 +197,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                 {result.ok && result.cat ? (
                   <div className="flex flex-col items-center">
                     <motion.div
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: 'spring', bounce: 0.5 }}
+                      className="flip-in"
                     >
                       <GameCard character={result.cat} animate={false} />
                     </motion.div>

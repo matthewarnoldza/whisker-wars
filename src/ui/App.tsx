@@ -5,6 +5,7 @@ import { BAITS } from '../game/data'
 import BaitingArea from './views/BaitingArea'
 import Collection from './views/Collection'
 import BattleArena from './views/BattleArena'
+import StatsView from './views/StatsView'
 import AnimatedBackground from './components/AnimatedBackground'
 import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
@@ -229,6 +230,7 @@ export default function App() {
                 { id: 'bait', label: 'Baiting Area', icon: '🎣', gradient: 'from-blue-500 to-cyan-500' },
                 { id: 'collection', label: 'Collection', icon: '📚', gradient: 'from-purple-500 to-pink-500' },
                 { id: 'battle', label: 'Battle Arena', icon: '⚔️', gradient: 'from-red-500 to-orange-500' },
+                { id: 'stats', label: 'Stats', icon: '📊', gradient: 'from-emerald-500 to-teal-500' },
               ].map(tab => (
                 <motion.button
                   key={tab.id}
@@ -293,6 +295,7 @@ export default function App() {
               {view === 'bait' && <BaitingArea baits={BAITS} />}
               {view === 'collection' && <Collection />}
               {view === 'battle' && <BattleArena />}
+              {view === 'stats' && <StatsView />}
             </motion.div>
           </AnimatePresence>
         </main>

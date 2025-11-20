@@ -320,7 +320,7 @@ export default function App() {
                 <span className="text-slate-400">Elite Cat Combat Simulator</span>
               </p>
             </div>
-            <p className="text-xs text-slate-500">Progress auto-saves • Built with ⚡ by AI</p>
+            <p className="text-xs text-slate-500">Progress auto-saves • Built by Aaron and Matt Arnold</p>
           </div>
         </footer>
       </div>

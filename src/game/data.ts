@@ -95,6 +95,7 @@ export const CATS: Cat[] = [
   { id:'omni', name:'Omni', rarity:'Mythical', health: 36, attack: 12, breed:'Omnipotent Cat', ability:{name:'Reality Bend', description:'Guaranteed crit on 15+', effect:'crit'}, imageUrl:'/images/cats/Omni.png' },
   { id:'reaper', name:'Reaper', rarity:'Mythical', health: 34, attack: 13, breed:'Death Cat', ability:{name:'Soul Drain', description:'Steals 50% damage as HP', effect:'lifesteal'}, imageUrl:'/images/cats/Reaper.png' },
   { id:'guardian', name:'Guardian', rarity:'Mythical', health: 40, attack: 10, breed:'Ancient Cat', ability:{name:'Eternal Shield', description:'Immune to 3 attacks', effect:'armor'}, imageUrl:'/images/cats/Guardian.png' },
+  { id:'aarons-kitty', name:"Aaron's Kitty", rarity:'Mythical', health: 36, attack: 12, breed:'Rizz Cat', ability:{name:'Rizz', description:'Enemy tries to pet and misses turn on natural 20', effect:'stun'}, imageUrl:'/images/cats/Aarons Kitty.png' },
 ]
 
 export const DOGS: Dog[] = [

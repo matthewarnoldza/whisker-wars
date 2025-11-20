@@ -295,20 +295,17 @@ export default function App() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
-          <AnimatePresence mode="sync">
-            <motion.div
-              key={view}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={pageVariants}
-            >
-              {view === 'bait' && <BaitingArea baits={BAITS} />}
-              {view === 'collection' && <Collection />}
-              {view === 'battle' && <BattleArena />}
-              {view === 'stats' && <StatsView />}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={view}
+            initial="initial"
+            animate="animate"
+            variants={pageVariants}
+          >
+            {view === 'bait' && <BaitingArea baits={BAITS} />}
+            {view === 'collection' && <Collection />}
+            {view === 'battle' && <BattleArena />}
+            {view === 'stats' && <StatsView />}
+          </motion.div>
         </main>
 
         {/* Premium Footer */}

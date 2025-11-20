@@ -96,36 +96,43 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
 
               {/* Card Content Overlay */}
               <div className="absolute inset-0 z-10 flex flex-col justify-between p-4 sm:p-6">
-                {/* Top: Name & Breed */}
+                {/* Top: Name Only */}
                 <div className="flex flex-col items-center gap-1.5">
                   <div className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-2xl border-2 sm:border-3 border-white/40 backdrop-blur-sm`}>
                     <h3 className="font-black text-xl sm:text-2xl tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase">
                       {cat.name}
                     </h3>
                   </div>
-                  <div className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/30 shadow-lg">
-                    <span className="text-xs sm:text-sm text-slate-200 uppercase tracking-widest font-bold">
-                      {cat.breed}
-                    </span>
-                  </div>
-                  <div className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-md bg-black/70 backdrop-blur-md border border-white/20">
-                    <span className="text-[10px] sm:text-xs text-gold-400 uppercase tracking-widest font-bold">
-                      {cat.rarity}
-                    </span>
-                  </div>
                 </div>
 
-                {/* Bottom: Ability */}
-                {cat.ability && (
-                  <div className="px-3 sm:px-4 py-2 sm:py-3 bg-black/80 backdrop-blur-md rounded-xl border-2 sm:border-3 border-white/30 shadow-2xl">
-                    <div className="text-sm sm:text-base font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-lg mb-1">
-                      {cat.ability.name}
+                {/* Bottom: Breed, Rarity & Ability */}
+                <div className="flex flex-col gap-2">
+                  {/* Breed and Rarity - Side by Side */}
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md bg-black/80 backdrop-blur-md border border-white/30 shadow-lg flex items-center justify-center h-9">
+                      <span className="text-xs sm:text-sm text-slate-200 uppercase tracking-widest font-bold">
+                        {cat.breed}
+                      </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-200 leading-snug text-center">
-                      {cat.ability.description}
-                    </p>
+                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md bg-black/70 backdrop-blur-md border border-white/20 flex items-center justify-center h-9">
+                      <span className="text-xs sm:text-sm text-gold-400 uppercase tracking-widest font-bold">
+                        {cat.rarity}
+                      </span>
+                    </div>
                   </div>
-                )}
+
+                  {/* Ability */}
+                  {cat.ability && (
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-black/80 backdrop-blur-md rounded-xl border-2 sm:border-3 border-white/30 shadow-2xl">
+                      <div className="text-sm sm:text-base font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-lg mb-1">
+                        {cat.ability.name}
+                      </div>
+                      <p className="text-xs sm:text-sm text-slate-200 leading-snug text-center">
+                        {cat.ability.description}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -133,25 +140,25 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             <div className="mt-3 sm:mt-4 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-lg border border-amber-700/50 shadow-xl">
-                <span className="font-black text-amber-200 text-xl sm:text-2xl drop-shadow-lg">{cat.currentAttack}</span>
+                <span className="font-black text-amber-200 text-lg sm:text-xl drop-shadow-lg">{cat.currentAttack}</span>
                 <span className="text-[9px] sm:text-[10px] text-amber-300/90 font-bold tracking-wide uppercase">ATK</span>
               </div>
 
               {/* Health */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded-lg border border-emerald-700/50 shadow-xl">
-                <span className="font-black text-emerald-200 text-xl sm:text-2xl drop-shadow-lg leading-none">{cat.currentHp}/{cat.maxHp}</span>
+                <span className="font-black text-emerald-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.currentHp}/{cat.maxHp}</span>
                 <span className="text-[9px] sm:text-[10px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>
               </div>
 
               {/* Level */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-purple-900/80 to-purple-950/90 rounded-lg border border-purple-700/50 shadow-xl">
-                <span className="font-black text-purple-200 text-xl sm:text-2xl drop-shadow-lg">{cat.level}</span>
+                <span className="font-black text-purple-200 text-lg sm:text-xl drop-shadow-lg">{cat.level}</span>
                 <span className="text-[9px] sm:text-[10px] text-purple-300/90 font-bold tracking-wide uppercase">LVL</span>
               </div>
 
               {/* Battles */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-slate-800/80 to-slate-900/90 rounded-lg border border-slate-700/50 shadow-xl">
-                <span className="font-black text-slate-200 text-xl sm:text-2xl drop-shadow-lg leading-none">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
+                <span className="font-black text-slate-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
                 <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-bold tracking-wide uppercase">W/L</span>
               </div>
             </div>

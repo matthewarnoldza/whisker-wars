@@ -54,7 +54,7 @@ export default function Collection() {
     return uniqueIds.size
   }, [cats])
 
-  const totalUniqueCats = CATS.length
+  const totalUniqueCats = 40
 
   const collectionProgress = useMemo(() => {
     return Math.round((uniqueCatsCollected / totalUniqueCats) * 100)
@@ -121,17 +121,18 @@ export default function Collection() {
             🎴 <span className="text-purple-400">{uniqueCatsCollected}/{totalUniqueCats}</span> unique
           </span>
           <span className="text-slate-600">•</span>
-          <span className="font-bold text-gold-400">{collectionProgress}% complete</span>
-        </div>
-
-        {/* Progress Bar (Inline) */}
-        <div className="w-full sm:w-48 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${collectionProgress}%` }}
-            transition={{ duration: 1, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-gold-500 rounded-full"
-          />
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gold-400">{collectionProgress}% complete</span>
+            {/* Progress Bar (Inline) */}
+            <div className="w-32 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${collectionProgress}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className="h-full bg-gradient-to-r from-gold-400 to-gold-500 rounded-full"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

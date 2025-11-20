@@ -105,46 +105,64 @@ export default function Collection() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Premium Header */}
-      <div className="premium-card rounded-2xl p-8 shimmer">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex-1">
-            <h2 className="text-4xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-purple-500 bg-clip-text text-transparent mb-2 font-heading">
-              📚 Your Cat Collection
-            </h2>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-lg">
-              <p className="text-slate-400">
-                <span className="font-bold text-white">{cats.length}</span> cats collected
-                <span className="mx-2 text-slate-600">•</span>
-                <span className="font-bold text-gold-400">{selected.length}/3</span> selected for battle
-              </p>
-            </div>
+    <div className="space-y-6">
+      {/* Compact Stats & Progress Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="font-bold text-slate-300">
+            <span className="text-white">{cats.length}</span> cats
+          </span>
+          <span className="text-slate-600">•</span>
+          <span className="font-bold text-slate-300">
+            <span className="text-gold-400">{selected.length}/3</span> selected
+          </span>
+          <span className="text-slate-600">•</span>
+          <span className="font-bold text-slate-300">
+            🎴 <span className="text-purple-400">{uniqueCatsCollected}/{totalUniqueCats}</span> unique
+          </span>
+          <span className="text-slate-600">•</span>
+          <span className="font-bold text-gold-400">{collectionProgress}% complete</span>
+        </div>
 
-            {/* Unique Cards Progress */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-300">
-                  🎴 {uniqueCatsCollected}/{totalUniqueCats} Unique Cards
-                </span>
-                <span className="text-sm font-bold text-gold-400">
-                  {collectionProgress}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden border border-slate-700/50">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${collectionProgress}%` }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-gold-500 rounded-full shadow-glow-purple"
-                  style={{
-                    boxShadow: collectionProgress >= 100 ? '0 0 20px rgba(234, 179, 8, 0.6)' : undefined
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+        {/* Progress Bar (Inline) */}
+        <div className="w-full sm:w-48 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${collectionProgress}%` }}
+            transition={{ duration: 1, ease: 'easeOut' }}
+            className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-gold-500 rounded-full"
+          />
+        </div>
+      </div>
 
+      {/* Compact Toolbar */}
+      <div className="premium-card rounded-xl p-4 space-y-3">
+        {/* Row 1: Search, Favorites, Heal All */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Search Bar */}
+          <input
+            type="text"
+            placeholder="🔍 Search cats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
+          />
+
+          {/* Favorites Toggle */}
+          <motion.button
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+              showFavoritesOnly
+                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-pink-500/50 hover:text-pink-300'
+            }`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            ⭐ Favorites
+          </motion.button>
+
+          {/* Heal All Button */}
           <motion.button
             onClick={() => {
               const success = healAllCats()
@@ -153,98 +171,61 @@ export default function Collection() {
               }
             }}
             disabled={coins < 20}
-            className={`px-8 py-4 font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all ${
+            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
               coins < 20
                 ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
-                : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg'
             }`}
-            whileHover={coins >= 20 ? { scale: 1.05, y: -2 } : {}}
+            whileHover={coins >= 20 ? { scale: 1.05 } : {}}
             whileTap={coins >= 20 ? { scale: 0.95 } : {}}
           >
-            <span className="flex items-center gap-2">
-              <span className="text-xl">💊</span>
-              Heal All Cats
-              <span className="text-sm opacity-80">(20 💰)</span>
-            </span>
+            💊 Heal All (20💰)
           </motion.button>
         </div>
 
-        {/* Search and Favorites */}
-        <div className="mt-6 pt-6 border-t border-slate-700/50">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search Bar */}
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="🔍 Search cats by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
-              />
-            </div>
-
-            {/* Favorites Toggle */}
-            <motion.button
-              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-              className={`px-6 py-3 rounded-lg font-bold text-sm transition-all ${
-                showFavoritesOnly
-                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-glow-purple'
-                  : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-pink-500/50 hover:text-pink-300'
-              }`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              ⭐ Favorites{showFavoritesOnly ? ' Only' : ''}
-            </motion.button>
+        {/* Row 2: Sort & Filter */}
+        <div className="flex flex-col lg:flex-row gap-3 pt-3 border-t border-slate-700/50">
+          {/* Sort */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Sort:</span>
+            {(['level', 'rarity', 'name', 'hp', 'attack'] as SortOption[]).map(option => (
+              <motion.button
+                key={option}
+                onClick={() => setSortBy(option)}
+                className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${sortBy === option
+                  ? 'bg-gradient-to-r from-gold-400 to-gold-600 text-slate-900 shadow-md'
+                  : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-gold-500/50 hover:text-gold-300'
+                  }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </motion.button>
+            ))}
           </div>
-        </div>
 
-        {/* Filters */}
-        <div className="mt-6 pt-6 border-t border-slate-700/50">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Sort */}
-            <div>
-              <label className="text-sm font-bold text-slate-300 mb-3 block tracking-wider uppercase">Sort By</label>
-              <div className="flex flex-wrap gap-2">
-                {(['level', 'rarity', 'name', 'hp', 'attack'] as SortOption[]).map(option => (
-                  <motion.button
-                    key={option}
-                    onClick={() => setSortBy(option)}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${sortBy === option
-                      ? 'bg-gradient-to-r from-gold-400 to-gold-600 text-slate-900 shadow-glow-gold'
-                      : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-gold-500/50 hover:text-gold-300'
-                      }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
-                  </motion.button>
-                ))}
-              </div>
-            </div>
+          {/* Divider */}
+          <div className="hidden lg:block w-px bg-slate-700/50" />
 
-            {/* Filter */}
-            <div>
-              <label className="text-sm font-bold text-slate-300 mb-3 block tracking-wider uppercase">Filter By Rarity</label>
-              <div className="flex flex-wrap gap-2">
-                {(['all', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythical'] as FilterOption[]).map(
-                  option => (
-                    <motion.button
-                      key={option}
-                      onClick={() => setFilterBy(option)}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filterBy === option
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-glow-purple'
-                        : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-purple-500/50 hover:text-purple-300'
-                        }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {option === 'all' ? 'All' : option}
-                    </motion.button>
-                  )
-                )}
-              </div>
-            </div>
+          {/* Filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Filter:</span>
+            {(['all', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythical'] as FilterOption[]).map(
+              option => (
+                <motion.button
+                  key={option}
+                  onClick={() => setFilterBy(option)}
+                  className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${filterBy === option
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                    : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-purple-500/50 hover:text-purple-300'
+                    }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {option === 'all' ? 'All' : option}
+                </motion.button>
+              )
+            )}
           </div>
         </div>
       </div>

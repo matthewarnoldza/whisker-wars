@@ -44,19 +44,19 @@ function AchievementsButton() {
     <>
       <motion.button
         onClick={() => setShowAchievements(true)}
-        className="px-6 py-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group"
+        className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity rounded-xl" />
-        <div className="relative flex items-center gap-2">
-          <span className="text-2xl drop-shadow-md">🏆</span>
-          <span className="font-black text-gold-100 tracking-wide drop-shadow-md">
+        <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity rounded-lg" />
+        <div className="relative flex items-center gap-1.5">
+          <span className="text-lg drop-shadow-md">🏆</span>
+          <span className="hidden xl:inline font-bold text-gold-100 tracking-wide drop-shadow-md text-xs">
             Achievements
           </span>
         </div>
         {unclaimedCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/20">
+          <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center shadow-lg border border-white/20">
             {unclaimedCount}
           </span>
         )}
@@ -167,55 +167,105 @@ export default function App() {
       <div className="animated-bg" />
 
       <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden">
-        {/* Premium Header */}
-        <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/60 border-b border-slate-700/50 shadow-premium">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/10 via-transparent to-gold-900/10 pointer-events-none" />
+        {/* Premium Header with Background */}
+        <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50 shadow-premium overflow-hidden">
+          {/* Background Image with Overlay */}
+          <div className="absolute inset-0 pointer-events-none">
+            <img
+              src="/images/header/WW header.png"
+              alt=""
+              className="w-full h-full object-cover opacity-30"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
+          </div>
 
-          <div className="max-w-7xl mx-auto px-6 py-5 relative">
-            {/* Top Row */}
-            <div className="flex items-center justify-between mb-6">
-              <motion.div
-                className="flex items-center gap-4"
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-glow-gold">
-                  <span className="text-2xl">⚔️</span>
-                </div>
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-gold-400 via-gold-300 to-gold-500 bg-clip-text text-transparent font-heading">
-                    WHISKER WARS
-                  </h1>
-                  <p className="text-xs text-slate-400 tracking-widest uppercase">Elite Cat Combat</p>
-                </div>
-              </motion.div>
+          <div className="max-w-7xl mx-auto px-4 py-3 relative">
+            {/* Single Compact Row */}
+            <div className="flex items-center justify-between gap-4">
+              {/* Left: Logo + Title + Navigation */}
+              <div className="flex items-center gap-6">
+                {/* Logo + Title */}
+                <motion.div
+                  className="flex items-center gap-3"
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <img
+                    src="/images/logos/Whisker Wars White.png"
+                    alt="Whisker Wars Logo"
+                    className="h-10 w-auto drop-shadow-lg"
+                  />
+                  <div className="hidden sm:block border-l border-slate-600 pl-3">
+                    <h1 className="text-lg font-black tracking-tight text-white drop-shadow-lg">
+                      WHISKER WARS
+                    </h1>
+                    <p className="text-[9px] text-slate-400 tracking-widest uppercase leading-none">
+                      Elite Cat Combat
+                    </p>
+                  </div>
+                </motion.div>
 
-              <div className="flex items-center gap-4">
+                {/* Navigation Tabs */}
+                <nav className="hidden lg:flex gap-2">
+                  {[
+                    { id: 'bait', label: 'Bait', icon: '🎣', gradient: 'from-blue-500 to-cyan-500' },
+                    { id: 'collection', label: 'Collection', icon: '📚', gradient: 'from-purple-500 to-pink-500' },
+                    { id: 'battle', label: 'Battle', icon: '⚔️', gradient: 'from-red-500 to-orange-500' },
+                    { id: 'stats', label: 'Stats', icon: '📊', gradient: 'from-emerald-500 to-teal-500' },
+                  ].map(tab => (
+                    <motion.button
+                      key={tab.id}
+                      onClick={() => setView(tab.id as any)}
+                      className={`relative px-4 py-2 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
+                        ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
+                        : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200'
+                        }`}
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {view === tab.id && (
+                        <motion.div
+                          layoutId="activeTab"
+                          className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative flex items-center gap-1.5">
+                        <span className="text-sm">{tab.icon}</span>
+                        <span className="hidden xl:inline">{tab.label}</span>
+                      </span>
+                    </motion.button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Right: User Controls */}
+              <div className="flex items-center gap-2 sm:gap-3">
                 {profileLoaded && (
                   <motion.button
                     onClick={() => setShowProfileSelector(true)}
-                    className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-purple-500/50 transition-all"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-purple-500/50 transition-all"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">👤</span>
-                      <span className="text-sm font-bold text-purple-300">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">👤</span>
+                      <span className="text-xs font-bold text-purple-300 hidden sm:inline">
                         {getCurrentProfile()?.name}
                       </span>
                     </div>
                   </motion.button>
                 )}
                 <motion.div
-                  className="px-6 py-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative overflow-hidden group"
+                  className="px-3 sm:px-4 py-1.5 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative overflow-hidden group"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
-                  <div className="relative flex items-center gap-2">
-                    <span className="text-2xl drop-shadow-md">🪙</span>
-                    <span className="text-2xl font-black text-gold-100 drop-shadow-md tracking-wide">
+                  <div className="relative flex items-center gap-1.5">
+                    <span className="text-lg drop-shadow-md">🪙</span>
+                    <span className="text-base sm:text-lg font-black text-gold-100 drop-shadow-md tracking-wide">
                       {coins}
                     </span>
                   </div>
@@ -224,61 +274,30 @@ export default function App() {
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <nav className="flex gap-3 mb-4">
+            {/* Mobile Navigation */}
+            <nav className="flex lg:hidden gap-1.5 mt-2 pt-2 border-t border-slate-700/50">
               {[
-                { id: 'bait', label: 'Baiting Area', icon: '🎣', gradient: 'from-blue-500 to-cyan-500' },
+                { id: 'bait', label: 'Bait', icon: '🎣', gradient: 'from-blue-500 to-cyan-500' },
                 { id: 'collection', label: 'Collection', icon: '📚', gradient: 'from-purple-500 to-pink-500' },
-                { id: 'battle', label: 'Battle Arena', icon: '⚔️', gradient: 'from-red-500 to-orange-500' },
+                { id: 'battle', label: 'Battle', icon: '⚔️', gradient: 'from-red-500 to-orange-500' },
                 { id: 'stats', label: 'Stats', icon: '📊', gradient: 'from-emerald-500 to-teal-500' },
               ].map(tab => (
                 <motion.button
                   key={tab.id}
                   onClick={() => setView(tab.id as any)}
-                  className={`relative px-6 py-3 rounded-xl font-bold text-sm tracking-wide transition-all overflow-hidden group ${view === tab.id
-                    ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-premium-lg scale-105'
-                    : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200'
+                  className={`relative flex-1 px-2 py-1.5 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
+                    ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-400 border border-slate-700'
                     }`}
-                  whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {view === tab.id && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  <span className="relative flex items-center gap-2">
-                    <span className="text-lg">{tab.icon}</span>
-                    {tab.label}
+                  <span className="relative flex items-center justify-center gap-1">
+                    <span className="text-sm">{tab.icon}</span>
+                    <span className="hidden xs:inline text-[10px]">{tab.label}</span>
                   </span>
                 </motion.button>
               ))}
             </nav>
-
-            {/* Stats Bar */}
-            <div className="flex gap-6 text-sm">
-              {[
-                { label: 'Battles', value: `${stats.totalWins}/${stats.totalBattles}`, icon: '⚔️' },
-                { label: 'Cats', value: stats.totalCatsCollected, icon: '🐱' },
-                { label: 'Coins Earned', value: stats.totalCoinsEarned, icon: '💰' },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/30 border border-slate-700/50"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <span>{stat.icon}</span>
-                  <span className="text-slate-400">{stat.label}:</span>
-                  <span className="font-bold bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">
-                    {stat.value}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
           </div>
         </header>
 

@@ -45,7 +45,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0, y: 50 }}
@@ -53,32 +53,32 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             exit={{ scale: 0.8, opacity: 0, y: 50 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl w-full"
+            className="relative w-full max-w-sm sm:max-w-md lg:max-w-lg my-auto"
           >
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute -top-4 -right-4 z-10 w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+              className="absolute -top-2 -right-2 z-10 w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
             {/* Card Container */}
-            <div className={`relative w-full rounded-3xl overflow-hidden shadow-2xl ${rarityGlow}`}>
+            <div className={`relative w-full rounded-2xl overflow-hidden shadow-2xl ${rarityGlow}`}>
               {/* Mythical Particles */}
               {cat.rarity === 'Mythical' && (
                 <>
-                  <div className="absolute top-8 left-8 w-3 h-3 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s', zIndex: 30 }} />
-                  <div className="absolute top-16 right-12 w-3 h-3 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s', zIndex: 30 }} />
-                  <div className="absolute bottom-24 left-16 w-3 h-3 bg-rose-500 rounded-full mythical-particle" style={{ animationDelay: '1s', zIndex: 30 }} />
-                  <div className="absolute bottom-12 right-8 w-3 h-3 bg-red-600 rounded-full mythical-particle" style={{ animationDelay: '1.5s', zIndex: 30 }} />
+                  <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s', zIndex: 30 }} />
+                  <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s', zIndex: 30 }} />
+                  <div className="absolute bottom-12 left-8 w-2 h-2 bg-rose-500 rounded-full mythical-particle" style={{ animationDelay: '1s', zIndex: 30 }} />
+                  <div className="absolute bottom-6 right-4 w-2 h-2 bg-red-600 rounded-full mythical-particle" style={{ animationDelay: '1.5s', zIndex: 30 }} />
                 </>
               )}
 
               {/* Full-Screen Character Art */}
-              <div className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden">
+              <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden">
                 {cat.imageUrl ? (
                   <img
                     src={cat.imageUrl}
@@ -90,26 +90,26 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 )}
 
                 {/* Gradient Overlays - only at top and bottom */}
-                <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/70 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/70 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
               </div>
 
               {/* Card Content Overlay */}
-              <div className="absolute inset-0 z-10 flex flex-col justify-between p-8">
+              <div className="absolute inset-0 z-10 flex flex-col justify-between p-4 sm:p-6">
                 {/* Top: Name & Breed */}
-                <div className="flex flex-col items-center gap-2">
-                  <div className={`px-8 py-4 rounded-xl bg-gradient-to-br ${rarityGradient} shadow-2xl border-4 border-white/40 backdrop-blur-sm`}>
-                    <h3 className="font-black text-3xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] uppercase">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-2xl border-2 sm:border-3 border-white/40 backdrop-blur-sm`}>
+                    <h3 className="font-black text-xl sm:text-2xl tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase">
                       {cat.name}
                     </h3>
                   </div>
-                  <div className="px-6 py-2 rounded-lg bg-black/80 backdrop-blur-md border-2 border-white/30 shadow-xl">
-                    <span className="text-sm text-slate-200 uppercase tracking-widest font-bold">
+                  <div className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/30 shadow-lg">
+                    <span className="text-xs sm:text-sm text-slate-200 uppercase tracking-widest font-bold">
                       {cat.breed}
                     </span>
                   </div>
-                  <div className="px-4 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/20">
-                    <span className="text-xs text-gold-400 uppercase tracking-widest font-bold">
+                  <div className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-md bg-black/70 backdrop-blur-md border border-white/20">
+                    <span className="text-[10px] sm:text-xs text-gold-400 uppercase tracking-widest font-bold">
                       {cat.rarity}
                     </span>
                   </div>
@@ -117,11 +117,11 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
 
                 {/* Bottom: Ability */}
                 {cat.ability && (
-                  <div className="px-6 py-4 bg-black/80 backdrop-blur-md rounded-2xl border-4 border-white/30 shadow-2xl">
-                    <div className="text-lg font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-lg mb-2">
+                  <div className="px-3 sm:px-4 py-2 sm:py-3 bg-black/80 backdrop-blur-md rounded-xl border-2 sm:border-3 border-white/30 shadow-2xl">
+                    <div className="text-sm sm:text-base font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-lg mb-1">
                       {cat.ability.name}
                     </div>
-                    <p className="text-base text-slate-200 leading-snug text-center">
+                    <p className="text-xs sm:text-sm text-slate-200 leading-snug text-center">
                       {cat.ability.description}
                     </p>
                   </div>
@@ -130,35 +130,35 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             </div>
 
             {/* Stats Below Card */}
-            <div className="mt-6 grid grid-cols-4 gap-4">
+            <div className="mt-3 sm:mt-4 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-xl border-2 border-amber-700/50 shadow-xl">
-                <span className="font-black text-amber-200 text-3xl drop-shadow-lg">{cat.currentAttack}</span>
-                <span className="text-xs text-amber-300/90 font-bold tracking-wide uppercase">Attack</span>
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-lg border border-amber-700/50 shadow-xl">
+                <span className="font-black text-amber-200 text-xl sm:text-2xl drop-shadow-lg">{cat.currentAttack}</span>
+                <span className="text-[9px] sm:text-[10px] text-amber-300/90 font-bold tracking-wide uppercase">ATK</span>
               </div>
 
               {/* Health */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded-xl border-2 border-emerald-700/50 shadow-xl">
-                <span className="font-black text-emerald-200 text-3xl drop-shadow-lg">{cat.currentHp}/{cat.maxHp}</span>
-                <span className="text-xs text-emerald-300/90 font-bold tracking-wide uppercase">Health</span>
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded-lg border border-emerald-700/50 shadow-xl">
+                <span className="font-black text-emerald-200 text-xl sm:text-2xl drop-shadow-lg leading-none">{cat.currentHp}/{cat.maxHp}</span>
+                <span className="text-[9px] sm:text-[10px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>
               </div>
 
               {/* Level */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-purple-900/80 to-purple-950/90 rounded-xl border-2 border-purple-700/50 shadow-xl">
-                <span className="font-black text-purple-200 text-3xl drop-shadow-lg">{cat.level}</span>
-                <span className="text-xs text-purple-300/90 font-bold tracking-wide uppercase">Level</span>
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-purple-900/80 to-purple-950/90 rounded-lg border border-purple-700/50 shadow-xl">
+                <span className="font-black text-purple-200 text-xl sm:text-2xl drop-shadow-lg">{cat.level}</span>
+                <span className="text-[9px] sm:text-[10px] text-purple-300/90 font-bold tracking-wide uppercase">LVL</span>
               </div>
 
               {/* Battles */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-slate-800/80 to-slate-900/90 rounded-xl border-2 border-slate-700/50 shadow-xl">
-                <span className="font-black text-slate-200 text-3xl drop-shadow-lg">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
-                <span className="text-xs text-slate-300/90 font-bold tracking-wide uppercase">W/L</span>
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-slate-800/80 to-slate-900/90 rounded-lg border border-slate-700/50 shadow-xl">
+                <span className="font-black text-slate-200 text-xl sm:text-2xl drop-shadow-lg leading-none">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-bold tracking-wide uppercase">W/L</span>
               </div>
             </div>
 
             {/* Hint Text */}
-            <div className="mt-4 text-center">
-              <p className="text-slate-400 text-sm">Click anywhere to close</p>
+            <div className="mt-2 sm:mt-3 text-center">
+              <p className="text-slate-400 text-xs sm:text-sm">Click anywhere to close</p>
             </div>
           </motion.div>
         </motion.div>

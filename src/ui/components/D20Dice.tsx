@@ -1,5 +1,4 @@
-import { motion } from 'framer-motion'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, CSSProperties } from 'react'
 
 interface D20DiceProps {
   value: number
@@ -9,19 +8,41 @@ interface D20DiceProps {
 
 export default function D20Dice({ value, rolling, soundEnabled = true }: D20DiceProps) {
   const [showValue, setShowValue] = useState(value)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isRolling, setIsRolling] = useState(false)
+
+  // Constants for D20 geometry (converted from SCSS)
+  const CONTAINER_SIZE = 200
+  const FACE_WIDTH = CONTAINER_SIZE * 0.5
+  const FACE_HEIGHT = FACE_WIDTH * 0.86
+  const ANGLE = 53
+  const RING_ANGLE = -11
+  const SIDE_ANGLE = 360 / 5
+
+  // Translation values
+  const TRANSLATE_Z = FACE_WIDTH * 0.335
+  const TRANSLATE_Y = -FACE_HEIGHT * 0.15
+  const TRANSLATE_RING_Z = FACE_WIDTH * 0.75
+  const TRANSLATE_RING_Y = FACE_HEIGHT * 0.78 + TRANSLATE_Y
+  const TRANSLATE_LOWER_Z = TRANSLATE_Z
+  const TRANSLATE_LOWER_Y = FACE_HEIGHT * 0.78 + TRANSLATE_RING_Y
 
   // Update shown value after roll completes
   useEffect(() => {
-    if (!rolling) {
-      setShowValue(value)
+    if (rolling) {
+      setIsRolling(true)
+    } else {
+      // Wait for animation to finish before showing final value
+      const timer = setTimeout(() => {
+        setShowValue(value)
+        setIsRolling(false)
+      }, 500)
+      return () => clearTimeout(timer)
     }
   }, [rolling, value])
 
   // Play dice roll sound
   useEffect(() => {
     if (rolling && soundEnabled) {
-      // Create a simple dice roll sound using Web Audio API
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
         const oscillator = audioContext.createOscillator()
@@ -30,7 +51,6 @@ export default function D20Dice({ value, rolling, soundEnabled = true }: D20Dice
         oscillator.connect(gainNode)
         gainNode.connect(audioContext.destination)
 
-        // Dice rolling sound effect (multiple bounces)
         oscillator.frequency.setValueAtTime(200, audioContext.currentTime)
         oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3)
 
@@ -40,170 +60,182 @@ export default function D20Dice({ value, rolling, soundEnabled = true }: D20Dice
         oscillator.start(audioContext.currentTime)
         oscillator.stop(audioContext.currentTime + 0.3)
       } catch (e) {
-        // Fallback if Web Audio API is not available
         console.log('Audio not available')
       }
     }
   }, [rolling, soundEnabled])
 
-  // Critical hit effect (natural 20)
+  // Critical hit/fail detection
   const isCriticalHit = !rolling && value === 20
   const isCriticalFail = !rolling && value === 1
+
+  // Generate transform for each face
+  const getFaceTransform = (faceNum: number): string => {
+    if (faceNum >= 1 && faceNum <= 5) {
+      // Top ring
+      const angleMultiplier = faceNum - 1
+      return `rotateY(${-SIDE_ANGLE * angleMultiplier}deg) translateZ(${TRANSLATE_Z}px) translateY(${TRANSLATE_Y}px) rotateX(${ANGLE}deg)`
+    } else if (faceNum >= 16 && faceNum <= 20) {
+      // Bottom ring
+      const angleMultiplier = faceNum - 18
+      return `rotateY(${SIDE_ANGLE * angleMultiplier + SIDE_ANGLE / 2}deg) translateZ(${TRANSLATE_LOWER_Z}px) translateY(${TRANSLATE_LOWER_Y}px) rotateZ(180deg) rotateX(${ANGLE}deg)`
+    } else if (faceNum >= 6 && faceNum <= 10) {
+      // Upper middle ring
+      const angleMultiplier = faceNum - 11
+      return `rotateY(${-SIDE_ANGLE * angleMultiplier}deg) translateZ(${TRANSLATE_RING_Z}px) translateY(${TRANSLATE_RING_Y}px) rotateZ(180deg) rotateX(${RING_ANGLE}deg)`
+    } else if (faceNum >= 11 && faceNum <= 15) {
+      // Lower middle ring
+      const angleMultiplier = faceNum - 8
+      return `rotateY(${SIDE_ANGLE * angleMultiplier + SIDE_ANGLE / 2}deg) translateZ(${TRANSLATE_RING_Z}px) translateY(${TRANSLATE_RING_Y}px) rotateX(${RING_ANGLE}deg)`
+    }
+    return ''
+  }
+
+  // Generate die rotation for showing specific face
+  const getDieRotation = (): string => {
+    if (isRolling) return ''
+
+    const face = showValue
+    if (face >= 1 && face <= 5) {
+      const angleMultiplier = face - 1
+      return `rotateX(${-ANGLE}deg) rotateY(${SIDE_ANGLE * angleMultiplier}deg)`
+    } else if (face >= 16 && face <= 20) {
+      const angleMultiplier = face - 15
+      return `rotateX(${-ANGLE + 180}deg) rotateY(${-SIDE_ANGLE * angleMultiplier}deg)`
+    } else if (face >= 6 && face <= 10) {
+      const angleMultiplier = face - 6
+      return `rotateX(${-RING_ANGLE}deg) rotateZ(180deg) rotateY(${SIDE_ANGLE * angleMultiplier}deg)`
+    } else if (face >= 11 && face <= 15) {
+      const angleMultiplier = face - 8
+      return `rotateX(${-RING_ANGLE}deg) rotateY(${-SIDE_ANGLE * angleMultiplier - SIDE_ANGLE / 2}deg)`
+    }
+    return `rotateX(${-ANGLE}deg)`
+  }
+
+  // Styles
+  const containerStyle: CSSProperties = {
+    position: 'relative',
+    width: `${CONTAINER_SIZE}px`,
+    height: `${CONTAINER_SIZE}px`,
+    perspective: '1500px',
+  }
+
+  const dieStyle: CSSProperties = {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    transformStyle: 'preserve-3d',
+    transition: isRolling ? 'none' : 'transform 0.5s ease-out',
+    cursor: 'pointer',
+    transform: getDieRotation(),
+    animation: isRolling ? 'd20-roll 3s linear' : 'none',
+  }
+
+  const faceStyle = (faceNum: number): CSSProperties => ({
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    margin: `0 ${-FACE_WIDTH * 0.5}px`,
+    borderLeft: `${FACE_WIDTH * 0.5}px solid transparent`,
+    borderRight: `${FACE_WIDTH * 0.5}px solid transparent`,
+    borderBottom: `${FACE_HEIGHT}px solid rgba(234, 179, 8, 0.85)`, // Gold color
+    width: 0,
+    height: 0,
+    transformStyle: 'preserve-3d',
+    backfaceVisibility: 'hidden',
+    transform: getFaceTransform(faceNum),
+  })
+
+  const faceNumberStyle: CSSProperties = {
+    position: 'absolute',
+    top: `${FACE_HEIGHT * 0.25}px`,
+    left: `-${FACE_WIDTH}px`,
+    color: '#fff',
+    textShadow: '1px 1px 3px #000',
+    fontSize: `${FACE_HEIGHT * 0.5}px`,
+    textAlign: 'center',
+    lineHeight: `${FACE_HEIGHT * 0.9}px`,
+    width: `${FACE_WIDTH * 2}px`,
+    height: `${FACE_HEIGHT}px`,
+    fontWeight: 'black',
+  }
 
   return (
     <div className="relative flex items-center justify-center">
       {/* Glow effect for critical rolls */}
       {isCriticalHit && (
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-gold-500/50 to-amber-500/50 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
+        <div
+          className="absolute inset-0 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(234, 179, 8, 0.5) 0%, rgba(251, 146, 60, 0.5) 100%)',
+            animation: 'pulse-glow 2s infinite',
+          }}
         />
       )}
       {isCriticalFail && (
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-red-500/50 to-rose-500/50 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
+        <div
+          className="absolute inset-0 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(239, 68, 68, 0.5) 0%, rgba(225, 29, 72, 0.5) 100%)',
+            animation: 'pulse-glow 2s infinite',
+          }}
         />
       )}
 
-      {/* D20 Container with 3D perspective */}
-      <motion.div
-        className="relative"
-        style={{ perspective: '1000px' }}
-        animate={rolling ? {
-          rotateX: [0, 360, 720],
-          rotateY: [0, 360, 720],
-          rotateZ: [0, 180, 360]
-        } : {}}
-        transition={rolling ? {
-          duration: 0.8,
-          repeat: Infinity,
-          ease: 'linear'
-        } : {
-          duration: 0.5,
-          ease: 'easeOut'
-        }}
-      >
-        {/* 3D D20 Shape */}
-        <div
-          className="relative w-32 h-32 flex items-center justify-center"
-          style={{ transformStyle: 'preserve-3d' }}
-        >
-          {/* Main D20 Body - Golden icosahedron approximation */}
-          <motion.div
-            className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-400 via-gold-500 to-gold-600 shadow-2xl"
-            style={{
-              transform: 'translateZ(0)',
-              clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
-            }}
-            animate={rolling ? {} : {
-              rotateX: value * 18,
-              rotateY: value * 36,
-            }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-          />
+      {/* D20 Container */}
+      <div style={containerStyle}>
+        <div style={dieStyle}>
+          {/* Generate all 20 faces */}
+          {[...Array(20)].map((_, i) => {
+            const faceNum = i + 1
+            return (
+              <div key={faceNum} style={faceStyle(faceNum)}>
+                <div style={faceNumberStyle}>{faceNum}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
-          {/* Face highlights - simulate faceted surface */}
-          <motion.div
-            className="absolute inset-2 rounded-full bg-gradient-to-br from-amber-300/60 to-transparent"
-            style={{
-              transform: 'translateZ(10px)',
-              clipPath: 'polygon(50% 10%, 90% 40%, 75% 90%, 25% 90%, 10% 40%)',
-            }}
-          />
-
-          {/* Inner glow */}
-          <motion.div
-            className="absolute inset-4 rounded-full bg-gradient-radial from-yellow-200/40 to-transparent blur-sm"
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-
-          {/* Edge highlights */}
-          {[...Array(5)].map((_, i) => (
-            <motion.div
+      {/* Sparkle effects for critical hit */}
+      {isCriticalHit && (
+        <>
+          {[...Array(6)].map((_, i) => (
+            <div
               key={i}
-              className="absolute inset-0 border-2 border-gold-300/30 rounded-full"
+              className="absolute w-2 h-2 bg-gold-300 rounded-full"
               style={{
-                transform: `rotateZ(${i * 72}deg) rotateX(${i * 36}deg) translateZ(5px)`,
-                clipPath: 'polygon(50% 0%, 60% 40%, 50% 45%, 40% 40%)',
+                top: '50%',
+                left: '50%',
+                transform: `rotate(${i * 60}deg) translateY(-60px)`,
+                animation: 'mythical-particles 1.5s ease-in-out infinite',
+                animationDelay: `${i * 0.1}s`,
               }}
             />
           ))}
-
-          {/* Number Display */}
-          <motion.div
-            className="relative z-10 flex items-center justify-center"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={rolling ?
-              { scale: [1, 0.8, 1], opacity: [0.5, 0.3, 0.5] } :
-              { scale: 1, opacity: 1 }
-            }
-            transition={rolling ? {
-              duration: 0.4,
-              repeat: Infinity
-            } : {
-              type: 'spring',
-              stiffness: 300,
-              damping: 20
-            }}
-          >
-            <span className={`font-black text-5xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${
-              isCriticalHit ? 'text-white animate-pulse' :
-              isCriticalFail ? 'text-red-900' :
-              'text-slate-900'
-            }`}>
-              {rolling ? '?' : showValue}
-            </span>
-          </motion.div>
-
-          {/* Sparkle effects for critical hit */}
-          {isCriticalHit && (
-            <>
-              {[...Array(6)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-2 h-2 bg-gold-300 rounded-full"
-                  style={{
-                    top: '50%',
-                    left: '50%',
-                    transform: `rotate(${i * 60}deg) translateY(-60px)`,
-                  }}
-                  animate={{
-                    scale: [0, 1, 0],
-                    opacity: [0, 1, 0],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    delay: i * 0.1,
-                  }}
-                />
-              ))}
-            </>
-          )}
-        </div>
-      </motion.div>
+        </>
+      )}
 
       {/* Result Label */}
       {!rolling && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap"
+          style={{
+            animation: 'fadeIn 0.3s ease-in',
+          }}
         >
-          <span className={`text-sm font-bold tracking-wider uppercase ${
-            isCriticalHit ? 'text-gold-400 drop-shadow-glow' :
-            isCriticalFail ? 'text-red-400' :
-            'text-slate-400'
-          }`}>
-            {isCriticalHit ? '✨ CRITICAL! ✨' :
-             isCriticalFail ? '💀 MISS! 💀' :
-             `Roll: ${showValue}`}
+          <span
+            className={`text-sm font-bold tracking-wider uppercase ${
+              isCriticalHit
+                ? 'text-gold-400 drop-shadow-glow'
+                : isCriticalFail
+                ? 'text-red-400'
+                : 'text-slate-400'
+            }`}
+          >
+            {isCriticalHit ? '✨ CRITICAL! ✨' : isCriticalFail ? '💀 MISS! 💀' : `Roll: ${showValue}`}
           </span>
-        </motion.div>
+        </div>
       )}
     </div>
   )

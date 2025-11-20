@@ -192,14 +192,14 @@ export default function Collection() {
       >
         <AnimatePresence mode="popLayout">
           {filteredAndSortedCats.map(cat => {
-            const isSelected = selected.includes(cat.id)
+            const isSelected = selected.includes(cat.instanceId)
             const hpPercent = (cat.currentHp / cat.maxHp) * 100
             const xpForNext = calculateXpForNextLevel(cat.level)
             const xpPercent = cat.level >= 10 ? 100 : (cat.xp / xpForNext) * 100
 
             return (
               <motion.div
-                key={cat.id}
+                key={cat.instanceId}
                 variants={cardVariants}
                 layout
                 exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
@@ -220,7 +220,7 @@ export default function Collection() {
                   <GameCard
                     character={cat}
                     selected={isSelected}
-                    onClick={() => toggle(cat.id)}
+                    onClick={() => toggle(cat.instanceId)}
                     disabled={!isSelected && selected.length >= 3}
                   />
 
@@ -228,7 +228,7 @@ export default function Collection() {
                   <div className={`absolute inset-0 flex flex-col items-center justify-center gap-2 transition-opacity duration-200 ${isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto pointer-events-none'
                     }`}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); toggle(cat.id); }}
+                      onClick={(e) => { e.stopPropagation(); toggle(cat.instanceId); }}
                       className={`px-8 py-3 rounded-full font-black shadow-premium-lg transform translate-y-8 border-2 border-white/20 transition-all hover:scale-110 active:scale-95 ${isSelected
                           ? 'bg-red-600 text-white hover:bg-red-500 shadow-glow-purple'
                           : 'bg-gold-500 text-slate-900 hover:bg-gold-400 shadow-glow-gold'
@@ -240,7 +240,7 @@ export default function Collection() {
                       onClick={(e) => {
                         e.stopPropagation();
                         if (window.confirm(`Release ${cat.name}? This cannot be undone!`)) {
-                          releaseCat(cat.id);
+                          releaseCat(cat.instanceId);
                         }
                       }}
                       className="px-6 py-2 rounded-full font-bold shadow-lg transform translate-y-8 border border-white/20 bg-slate-700 text-slate-200 hover:bg-slate-600 transition-all hover:scale-105 active:scale-95"

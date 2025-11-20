@@ -6,6 +6,7 @@ import { BAITS, CATS, DOGS, rarityByTier } from './data'
 export type View = 'bait' | 'collection' | 'battle'
 
 export interface OwnedCat extends Cat {
+  instanceId: string // Unique identifier for this specific cat instance
   level: number
   xp: number
   currentHp: number
@@ -53,6 +54,7 @@ interface GameState {
   owned: OwnedCat[]
   selectedForBattle: string[]
   dogIndex: number
+  difficultyLevel: number // Difficulty multiplier for multi-dog battles
   theme: 'light' | 'dark'
   achievements: Achievement[]
   stats: GameStats
@@ -91,8 +93,12 @@ const getRandomCatByBait = (bait:Bait): Cat | null => {
   const rarities = rarityByTier(bait.tier)
   const pool = CATS.filter(c=> rarities.includes(c.rarity as Rarity))
   if (!pool.length) return null
-  // small chance no cat appears
-  if (Math.random() < 0.15) return null
+
+  // Tier-based fail chance - higher tier baits have lower fail chance
+  // Tier 1: 15% fail, Tier 2: 12%, Tier 3: 9%, Tier 4: 6%, Tier 5: 3%, Tier 6: 1%
+  const failChance = Math.max(0.01, 0.18 - (bait.tier * 0.03))
+  if (Math.random() < failChance) return null
+
   return pool[rand(0, pool.length-1)]
 }
 
@@ -155,14 +161,14 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
   { id:'dog-slayer', name:'Dog Slayer', description:'Defeat all dog enemies', unlocked:false, claimed:false, progress:0, maxProgress:DOGS.length },
 ]
 
-export const useGame = create<GameState>((set, get) => ({
-  view: 'bait',
+const getInitialGameState = () => ({
+  view: 'bait' as View,
   coins: 120,
   baits: { 'toy-mouse': 1, 'silver-sardine': 1 },
   owned: [],
   selectedForBattle: [],
   dogIndex: 0,
-  theme: 'dark', // Default to dark theme for cyber aesthetic
+  theme: 'dark' as 'light' | 'dark',
   achievements: INITIAL_ACHIEVEMENTS,
   stats: {
     totalBattles: 0,
@@ -173,6 +179,11 @@ export const useGame = create<GameState>((set, get) => ({
     highestDogDefeated: -1,
   },
   lastDailyReward: 0,
+  difficultyLevel: 0, // For multi-dog battles after beating all dogs
+})
+
+export const useGame = create<GameState>((set, get) => ({
+  ...getInitialGameState(),
 
   setView: (v)=> set({view: v}),
   addCoins: (n)=> set(s=>{
@@ -209,6 +220,7 @@ export const useGame = create<GameState>((set, get) => ({
   befriendCat: (cat)=> set(s=>{
     const ownedCat: OwnedCat = {
       ...cat,
+      instanceId: crypto.randomUUID(), // Generate unique ID for this cat instance
       level: 1,
       xp: 0,
       currentHp: cat.health,
@@ -234,33 +246,47 @@ export const useGame = create<GameState>((set, get) => ({
     return { owned: newOwned, view: 'collection', stats: newStats }
   }),
 
-  releaseCat: (catId)=> set(s=> {
-    const newOwned = s.owned.filter(cat => cat.id !== catId)
-    const newSelected = s.selectedForBattle.filter(id => id !== catId)
+  releaseCat: (instanceId)=> set(s=> {
+    const newOwned = s.owned.filter(cat => cat.instanceId !== instanceId)
+    const newSelected = s.selectedForBattle.filter(id => id !== instanceId)
     return { owned: newOwned, selectedForBattle: newSelected }
   }),
 
-  toggleSelectCat: (id)=> set(s=>{
+  toggleSelectCat: (instanceId)=> set(s=>{
     const sel = new Set(s.selectedForBattle)
-    if (sel.has(id)) sel.delete(id)
-    else if (sel.size < 3) sel.add(id)
+    if (sel.has(instanceId)) sel.delete(instanceId)
+    else if (sel.size < 3) sel.add(instanceId)
     return { selectedForBattle: [...sel] }
   }),
 
   nextDog: ()=> set(s=> {
-    const newIndex = Math.min(DOGS.length-1, s.dogIndex+1)
-    const newStats = { ...s.stats, highestDogDefeated: Math.max(s.stats.highestDogDefeated, newIndex) }
+    let newIndex = s.dogIndex + 1
+    let newDifficultyLevel = s.difficultyLevel
+
+    // If we've beaten all dogs, increase difficulty and loop back
+    if (newIndex >= DOGS.length) {
+      newDifficultyLevel += 1
+      newIndex = 0 // Start from first dog again with higher difficulty
+    }
+
+    const newStats = {
+      ...s.stats,
+      highestDogDefeated: Math.max(s.stats.highestDogDefeated, s.dogIndex)
+    }
+
     setTimeout(() => {
-      if (newIndex >= DOGS.length - 1) {
+      // Unlock achievement on first completion of all dogs
+      if (s.dogIndex >= DOGS.length - 1 && s.difficultyLevel === 0) {
         get().unlockAchievement('dog-slayer')
       }
     }, 100)
-    return { dogIndex: newIndex, stats: newStats }
+
+    return { dogIndex: newIndex, difficultyLevel: newDifficultyLevel, stats: newStats }
   }),
 
-  addXpToCat: (catId, amount)=> set(s=> {
+  addXpToCat: (instanceId, amount)=> set(s=> {
     const owned = s.owned.map(cat => {
-      if (cat.id !== catId) return cat
+      if (cat.instanceId !== instanceId) return cat
 
       let newXp = cat.xp + amount
       let newLevel = cat.level
@@ -292,9 +318,9 @@ export const useGame = create<GameState>((set, get) => ({
     return { owned }
   }),
 
-  healCat: (catId, amount)=> set(s=> ({
+  healCat: (instanceId, amount)=> set(s=> ({
     owned: s.owned.map(cat =>
-      cat.id === catId
+      cat.instanceId === instanceId
         ? { ...cat, currentHp: Math.min(cat.maxHp, cat.currentHp + amount) }
         : cat
     )
@@ -311,9 +337,9 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
-  updateCatHp: (catId, newHp)=> set(s=> ({
+  updateCatHp: (instanceId, newHp)=> set(s=> ({
     owned: s.owned.map(cat =>
-      cat.id === catId
+      cat.instanceId === instanceId
         ? { ...cat, currentHp: Math.max(0, Math.min(cat.maxHp, newHp)) }
         : cat
     )
@@ -327,10 +353,9 @@ export const useGame = create<GameState>((set, get) => ({
       totalLosses: won ? s.stats.totalLosses : s.stats.totalLosses + 1,
     }
 
-    // Update selected cats
-    const selectedCats = s.owned.filter(cat => s.selectedForBattle.includes(cat.id))
+    // Update selected cats using instanceId
     const owned = s.owned.map(cat => {
-      if (!s.selectedForBattle.includes(cat.id)) return cat
+      if (!s.selectedForBattle.includes(cat.instanceId)) return cat
       return {
         ...cat,
         totalBattles: (cat.totalBattles || 0) + 1,
@@ -399,6 +424,7 @@ export const useGame = create<GameState>((set, get) => ({
       baits: s.baits,
       owned: s.owned,
       dogIndex: s.dogIndex,
+      difficultyLevel: s.difficultyLevel,
       theme: s.theme,
       achievements: s.achievements,
       stats: s.stats,
@@ -426,6 +452,7 @@ export const useGame = create<GameState>((set, get) => ({
         baits: d.baits || { 'toy-mouse': 1, 'silver-sardine': 1 },
         owned: d.owned || [],
         dogIndex: d.dogIndex || 0,
+        difficultyLevel: d.difficultyLevel || 0,
         theme: d.theme || 'dark',
         achievements: d.achievements || INITIAL_ACHIEVEMENTS,
         stats: d.stats || {
@@ -473,6 +500,9 @@ export const useGame = create<GameState>((set, get) => ({
 
     data.activeProfileId = profileId
     saveProfilesData(data)
+
+    // Reset to initial state first, then load saved data if it exists
+    set(getInitialGameState())
     get().load()
   },
 

@@ -13,8 +13,9 @@ import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '
 interface BattleLog { text: string; type?: 'damage' | 'heal' | 'crit' | 'info' }
 
 export default function BattleArena() {
-  const party = useGame(s => s.owned.filter(o => s.selectedForBattle.includes(o.id)))
+  const party = useGame(s => s.owned.filter(o => s.selectedForBattle.includes(o.instanceId)))
   const dogIndex = useGame(s => s.dogIndex)
+  const difficultyLevel = useGame(s => s.difficultyLevel)
   const addCoins = useGame(s => s.addCoins)
   const nextDog = useGame(s => s.nextDog)
   const updateCatHp = useGame(s => s.updateCatHp)
@@ -92,10 +93,10 @@ export default function BattleArena() {
   const handleAttack = async () => {
     if (!selectedCatId || turn !== 'player' || battleEnded) return
 
-    const cat = party.find(c => c.id === selectedCatId)
+    const cat = party.find(c => c.instanceId === selectedCatId)
     if (!cat || cat.currentHp <= 0) return
 
-    setAttackingId(cat.id)
+    setAttackingId(cat.instanceId)
     addLog(`${cat.name} attacks!`, 'info')
 
     const v = await roll()
@@ -124,13 +125,13 @@ export default function BattleArena() {
     if (cat.ability.effect === 'bleed' && v >= 15) dmg += 2
     if (cat.ability.effect === 'heal' && v >= 16) {
       const newHp = Math.min(cat.maxHp, cat.currentHp + 3)
-      updateCatHp(cat.id, newHp)
+      updateCatHp(cat.instanceId, newHp)
       addLog(`${cat.name} heals 3 HP! ✨`, 'heal')
     }
     if (cat.ability.effect === 'lifesteal') {
       const healAmount = Math.floor(dmg * 0.5)
       const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
-      updateCatHp(cat.id, newHp)
+      updateCatHp(cat.instanceId, newHp)
       addLog(`${cat.name} steals ${healAmount} HP! 🩸`, 'heal')
     }
 
@@ -225,10 +226,10 @@ export default function BattleArena() {
     }
 
     const newHp = Math.max(0, t.currentHp - actualDamage)
-    updateCatHp(t.id, newHp)
+    updateCatHp(t.instanceId, newHp)
 
     // Find target position (approximate)
-    const targetIndex = party.findIndex(c => c.id === t.id)
+    const targetIndex = party.findIndex(c => c.instanceId === t.instanceId)
     // This is a bit hacky for positioning, but works for now
     const xPos = (window.innerWidth / 3) * (targetIndex + 0.5)
     showDamage(actualDamage, xPos, window.innerHeight - 200)
@@ -238,7 +239,7 @@ export default function BattleArena() {
     setAttackingId(null)
 
     // Check Defeat
-    if (party.every(c => (c.id === t.id ? newHp <= 0 : c.currentHp <= 0))) {
+    if (party.every(c => (c.instanceId === t.instanceId ? newHp <= 0 : c.currentHp <= 0))) {
       handleDefeat()
     } else {
       setTurn('player')
@@ -247,13 +248,15 @@ export default function BattleArena() {
 
   const handleVictory = () => {
     setBattleEnded(true)
-    const xpEarned = 50 + (dogIndex * 25)
-    const coinsEarned = 250 + (dogIndex * 50)
+    // Scale rewards based on difficulty level
+    const difficultyMultiplier = 1 + (difficultyLevel * 0.5)
+    const xpEarned = Math.floor((50 + (dogIndex * 25)) * difficultyMultiplier)
+    const coinsEarned = Math.floor((250 + (dogIndex * 50)) * difficultyMultiplier)
 
     addLog(`🎉 VICTORY!`, 'info')
     addLog(`+${xpEarned} XP, +${coinsEarned} Coins`, 'info')
 
-    party.forEach(cat => addXpToCat(cat.id, xpEarned))
+    party.forEach(cat => addXpToCat(cat.instanceId, xpEarned))
     addCoins(coinsEarned)
     recordBattleResult(true, xpEarned)
 
@@ -363,15 +366,15 @@ export default function BattleArena() {
       {/* Bottom Area: Player Party */}
       <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-16">
         {party.map(cat => {
-          const isSelected = selectedCatId === cat.id
+          const isSelected = selectedCatId === cat.instanceId
           const isDead = cat.currentHp <= 0
           return (
             <motion.div
-              key={cat.id}
+              key={cat.instanceId}
               variants={attackVariants}
-              animate={attackingId === cat.id ? 'attack' : 'idle'}
+              animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
               className="relative group cursor-pointer"
-              onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.id)}
+              onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
             >
               {/* Health Bar Above Card */}
               <div className="absolute -top-12 left-0 right-0 px-2 z-20">

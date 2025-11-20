@@ -102,7 +102,7 @@ export default function GameCard({
 
                     {/* Minimal Gradient Overlays - only at top and bottom */}
                     <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
                 </div>
 
                 {/* Card Content Overlay */}
@@ -143,32 +143,32 @@ export default function GameCard({
                             <div className="flex justify-between items-center px-1">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded border border-amber-700/50 flex items-center justify-center shadow-md backdrop-blur-sm">
-                                        <span className="font-black text-amber-200 text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{character.attack}</span>
+                                    <div className="w-10 h-10 bg-gradient-to-br from-amber-900/95 to-amber-950/95 rounded border-2 border-amber-600/70 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                        <span className="font-black text-amber-100 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{character.attack}</span>
                                     </div>
-                                    <span className="text-[8px] text-amber-300/90 font-bold tracking-wide uppercase">ATK</span>
+                                    <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
 
                                 {/* Level */}
-                                {(character as any).level && (
-                                    <div className="px-2.5 py-1 bg-gradient-to-br from-slate-700/80 to-slate-800/90 rounded border border-slate-600/50 shadow-md backdrop-blur-sm">
+                                {(character as any).level !== undefined && (
+                                    <div className="px-2.5 py-1 bg-gradient-to-br from-slate-700/95 to-slate-800/95 rounded border-2 border-slate-600/70 shadow-md backdrop-blur-sm">
                                         <div className="flex flex-col items-center">
-                                            <span className="text-[7px] text-slate-400 font-bold tracking-wide leading-none">LVL</span>
-                                            <span className="text-lg font-black text-slate-200 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{(character as any).level}</span>
+                                            <span className="text-[7px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
+                                            <span className="text-lg font-black text-slate-100 leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{(character as any).level}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Health */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-12 h-10 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded border border-emerald-700/50 flex items-center justify-center shadow-md backdrop-blur-sm px-1">
-                                        <span className="font-black text-emerald-200 text-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                                    <div className="w-12 h-10 bg-gradient-to-br from-emerald-900/95 to-emerald-950/95 rounded border-2 border-emerald-600/70 flex items-center justify-center shadow-md backdrop-blur-sm px-1">
+                                        <span className="font-black text-emerald-100 text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
                                             {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
                                                 ? `${(character as any).currentHp}/${(character as any).maxHp}`
-                                                : character.health}
+                                                : (character as any).currentHp || character.health || 0}
                                         </span>
                                     </div>
-                                    <span className="text-[8px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>
+                                    <span className="text-[8px] text-emerald-200 font-bold tracking-wide uppercase">HP</span>
                                 </div>
                             </div>
                         )}

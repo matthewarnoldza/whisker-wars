@@ -289,7 +289,7 @@ export default function BattleArena() {
           </div>
 
           {/* Action Button */}
-          <div className="w-64 flex justify-center">
+          <div className="w-64 flex justify-center mb-4">
             {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
               <motion.button
                 initial={{ scale: 0 }}
@@ -303,7 +303,7 @@ export default function BattleArena() {
               </motion.button>
             )}
             {turn === 'player' && !selectedCatId && !battleEnded && (
-              <div className="text-slate-400 text-sm text-center italic">
+              <div className="text-slate-400 text-sm text-center italic px-4">
                 Select a cat to attack
               </div>
             )}
@@ -312,6 +312,11 @@ export default function BattleArena() {
 
         {/* Enemy Card - Center */}
         <div className="relative z-10 flex flex-col items-center">
+          {/* Boss HP Bar - Above Card */}
+          <div className="mb-4 w-full px-2">
+            <StatBar current={dogHp} max={dog.health} label="BOSS HP" type="hp" showNumbers={true} />
+          </div>
+
           <motion.div
             variants={shakeVariants}
             animate={shaking ? 'shake' : 'idle'}
@@ -323,10 +328,6 @@ export default function BattleArena() {
               animate={false}
               showStats={false} // We show big stats for boss
             />
-            {/* Boss HP Bar */}
-            <div className="absolute -bottom-8 left-0 right-0">
-              <StatBar current={dogHp} max={dog.health} label="BOSS HP" type="hp" showNumbers={true} />
-            </div>
           </motion.div>
 
           {/* Damage Numbers */}
@@ -350,7 +351,7 @@ export default function BattleArena() {
         {/* Battle Log - Right Side */}
         <div
           ref={logRef}
-          className="w-64 h-64 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy mt-4 custom-scrollbar"
+          className="w-64 h-80 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy custom-scrollbar"
         >
           {log.map((l, i) => (
             <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
@@ -364,7 +365,7 @@ export default function BattleArena() {
       </div>
 
       {/* Bottom Area: Player Party */}
-      <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-16">
+      <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-24 mt-8">
         {party.map(cat => {
           const isSelected = selectedCatId === cat.instanceId
           const isDead = cat.currentHp <= 0
@@ -377,7 +378,7 @@ export default function BattleArena() {
               onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
             >
               {/* Health Bar Above Card */}
-              <div className="absolute -top-12 left-0 right-0 px-2 z-20">
+              <div className="absolute -top-14 left-0 right-0 px-2 z-20">
                 <StatBar
                   current={cat.currentHp}
                   max={cat.maxHp}
@@ -403,7 +404,7 @@ export default function BattleArena() {
               {isSelected && (
                 <motion.div
                   layoutId="active-indicator"
-                  className="absolute -top-24 left-0 right-0 flex justify-center z-30"
+                  className="absolute -top-28 left-0 right-0 flex justify-center z-30"
                 >
                   <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
                     READY

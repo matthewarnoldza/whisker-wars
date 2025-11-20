@@ -161,9 +161,11 @@ export default function GameCard({
 
                                 {/* Health */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded border border-emerald-700/50 flex items-center justify-center shadow-md backdrop-blur-sm">
-                                        <span className="font-black text-emerald-200 text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-                                            {(character as any).currentHp !== undefined ? (character as any).currentHp : character.health}
+                                    <div className="w-12 h-10 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded border border-emerald-700/50 flex items-center justify-center shadow-md backdrop-blur-sm px-1">
+                                        <span className="font-black text-emerald-200 text-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                                            {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
+                                                ? `${(character as any).currentHp}/${(character as any).maxHp}`
+                                                : character.health}
                                         </span>
                                     </div>
                                     <span className="text-[8px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>

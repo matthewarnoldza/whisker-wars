@@ -105,22 +105,8 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                   </div>
                 </div>
 
-                {/* Bottom: Breed, Rarity & Ability */}
+                {/* Bottom: Ability Only */}
                 <div className="flex flex-col gap-2">
-                  {/* Breed and Rarity - Side by Side */}
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md bg-black/80 backdrop-blur-md border border-white/30 shadow-lg flex items-center justify-center h-9">
-                      <span className="text-xs sm:text-sm text-slate-200 uppercase tracking-widest font-bold">
-                        {cat.breed}
-                      </span>
-                    </div>
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md bg-black/70 backdrop-blur-md border border-white/20 flex items-center justify-center h-9">
-                      <span className="text-xs sm:text-sm text-gold-400 uppercase tracking-widest font-bold">
-                        {cat.rarity}
-                      </span>
-                    </div>
-                  </div>
-
                   {/* Ability */}
                   {cat.ability && (
                     <div className="px-3 sm:px-4 py-2 sm:py-3 bg-black/80 backdrop-blur-md rounded-xl border-2 sm:border-3 border-white/30 shadow-2xl">
@@ -136,8 +122,22 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               </div>
             </div>
 
-            {/* Stats Below Card */}
-            <div className="mt-3 sm:mt-4 grid grid-cols-4 gap-2 sm:gap-3">
+            {/* Breed and Rarity - Below Card */}
+            <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2">
+              <div className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gradient-to-br from-slate-800/90 to-slate-900/95 backdrop-blur-md border-2 border-slate-600/50 shadow-xl flex items-center justify-center">
+                <span className="text-sm sm:text-base text-slate-200 uppercase tracking-widest font-bold">
+                  {cat.breed}
+                </span>
+              </div>
+              <div className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gradient-to-br from-amber-800/80 to-amber-900/90 backdrop-blur-md border-2 border-gold-500/50 shadow-xl flex items-center justify-center">
+                <span className="text-sm sm:text-base text-gold-400 uppercase tracking-widest font-bold">
+                  {cat.rarity}
+                </span>
+              </div>
+            </div>
+
+            {/* Stats Below Breed/Rarity */}
+            <div className="mt-2 sm:mt-3 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-lg border border-amber-700/50 shadow-xl">
                 <span className="font-black text-amber-200 text-lg sm:text-xl drop-shadow-lg">{cat.currentAttack}</span>

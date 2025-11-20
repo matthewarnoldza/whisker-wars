@@ -295,7 +295,7 @@ export default function App() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="sync">
             <motion.div
               key={view}
               initial="initial"

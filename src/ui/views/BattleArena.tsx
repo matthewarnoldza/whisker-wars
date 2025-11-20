@@ -469,7 +469,7 @@ export default function BattleArena() {
             <button
               onClick={() => {
                 setShowDefeatModal(false)
-                setTimeout(() => setView('collection'), 100)
+                setTimeout(() => setView('collection'), 350)
               }}
               className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all hover:scale-105"
             >
@@ -478,7 +478,7 @@ export default function BattleArena() {
             <button
               onClick={() => {
                 setShowDefeatModal(false)
-                setTimeout(() => setView('bait'), 100)
+                setTimeout(() => setView('bait'), 350)
               }}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
             >
@@ -493,7 +493,7 @@ export default function BattleArena() {
         isOpen={showVictoryModal}
         onClose={() => {
           setShowVictoryModal(false)
-          nextDog()
+          setTimeout(() => nextDog(), 350)
         }}
         title="🎉 VICTORY!"
         size="sm"
@@ -528,7 +528,7 @@ export default function BattleArena() {
           <button
             onClick={() => {
               setShowVictoryModal(false)
-              nextDog()
+              setTimeout(() => nextDog(), 350)
             }}
             className="w-full px-6 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-black text-lg rounded-xl shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95"
           >

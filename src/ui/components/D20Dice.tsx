@@ -3,10 +3,9 @@ import { useState, useEffect, CSSProperties } from 'react'
 interface D20DiceProps {
   value: number
   rolling: boolean
-  soundEnabled?: boolean
 }
 
-export default function D20Dice({ value, rolling, soundEnabled = true }: D20DiceProps) {
+export default function D20Dice({ value, rolling }: D20DiceProps) {
   const [showValue, setShowValue] = useState(value)
   const [isRolling, setIsRolling] = useState(false)
 
@@ -39,31 +38,6 @@ export default function D20Dice({ value, rolling, soundEnabled = true }: D20Dice
       return () => clearTimeout(timer)
     }
   }, [rolling, value])
-
-  // Play dice roll sound
-  useEffect(() => {
-    if (rolling && soundEnabled) {
-      try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const oscillator = audioContext.createOscillator()
-        const gainNode = audioContext.createGain()
-
-        oscillator.connect(gainNode)
-        gainNode.connect(audioContext.destination)
-
-        oscillator.frequency.setValueAtTime(200, audioContext.currentTime)
-        oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3)
-
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
-
-        oscillator.start(audioContext.currentTime)
-        oscillator.stop(audioContext.currentTime + 0.3)
-      } catch (e) {
-        console.log('Audio not available')
-      }
-    }
-  }, [rolling, soundEnabled])
 
   // Critical hit/fail detection
   const isCriticalHit = !rolling && value === 20

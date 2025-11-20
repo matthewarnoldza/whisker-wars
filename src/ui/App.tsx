@@ -184,9 +184,9 @@ export default function App() {
             <div className="flex items-center justify-between gap-4">
               {/* Left: Logo + Title + Navigation */}
               <div className="flex items-center gap-6">
-                {/* Logo + Title */}
+                {/* Logo */}
                 <motion.div
-                  className="flex items-center gap-3"
+                  className="flex items-center"
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6 }}
@@ -194,25 +194,17 @@ export default function App() {
                   <img
                     src="/images/logos/Whisker Wars White.png"
                     alt="Whisker Wars Logo"
-                    className="h-10 w-auto drop-shadow-lg"
+                    className="h-14 w-auto drop-shadow-lg"
                   />
-                  <div className="hidden sm:block border-l border-slate-600 pl-3">
-                    <h1 className="text-lg font-black tracking-tight text-white drop-shadow-lg">
-                      WHISKER WARS
-                    </h1>
-                    <p className="text-[9px] text-slate-400 tracking-widest uppercase leading-none">
-                      Elite Cat Combat
-                    </p>
-                  </div>
                 </motion.div>
 
                 {/* Navigation Tabs */}
                 <nav className="hidden lg:flex gap-2">
                   {[
-                    { id: 'bait', label: 'Bait', icon: '🎣', gradient: 'from-blue-500 to-cyan-500' },
-                    { id: 'collection', label: 'Collection', icon: '📚', gradient: 'from-purple-500 to-pink-500' },
-                    { id: 'battle', label: 'Battle', icon: '⚔️', gradient: 'from-red-500 to-orange-500' },
-                    { id: 'stats', label: 'Stats', icon: '📊', gradient: 'from-emerald-500 to-teal-500' },
+                    { id: 'bait', label: 'Bait', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
+                    { id: 'collection', label: 'Collection', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
+                    { id: 'battle', label: 'Battle', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z"/></svg>, gradient: 'from-red-500 to-orange-500' },
+                    { id: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>, gradient: 'from-emerald-500 to-teal-500' },
                   ].map(tab => (
                     <motion.button
                       key={tab.id}
@@ -232,7 +224,7 @@ export default function App() {
                         />
                       )}
                       <span className="relative flex items-center gap-1.5">
-                        <span className="text-sm">{tab.icon}</span>
+                        {tab.icon}
                         <span className="hidden xl:inline">{tab.label}</span>
                       </span>
                     </motion.button>
@@ -277,10 +269,10 @@ export default function App() {
             {/* Mobile Navigation */}
             <nav className="flex lg:hidden gap-1.5 mt-2 pt-2 border-t border-slate-700/50">
               {[
-                { id: 'bait', label: 'Bait', icon: '🎣', gradient: 'from-blue-500 to-cyan-500' },
-                { id: 'collection', label: 'Collection', icon: '📚', gradient: 'from-purple-500 to-pink-500' },
-                { id: 'battle', label: 'Battle', icon: '⚔️', gradient: 'from-red-500 to-orange-500' },
-                { id: 'stats', label: 'Stats', icon: '📊', gradient: 'from-emerald-500 to-teal-500' },
+                { id: 'bait', label: 'Bait', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
+                { id: 'collection', label: 'Collection', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
+                { id: 'battle', label: 'Battle', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z"/></svg>, gradient: 'from-red-500 to-orange-500' },
+                { id: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>, gradient: 'from-emerald-500 to-teal-500' },
               ].map(tab => (
                 <motion.button
                   key={tab.id}
@@ -292,7 +284,7 @@ export default function App() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <span className="relative flex items-center justify-center gap-1">
-                    <span className="text-sm">{tab.icon}</span>
+                    {tab.icon}
                     <span className="hidden xs:inline text-[10px]">{tab.label}</span>
                   </span>
                 </motion.button>

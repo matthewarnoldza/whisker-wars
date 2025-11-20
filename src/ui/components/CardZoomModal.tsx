@@ -53,7 +53,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             exit={{ scale: 0.8, opacity: 0, y: 50 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-sm sm:max-w-md lg:max-w-lg my-auto"
+            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px] my-auto"
           >
             {/* Close Button */}
             <button

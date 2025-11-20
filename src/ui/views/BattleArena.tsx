@@ -24,8 +24,6 @@ export default function BattleArena() {
   const recordBattleResult = useGame(s => s.recordBattleResult)
   const setView = useGame(s => s.setView)
   const stats = useGame(s => s.stats)
-  const soundEnabled = useGame(s => s.soundEnabled)
-  const toggleSound = useGame(s => s.toggleSound)
 
   const [dogHp, setDogHp] = useState(DOGS[dogIndex].health)
   const [turn, setTurn] = useState<'player' | 'enemy'>('player')
@@ -278,19 +276,38 @@ export default function BattleArena() {
     <div className="relative min-h-[80vh] flex flex-col">
       {/* Top Area: Enemy & Battle Log */}
       <div className="flex-1 flex justify-center items-start pt-8 relative gap-8">
-        {/* Battle Log - Left Side */}
-        <div
-          ref={logRef}
-          className="w-64 h-48 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy mt-4 custom-scrollbar"
-        >
-          {log.map((l, i) => (
-            <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
-                l.type === 'damage' ? 'text-red-400' :
-                  l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
-              }`}>
-              {l.text}
-            </div>
-          ))}
+        {/* Left Side: Dice & Action Button */}
+        <div className="flex flex-col items-center gap-6 mt-4">
+          {/* Dice */}
+          <div className="flex flex-col items-center gap-2">
+            <D20Dice value={dice} rolling={rolling} />
+            {turn === 'player' && !battleEnded && (
+              <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-xs">
+                YOUR TURN
+              </div>
+            )}
+          </div>
+
+          {/* Action Button */}
+          <div className="w-64 flex justify-center">
+            {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleAttack}
+                className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
+              >
+                ATTACK!
+              </motion.button>
+            )}
+            {turn === 'player' && !selectedCatId && !battleEnded && (
+              <div className="text-slate-400 text-sm text-center italic">
+                Select a cat to attack
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Enemy Card - Center */}
@@ -329,46 +346,20 @@ export default function BattleArena() {
             ))}
           </AnimatePresence>
         </div>
-      </div>
 
-      {/* Middle Area: Dice & Controls */}
-      <div className="flex justify-center items-center gap-8 my-8 z-20">
-        {/* Dice with Sound Toggle */}
-        <div className="flex flex-col items-center gap-4">
-          <D20Dice value={dice} rolling={rolling} soundEnabled={soundEnabled} />
-          {turn === 'player' && !battleEnded && (
-            <div className="mt-2 text-gold-400 font-bold animate-pulse font-heading tracking-widest">
-              YOUR TURN
+        {/* Battle Log - Right Side */}
+        <div
+          ref={logRef}
+          className="w-64 h-64 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy mt-4 custom-scrollbar"
+        >
+          {log.map((l, i) => (
+            <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
+                l.type === 'damage' ? 'text-red-400' :
+                  l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
+              }`}>
+              {l.text}
             </div>
-          )}
-          <button
-            onClick={toggleSound}
-            className="px-3 py-1 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-gold-500/50 transition-all text-xs font-bold text-slate-400 hover:text-gold-400"
-            title={soundEnabled ? 'Mute dice sounds' : 'Enable dice sounds'}
-          >
-            {soundEnabled ? '🔊 Sound On' : '🔇 Sound Off'}
-          </button>
-        </div>
-
-        {/* Action Button */}
-        <div className="w-64 flex justify-center">
-          {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleAttack}
-              className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
-            >
-              ATTACK!
-            </motion.button>
-          )}
-          {turn === 'player' && !selectedCatId && !battleEnded && (
-            <div className="text-slate-400 text-sm text-center italic">
-              Select a cat to attack
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
@@ -474,7 +465,7 @@ export default function BattleArena() {
             <button
               onClick={() => {
                 setShowDefeatModal(false)
-                setView('collection')
+                setTimeout(() => setView('collection'), 100)
               }}
               className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all hover:scale-105"
             >
@@ -483,7 +474,7 @@ export default function BattleArena() {
             <button
               onClick={() => {
                 setShowDefeatModal(false)
-                setView('bait')
+                setTimeout(() => setView('bait'), 100)
               }}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
             >

@@ -194,7 +194,7 @@ export default function App() {
                   <img
                     src="/images/logos/Whisker Wars White.png"
                     alt="Whisker Wars Logo"
-                    className="h-14 w-auto drop-shadow-lg"
+                    className="h-28 w-auto drop-shadow-lg"
                   />
                 </motion.div>
 

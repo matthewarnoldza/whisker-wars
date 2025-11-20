@@ -59,12 +59,12 @@ export default function GameCard({
     return (
         <motion.div
             className={`relative w-52 h-80 select-none cursor-pointer ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
-            whileHover={!disabled && animate ? { scale: 1.05, y: -8 } : {}}
+            whileHover={!disabled && animate ? { scale: 1.05 } : {}}
             whileTap={!disabled && animate ? { scale: 0.98 } : {}}
             onClick={!disabled ? onClick : undefined}
             initial={animate ? { opacity: 0, y: 20 } : {}}
             animate={{ opacity: 1, y: 0 }}
-            style={{ transformStyle: 'preserve-3d' }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
         >
             {/* Selection Glow */}
             {selected && (
@@ -81,13 +81,13 @@ export default function GameCard({
                 </>
             )}
 
-            {/* Card Container with Rarity Glow and Shine */}
-            <div className={`card-shine relative w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
-                style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite` } : {}}
+            {/* Card Container with Rarity Glow */}
+            <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
+                style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite`, willChange: 'transform, opacity' } : { willChange: 'transform' }}
             >
 
                 {/* Full-Bleed Character Art - No Border */}
-                <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ willChange: 'transform' }}>
                     {character.imageUrl ? (
                         <img
                             src={character.imageUrl}
@@ -170,11 +170,6 @@ export default function GameCard({
                         )}
                     </div>
                 </div>
-
-                {/* Hover Shine Effect */}
-                {!disabled && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/20 to-white/0 opacity-0 hover:opacity-30 transition-opacity pointer-events-none" />
-                )}
             </div>
         </motion.div>
     )

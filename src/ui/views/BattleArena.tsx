@@ -280,12 +280,12 @@ export default function BattleArena() {
         <div className="flex flex-col items-center gap-6 mt-4">
           {/* Dice */}
           <div className="flex flex-col items-center gap-2">
-            <D20Dice value={dice} rolling={rolling} />
             {turn === 'player' && !battleEnded && (
-              <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-xs">
+              <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-xs mb-2">
                 YOUR TURN
               </div>
             )}
+            <D20Dice value={dice} rolling={rolling} />
           </div>
 
           {/* Action Button */}
@@ -387,14 +387,17 @@ export default function BattleArena() {
                 />
               </div>
 
-              <div className={`transition-all duration-300 ${isSelected ? 'transform -translate-y-4 scale-105' : 'hover:-translate-y-2'}`}>
+              <motion.div
+                animate={isSelected ? { y: -16, scale: 1.05 } : { y: 0, scale: 1 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
                 <GameCard
                   character={cat}
                   selected={isSelected}
                   disabled={isDead || (turn !== 'player' && !isSelected)}
                   showStats={true}
                 />
-              </div>
+              </motion.div>
 
               {/* Active Indicator */}
               {isSelected && (

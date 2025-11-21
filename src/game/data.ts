@@ -112,6 +112,10 @@ export const DOGS: Dog[] = [
   // Boss Dogs
   { id:'infernal-cerberus', name:'Infernal Cerberus', health: 200, attack: 14, ability:{name:'Triple Hellfire', description:'Attacks 3 times per turn'}, imageUrl:'/images/dogs/Infernal Cerberus.png' },
   { id:'void-emperor', name:'Void Emperor', health: 250, attack: 15, ability:{name:'Reality Tear', description:'Massive damage + heal'}, imageUrl:'/images/dogs/Void Emperor.png' },
+  // Uber Bosses
+  { id:'omega-fenrir', name:'Omega Fenrir', health: 300, attack: 16, ability:{name:'Ragnarok Howl', description:'Silences cat abilities for 1 turn'}, imageUrl:'/images/dogs/Omega Fenrir.png' },
+  { id:'abyssal-devourer', name:'Abyssal Devourer', health: 350, attack: 17, ability:{name:'Soul Drain', description:'Steals 25% HP from attackers'}, imageUrl:'/images/dogs/Abyssal Devourer.png' },
+  { id:'eternal-overlord', name:'Eternal Overlord', health: 400, attack: 18, ability:{name:'Apocalypse Aura', description:'Damages all cats + reflects 20% damage'}, imageUrl:'/images/dogs/Eternal Overlord.png' },
 ]
 
 export const rarityByTier = (tier:number): Rarity[] => {

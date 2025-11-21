@@ -39,6 +39,7 @@ export default function BattleArena() {
   const [showDefeatModal, setShowDefeatModal] = useState(false)
   const [showVictoryModal, setShowVictoryModal] = useState(false)
   const [victoryRewards, setVictoryRewards] = useState({ coins: 0, xp: 0 })
+  const [silenced, setSilenced] = useState(false) // Omega Fenrir ability
   const logRef = useRef<HTMLDivElement>(null)
 
   const dog = DOGS[dogIndex]
@@ -50,6 +51,7 @@ export default function BattleArena() {
     setTurn('player')
     setBattleEnded(false)
     setSelectedCatId(null)
+    setSilenced(false)
   }, [dogIndex])
 
   // Auto-scroll log to bottom when updated
@@ -117,16 +119,22 @@ export default function BattleArena() {
     let dmg = cat.currentAttack + Math.floor(v / 5)
     let isCrit = false
 
-    // Abilities
-    if (cat.ability.effect === 'crit' && v >= 15) {
+    // Check if silenced (Omega Fenrir ability)
+    if (silenced) {
+      addLog(`🔇 ${cat.name}'s ability is silenced!`, 'info')
+      setSilenced(false) // Silence wears off after one turn
+    }
+
+    // Abilities (only if not silenced)
+    if (!silenced && cat.ability.effect === 'crit' && v >= 15) {
       dmg = Math.floor(dmg * 1.5)
       isCrit = true
     }
-    if (cat.ability.effect === 'bleed' && v >= 15) {
+    if (!silenced && cat.ability.effect === 'bleed' && v >= 15) {
       dmg += 3
       addLog(`🔥 ${cat.name}'s attack burns for +3 damage!`, 'crit')
     }
-    if (cat.ability.effect === 'heal' && v >= 15) {
+    if (!silenced && cat.ability.effect === 'heal' && v >= 15) {
       // Heal amount scales by rarity
       const healByRarity: Record<string, number> = {
         'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5, 'Mythical': 6
@@ -136,7 +144,7 @@ export default function BattleArena() {
       updateCatHp(cat.instanceId, newHp)
       addLog(`${cat.name} heals ${healAmount} HP! ✨`, 'heal')
     }
-    if (cat.ability.effect === 'lifesteal') {
+    if (!silenced && cat.ability.effect === 'lifesteal') {
       const healAmount = Math.floor(dmg * 0.5)
       const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
       updateCatHp(cat.instanceId, newHp)
@@ -144,7 +152,7 @@ export default function BattleArena() {
     }
 
     // Stun on roll >= 17
-    if (v >= 17 && cat.ability.effect === 'stun') {
+    if (!silenced && v >= 17 && cat.ability.effect === 'stun') {
       addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
       setShaking(true)
       setTimeout(() => setShaking(false), 400)
@@ -157,7 +165,7 @@ export default function BattleArena() {
     }
 
     // Speed ability - extra attack on roll >= 14
-    if (cat.ability.effect === 'speed' && v >= 14) {
+    if (!silenced && cat.ability.effect === 'speed' && v >= 14) {
       addLog(`⚡ ${cat.name} attacks with lightning speed!`, 'crit')
       setDogHp(h => Math.max(0, h - dmg))
       showDamage(dmg, window.innerWidth / 2, 100)
@@ -216,21 +224,43 @@ export default function BattleArena() {
       return
     }
 
+    // === DOG ABILITY: Eternal Overlord - Apocalypse Aura ===
+    // Deals 2 damage to ALL cats each turn
+    if (dog.id === 'eternal-overlord') {
+      addLog(`☠️ Apocalypse Aura damages all cats!`, 'damage')
+      targets.forEach(cat => {
+        const auraDmg = 2
+        const newHp = Math.max(0, cat.currentHp - auraDmg)
+        updateCatHp(cat.instanceId, newHp)
+      })
+    }
+
     const t = targets[Math.floor(Math.random() * targets.length)]
 
-    // Apply defensive abilities
+    // Apply defensive abilities (only if not silenced - but dogs can't be silenced so always check)
     let actualDamage = dmg
 
     // Shield ability - 35% chance to block half damage
-    if (t.ability.effect === 'shield' && Math.random() < 0.35) {
+    if (!silenced && t.ability.effect === 'shield' && Math.random() < 0.35) {
       actualDamage = Math.floor(actualDamage * 0.5)
       addLog(`${t.name}'s shield blocks half the damage! 🛡️`, 'info')
     }
 
     // Armor ability - Reduce all damage by 3 (minimum 1)
-    if (t.ability.effect === 'armor') {
+    if (!silenced && t.ability.effect === 'armor') {
       actualDamage = Math.max(1, actualDamage - 3)
       addLog(`${t.name}'s armor absorbs 3 damage! 🛡️`, 'info')
+    }
+
+    // === DOG ABILITY: Eternal Overlord - Damage Reflect ===
+    // Reflects 20% damage back to attacker (stored for next player attack)
+    if (dog.id === 'eternal-overlord') {
+      const reflectDmg = Math.floor(actualDamage * 0.2)
+      if (reflectDmg > 0) {
+        addLog(`🔄 Apocalypse Aura reflects ${reflectDmg} damage!`, 'damage')
+        const reflectHp = Math.max(0, t.currentHp - reflectDmg)
+        updateCatHp(t.instanceId, reflectHp)
+      }
     }
 
     const newHp = Math.max(0, t.currentHp - actualDamage)
@@ -244,10 +274,32 @@ export default function BattleArena() {
 
     addLog(`${dog.name} hits ${t.name} for ${actualDamage}!`, 'damage')
 
+    // === DOG ABILITY: Abyssal Devourer - Soul Drain ===
+    // Heals 25% of damage dealt
+    if (dog.id === 'abyssal-devourer') {
+      const healAmount = Math.floor(actualDamage * 0.25)
+      setDogHp(h => Math.min(dog.health, h + healAmount))
+      addLog(`💀 Soul Drain heals ${dog.name} for ${healAmount} HP!`, 'heal')
+    }
+
+    // === DOG ABILITY: Omega Fenrir - Ragnarok Howl ===
+    // Silences cat abilities for next turn
+    if (dog.id === 'omega-fenrir') {
+      setSilenced(true)
+      addLog(`🐺 Ragnarok Howl! Cat abilities silenced next turn!`, 'crit')
+    }
+
     setAttackingId(null)
 
-    // Check Defeat
-    if (party.every(c => (c.instanceId === t.instanceId ? newHp <= 0 : c.currentHp <= 0))) {
+    // Check Defeat (re-check all cats after aura damage)
+    const allDead = party.every(c => {
+      const cat = party.find(p => p.instanceId === c.instanceId)
+      if (!cat) return true
+      if (c.instanceId === t.instanceId) return newHp <= 0
+      return c.currentHp <= 0
+    })
+
+    if (allDead) {
       handleDefeat()
     } else {
       setTurn('player')

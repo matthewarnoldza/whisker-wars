@@ -359,7 +359,7 @@ export default function BattleArena() {
         </div>
 
         {/* Middle: Dice + Attack - Centered */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+        <div className="flex-1 flex flex-col items-center justify-center gap-1 py-2">
           {turn === 'player' && !battleEnded && (
             <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-[10px]">
               YOUR TURN
@@ -406,7 +406,7 @@ export default function BattleArena() {
         </div>
 
         {/* Player Party - Mini Thumbnails Row */}
-        <div className="flex justify-center gap-2 pb-2">
+        <div className="flex justify-center gap-1.5 pb-2">
           {party.map(cat => {
             const isSelected = selectedCatId === cat.instanceId
             const isDead = cat.currentHp <= 0
@@ -421,8 +421,8 @@ export default function BattleArena() {
                 className={`relative cursor-pointer transition-all ${isDead ? 'opacity-40 grayscale' : ''}`}
               >
                 <motion.div
-                  animate={isSelected ? { scale: 1.15, y: -4 } : { scale: 1, y: 0 }}
-                  className={`w-16 h-20 rounded-lg overflow-hidden border-2 ${
+                  animate={isSelected ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
+                  className={`w-[calc((100vw-2rem)/3-0.5rem)] max-w-[100px] aspect-[4/5] rounded-lg overflow-hidden border-2 ${
                     isSelected ? 'border-gold-400 shadow-gold-glow' : 'border-slate-600'
                   }`}
                 >
@@ -454,7 +454,7 @@ export default function BattleArena() {
                 )}
 
                 {/* Cat name */}
-                <div className="text-[8px] text-center text-slate-400 truncate w-16 mt-0.5">
+                <div className="text-[9px] text-center text-slate-400 truncate mt-0.5">
                   {cat.name.split(' ')[0]}
                 </div>
               </motion.div>

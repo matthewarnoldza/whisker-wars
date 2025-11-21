@@ -256,7 +256,7 @@ export default function Collection() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
       >
         <AnimatePresence mode="popLayout">
           {filteredAndSortedCats.map(cat => {
@@ -274,7 +274,7 @@ export default function Collection() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="relative group"
               >
-                <div className="relative" style={{ willChange: 'transform' }}>
+                <div className="relative scale-[0.8] sm:scale-100 origin-top-left" style={{ willChange: 'transform' }}>
 
                   {/* Glow Effect */}
                   {isSelected && (

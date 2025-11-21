@@ -55,69 +55,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
         variants={containerVariants}
         className="grid gap-8 lg:grid-cols-2"
       >
-        {/* Buy Bait Section */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold text-gold-400 mb-1 flex items-center gap-2 font-heading">
-              <span className="text-3xl">🎣</span> Buy Bait
-            </h2>
-            <p className="text-sm text-slate-400">
-              Purchase bait to attract cats. Higher tier = rarer cats!
-            </p>
-          </div>
-
-          <motion.div
-            variants={containerVariants}
-            className="grid grid-cols-2 gap-3"
-          >
-            {baits.map(b => {
-              const canAfford = coins >= b.cost
-              return (
-                <motion.button
-                  key={b.id}
-                  variants={cardVariants}
-                  whileHover={canAfford ? { scale: 1.05, y: -5 } : {}}
-                  whileTap={canAfford ? { scale: 0.95 } : {}}
-                  onClick={() => buyBait(b.id)}
-                  disabled={!canAfford}
-                  className={`p-4 rounded-lg border text-left transition-all ${canAfford
-                      ? 'border-slate-600 bg-slate-700/50 hover:border-gold-500 hover:shadow-gold-glow cursor-pointer'
-                      : 'border-slate-800 bg-slate-900/30 opacity-50 cursor-not-allowed'
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`px-2 py-1 rounded text-xs font-bold bg-gradient-to-r ${getRarityColor(b.tier)} text-white shadow-sm`}>
-                      TIER {b.tier}
-                    </div>
-                    <div className="text-gold-400 font-bold text-sm">
-                      🪙 {b.cost}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {b.iconUrl && (
-                      <img
-                        src={b.iconUrl}
-                        alt={b.name}
-                        className="w-12 h-12 object-contain drop-shadow-lg"
-                      />
-                    )}
-                    <div className="font-bold text-slate-200 text-base flex-1">
-                      {b.name}
-                    </div>
-                  </div>
-                </motion.button>
-              )
-            })}
-          </motion.div>
-
-          <div className="mt-4 p-3 rounded-lg bg-gold-500/10 border border-gold-500/30">
-            <p className="text-sm text-gold-200">
-              💡 <span className="font-semibold">Pro Tip:</span> Higher tier bait has better chances of attracting Epic, Legendary, and Mythical cats!
-            </p>
-          </div>
-        </div>
-
-        {/* Use Bait Section */}
+        {/* Use Bait Section - First (Left) */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
           <div className="mb-4">
             <h2 className="text-2xl font-bold text-gold-400 mb-1 flex items-center gap-2 font-heading">
@@ -206,7 +144,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                         {result.cat.name} appeared!
                       </p>
                       <p className="text-sm text-slate-300">
-                        Adding to your collection...
+                        Added to your collection!
                       </p>
                     </div>
                   </div>
@@ -224,6 +162,68 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
           <div className="mt-4 flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-slate-700">
             <span className="text-slate-400 text-sm">Your Coins:</span>
             <span className="text-gold-400 font-bold text-lg">🪙 {coins}</span>
+          </div>
+        </div>
+
+        {/* Buy Bait Section - Second (Right) */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-gold-400 mb-1 flex items-center gap-2 font-heading">
+              <span className="text-3xl">🎣</span> Buy Bait
+            </h2>
+            <p className="text-sm text-slate-400">
+              Purchase bait to attract cats. Higher tier = rarer cats!
+            </p>
+          </div>
+
+          <motion.div
+            variants={containerVariants}
+            className="grid grid-cols-2 gap-3"
+          >
+            {baits.map(b => {
+              const canAfford = coins >= b.cost
+              return (
+                <motion.button
+                  key={b.id}
+                  variants={cardVariants}
+                  whileHover={canAfford ? { scale: 1.05, y: -5 } : {}}
+                  whileTap={canAfford ? { scale: 0.95 } : {}}
+                  onClick={() => buyBait(b.id)}
+                  disabled={!canAfford}
+                  className={`p-4 rounded-lg border text-left transition-all ${canAfford
+                      ? 'border-slate-600 bg-slate-700/50 hover:border-gold-500 hover:shadow-gold-glow cursor-pointer'
+                      : 'border-slate-800 bg-slate-900/30 opacity-50 cursor-not-allowed'
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`px-2 py-1 rounded text-xs font-bold bg-gradient-to-r ${getRarityColor(b.tier)} text-white shadow-sm`}>
+                      TIER {b.tier}
+                    </div>
+                    <div className="text-gold-400 font-bold text-sm">
+                      🪙 {b.cost}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {b.iconUrl && (
+                      <img
+                        src={b.iconUrl}
+                        alt={b.name}
+                        className="w-12 h-12 object-contain drop-shadow-lg"
+                      />
+                    )}
+                    <div className="font-bold text-slate-200 text-base flex-1">
+                      {b.name}
+                    </div>
+                  </div>
+                </motion.button>
+              )
+            })}
+          </motion.div>
+
+          <div className="mt-4 p-3 rounded-lg bg-gold-500/10 border border-gold-500/30">
+            <p className="text-sm text-gold-200">
+              💡 <span className="font-semibold">Pro Tip:</span> Higher tier bait has better chances of attracting Epic, Legendary, and Mythical cats!
+            </p>
           </div>
         </div>
       </motion.div>

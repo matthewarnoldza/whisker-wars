@@ -166,7 +166,7 @@ export default function App() {
       {/* Animated Background */}
       <div className="animated-bg" />
 
-      <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden">
+      <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Premium Header with Background */}
         <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50 shadow-premium overflow-hidden">
           {/* Background Image with Overlay */}

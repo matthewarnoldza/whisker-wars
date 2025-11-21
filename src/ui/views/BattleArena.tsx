@@ -334,87 +334,127 @@ export default function BattleArena() {
 
   return (
     <div className="relative min-h-[80vh] flex flex-col">
-      {/* Top Area: Enemy & Battle Log */}
-      <div className="flex-1 flex justify-center items-start pt-8 relative gap-8">
-        {/* Left Side: Dice & Action Button */}
-        <div className="flex flex-col items-center gap-6 mt-4">
-          {/* Dice */}
-          <div className="flex flex-col items-center gap-2">
-            {turn === 'player' && !battleEnded && (
-              <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-xs mb-2">
-                YOUR TURN
-              </div>
-            )}
-            <D20Dice value={dice} rolling={rolling} />
-          </div>
-
-          {/* Action Button */}
-          <div className="w-64 flex justify-center mb-4">
-            {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
-              <motion.button
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleAttack}
-                className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
-              >
-                ATTACK!
-              </motion.button>
-            )}
-            {turn === 'player' && !selectedCatId && !battleEnded && (
-              <div className="text-slate-400 text-sm text-center italic px-4">
-                Select a cat to attack
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Enemy Card - Center */}
-        <div className="relative z-10 flex flex-col items-center">
-          {/* Boss HP Bar - Above Card */}
-          <div className="mb-4 w-full px-2">
+      {/* MOBILE LAYOUT (< lg) */}
+      <div className="lg:hidden flex flex-col items-center px-2 py-4 gap-4">
+        {/* Boss Section */}
+        <div className="relative z-10 flex flex-col items-center w-full max-w-xs">
+          {/* Boss HP Bar */}
+          <div className="mb-2 w-full px-2">
             <StatBar current={dogHp} max={dog.health} label="BOSS HP" type="hp" showNumbers={true} />
           </div>
 
           <motion.div
             variants={shakeVariants}
             animate={shaking ? 'shake' : 'idle'}
-            className="relative"
+            className="relative scale-[0.65] origin-top"
           >
             <GameCard
               character={dog}
               isEnemy={true}
               animate={false}
-              showStats={false} // We show big stats for boss
+              showStats={false}
             />
           </motion.div>
-
-          {/* Damage Numbers */}
-          <AnimatePresence>
-            {damageNumbers.map(({ id, value, x, y }) => (
-              <motion.div
-                key={id}
-                variants={damageVariants}
-                initial="hidden"
-                animate="show"
-                exit="hidden"
-                className="fixed z-50 text-4xl font-black text-red-500 pointer-events-none font-heading"
-                style={{ left: x, top: y, textShadow: '0 0 10px black' }}
-              >
-                -{value}
-              </motion.div>
-            ))}
-          </AnimatePresence>
         </div>
 
-        {/* Battle Log - Right Side */}
+        {/* Dice & Attack Button */}
+        <div className="flex items-center gap-4">
+          <div className="scale-75">
+            <D20Dice value={dice} rolling={rolling} />
+          </div>
+          <div className="flex flex-col items-center">
+            {turn === 'player' && !battleEnded && (
+              <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-[10px] mb-1">
+                YOUR TURN
+              </div>
+            )}
+            {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleAttack}
+                className="px-6 py-3 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-base rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider"
+              >
+                ATTACK!
+              </motion.button>
+            )}
+            {turn === 'player' && !selectedCatId && !battleEnded && (
+              <div className="text-slate-400 text-xs text-center italic">
+                Select a cat
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Player Party - Overlapping Card Fan */}
+        <div className="relative flex justify-center items-end w-full pt-8">
+          {party.map((cat, index) => {
+            const isSelected = selectedCatId === cat.instanceId
+            const isDead = cat.currentHp <= 0
+            const totalCards = party.length
+            const middleIndex = Math.floor(totalCards / 2)
+            const offset = index - middleIndex
+            const zIndex = isSelected ? 50 : (totalCards - Math.abs(offset))
+
+            return (
+              <motion.div
+                key={cat.instanceId}
+                variants={attackVariants}
+                animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
+                className="relative cursor-pointer"
+                style={{
+                  marginLeft: index === 0 ? 0 : '-2.5rem',
+                  zIndex: zIndex,
+                }}
+                onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
+              >
+                {/* Health Bar Above Card */}
+                <div className="absolute -top-10 left-0 right-0 px-1 z-20">
+                  <StatBar
+                    current={cat.currentHp}
+                    max={cat.maxHp}
+                    type="hp"
+                    showNumbers={true}
+                  />
+                </div>
+
+                <motion.div
+                  animate={isSelected ? { y: -20, scale: 0.75 } : { y: 0, scale: 0.65 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="origin-bottom"
+                >
+                  <GameCard
+                    character={cat}
+                    selected={isSelected}
+                    disabled={isDead || (turn !== 'player' && !isSelected)}
+                    showStats={false}
+                  />
+                </motion.div>
+
+                {/* Active Indicator */}
+                {isSelected && (
+                  <motion.div
+                    layoutId="active-indicator-mobile"
+                    className="absolute -top-16 left-0 right-0 flex justify-center z-30"
+                  >
+                    <div className="bg-gold-500 text-slate-900 font-bold px-2 py-0.5 rounded-full text-xs shadow-lg border border-gold-300">
+                      READY
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            )
+          })}
+        </div>
+
+        {/* Battle Log - Collapsed on mobile */}
         <div
           ref={logRef}
-          className="w-64 h-80 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy custom-scrollbar"
+          className="w-full max-w-sm h-24 bg-slate-900/80 backdrop-blur-sm rounded-lg p-2 overflow-y-auto border border-slate-700 text-[10px] font-mono shadow-fantasy custom-scrollbar"
         >
-          {log.map((l, i) => (
-            <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
+          {log.slice(-5).map((l, i) => (
+            <div key={i} className={`mb-0.5 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
                 l.type === 'damage' ? 'text-red-400' :
                   l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
               }`}>
@@ -424,63 +464,156 @@ export default function BattleArena() {
         </div>
       </div>
 
-      {/* Bottom Area: Player Party */}
-      <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-24 mt-8">
-        {party.map(cat => {
-          const isSelected = selectedCatId === cat.instanceId
-          const isDead = cat.currentHp <= 0
-          return (
-            <motion.div
-              key={cat.instanceId}
-              variants={attackVariants}
-              animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
-              className="relative group cursor-pointer"
-              onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
-            >
-              {/* Health Bar Above Card */}
-              <div className="absolute -top-14 left-0 right-0 px-2 z-20">
-                <StatBar
-                  current={cat.currentHp}
-                  max={cat.maxHp}
-                  type="hp"
-                  showNumbers={true}
-                  label={cat.name}
-                />
-              </div>
-
-              <motion.div
-                animate={isSelected ? { y: -16, scale: 1.05 } : { y: 0, scale: 1 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-              >
-                <GameCard
-                  character={cat}
-                  selected={isSelected}
-                  disabled={isDead || (turn !== 'player' && !isSelected)}
-                  showStats={true}
-                />
-              </motion.div>
-
-              {/* Active Indicator */}
-              {isSelected && (
-                <motion.div
-                  layoutId="active-indicator"
-                  className="absolute -top-28 left-0 right-0 flex justify-center z-30"
-                >
-                  <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
-                    READY
-                  </div>
-                </motion.div>
+      {/* DESKTOP LAYOUT (>= lg) */}
+      <div className="hidden lg:flex flex-col flex-1">
+        {/* Top Area: Enemy & Battle Log */}
+        <div className="flex-1 flex justify-center items-start pt-8 relative gap-8">
+          {/* Left Side: Dice & Action Button */}
+          <div className="flex flex-col items-center gap-6 mt-4">
+            {/* Dice */}
+            <div className="flex flex-col items-center gap-2">
+              {turn === 'player' && !battleEnded && (
+                <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-xs mb-2">
+                  YOUR TURN
+                </div>
               )}
-            </motion.div>
-          )
-        })}
+              <D20Dice value={dice} rolling={rolling} />
+            </div>
 
-        {party.length === 0 && (
-          <div className="text-center text-slate-400">
-            Go to Collection to select your team!
+            {/* Action Button */}
+            <div className="w-64 flex justify-center mb-4">
+              {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
+                <motion.button
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleAttack}
+                  className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
+                >
+                  ATTACK!
+                </motion.button>
+              )}
+              {turn === 'player' && !selectedCatId && !battleEnded && (
+                <div className="text-slate-400 text-sm text-center italic px-4">
+                  Select a cat to attack
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Enemy Card - Center */}
+          <div className="relative z-10 flex flex-col items-center">
+            {/* Boss HP Bar - Above Card */}
+            <div className="mb-4 w-full px-2">
+              <StatBar current={dogHp} max={dog.health} label="BOSS HP" type="hp" showNumbers={true} />
+            </div>
+
+            <motion.div
+              variants={shakeVariants}
+              animate={shaking ? 'shake' : 'idle'}
+              className="relative"
+            >
+              <GameCard
+                character={dog}
+                isEnemy={true}
+                animate={false}
+                showStats={false}
+              />
+            </motion.div>
+          </div>
+
+          {/* Battle Log - Right Side */}
+          <div
+            ref={logRef}
+            className="w-64 h-80 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy custom-scrollbar"
+          >
+            {log.map((l, i) => (
+              <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
+                  l.type === 'damage' ? 'text-red-400' :
+                    l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
+                }`}>
+                {l.text}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Area: Player Party */}
+        <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-24 mt-8">
+          {party.map(cat => {
+            const isSelected = selectedCatId === cat.instanceId
+            const isDead = cat.currentHp <= 0
+            return (
+              <motion.div
+                key={cat.instanceId}
+                variants={attackVariants}
+                animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
+                className="relative group cursor-pointer"
+                onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
+              >
+                {/* Health Bar Above Card */}
+                <div className="absolute -top-14 left-0 right-0 px-2 z-20">
+                  <StatBar
+                    current={cat.currentHp}
+                    max={cat.maxHp}
+                    type="hp"
+                    showNumbers={true}
+                    label={cat.name}
+                  />
+                </div>
+
+                <motion.div
+                  animate={isSelected ? { y: -16, scale: 1.05 } : { y: 0, scale: 1 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                >
+                  <GameCard
+                    character={cat}
+                    selected={isSelected}
+                    disabled={isDead || (turn !== 'player' && !isSelected)}
+                    showStats={true}
+                  />
+                </motion.div>
+
+                {/* Active Indicator */}
+                {isSelected && (
+                  <motion.div
+                    layoutId="active-indicator"
+                    className="absolute -top-28 left-0 right-0 flex justify-center z-30"
+                  >
+                    <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
+                      READY
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            )
+          })}
+
+          {party.length === 0 && (
+            <div className="text-center text-slate-400">
+              Go to Collection to select your team!
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Damage Numbers (shared) */}
+      <AnimatePresence>
+        {damageNumbers.map(({ id, value, x, y }) => (
+          <motion.div
+            key={id}
+            variants={damageVariants}
+            initial="hidden"
+            animate="show"
+            exit="hidden"
+            className="fixed z-50 text-4xl font-black text-red-500 pointer-events-none font-heading"
+            style={{ left: x, top: y, textShadow: '0 0 10px black' }}
+          >
+            -{value}
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       <ParticleSystem
         x={window.innerWidth / 2}

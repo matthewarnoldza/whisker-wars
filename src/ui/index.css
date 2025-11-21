@@ -16,6 +16,16 @@
 
 body {
     background: url('/images/backgrounds/background 1.png') center/cover fixed;
+    background-size: cover;
+    min-height: 100vh;
+}
+
+/* Ensure background works on mobile */
+@supports (-webkit-touch-callout: none) {
+    body {
+        background-attachment: scroll;
+        background-size: cover;
+    }
 }
 
 /* Premium Glow Effects */

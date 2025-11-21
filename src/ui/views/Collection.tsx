@@ -107,24 +107,25 @@ export default function Collection() {
   return (
     <div className="space-y-6">
       {/* Compact Stats & Progress Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
-        <div className="flex items-center gap-4 text-sm">
+      <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-slate-700/50">
+        {/* Mobile: 2x2 Grid, Desktop: Row */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center sm:justify-start gap-2 sm:gap-4 text-xs sm:text-sm">
           <span className="font-bold text-slate-300">
             <span className="text-white">{cats.length}</span> cats
           </span>
-          <span className="text-slate-600">•</span>
+          <span className="hidden sm:inline text-slate-600">•</span>
           <span className="font-bold text-slate-300">
             <span className="text-gold-400">{selected.length}/3</span> selected
           </span>
-          <span className="text-slate-600">•</span>
+          <span className="hidden sm:inline text-slate-600">•</span>
           <span className="font-bold text-slate-300">
             🎴 <span className="text-purple-400">{uniqueCatsCollected}/{totalUniqueCats}</span> unique
           </span>
-          <span className="text-slate-600">•</span>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-gold-400">{collectionProgress}% complete</span>
+          <span className="hidden sm:inline text-slate-600">•</span>
+          <div className="col-span-2 sm:col-span-1 flex items-center gap-2 mt-1 sm:mt-0">
+            <span className="font-bold text-gold-400 text-xs sm:text-sm">{collectionProgress}%</span>
             {/* Progress Bar (Inline) */}
-            <div className="w-32 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
+            <div className="flex-1 sm:w-32 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${collectionProgress}%` }}

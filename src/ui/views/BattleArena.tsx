@@ -122,11 +122,19 @@ export default function BattleArena() {
       dmg = Math.floor(dmg * 1.5)
       isCrit = true
     }
-    if (cat.ability.effect === 'bleed' && v >= 15) dmg += 2
-    if (cat.ability.effect === 'heal' && v >= 16) {
-      const newHp = Math.min(cat.maxHp, cat.currentHp + 3)
+    if (cat.ability.effect === 'bleed' && v >= 15) {
+      dmg += 3
+      addLog(`🔥 ${cat.name}'s attack burns for +3 damage!`, 'crit')
+    }
+    if (cat.ability.effect === 'heal' && v >= 15) {
+      // Heal amount scales by rarity
+      const healByRarity: Record<string, number> = {
+        'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5, 'Mythical': 6
+      }
+      const healAmount = healByRarity[cat.rarity] || 3
+      const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
       updateCatHp(cat.instanceId, newHp)
-      addLog(`${cat.name} heals 3 HP! ✨`, 'heal')
+      addLog(`${cat.name} heals ${healAmount} HP! ✨`, 'heal')
     }
     if (cat.ability.effect === 'lifesteal') {
       const healAmount = Math.floor(dmg * 0.5)
@@ -135,9 +143,9 @@ export default function BattleArena() {
       addLog(`${cat.name} steals ${healAmount} HP! 🩸`, 'heal')
     }
 
-    // Stun on natural 20
-    if (v === 20 && cat.ability.effect === 'stun') {
-      addLog('💥 CRITICAL STUN! The dog flinches!', 'crit')
+    // Stun on roll >= 17
+    if (v >= 17 && cat.ability.effect === 'stun') {
+      addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
       setShaking(true)
       setTimeout(() => setShaking(false), 400)
       setDogHp(h => Math.max(0, h - dmg))
@@ -213,16 +221,16 @@ export default function BattleArena() {
     // Apply defensive abilities
     let actualDamage = dmg
 
-    // Shield ability - 25% chance to dodge/reduce damage
-    if (t.ability.effect === 'shield' && Math.random() < 0.25) {
+    // Shield ability - 35% chance to block half damage
+    if (t.ability.effect === 'shield' && Math.random() < 0.35) {
       actualDamage = Math.floor(actualDamage * 0.5)
-      addLog(`${t.name}'s shield deflects some damage! 🛡️`, 'info')
+      addLog(`${t.name}'s shield blocks half the damage! 🛡️`, 'info')
     }
 
-    // Armor ability - Reduce all damage by 2 (minimum 1)
+    // Armor ability - Reduce all damage by 3 (minimum 1)
     if (t.ability.effect === 'armor') {
-      actualDamage = Math.max(1, actualDamage - 2)
-      addLog(`${t.name}'s armor absorbs damage! 🛡️`, 'info')
+      actualDamage = Math.max(1, actualDamage - 3)
+      addLog(`${t.name}'s armor absorbs 3 damage! 🛡️`, 'info')
     }
 
     const newHp = Math.max(0, t.currentHp - actualDamage)

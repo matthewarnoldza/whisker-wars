@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useGame } from '../game/store'
 import { BAITS } from '../game/data'
+import type { View } from '../game/store'
 import BaitingArea from './views/BaitingArea'
 import Collection from './views/Collection'
 import BattleArena from './views/BattleArena'
@@ -143,6 +144,31 @@ export default function App() {
   const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
+
+  // Sync view with URL hash
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1) // Remove the #
+      if (hash === 'privacy' || hash === 'terms' || hash === 'bait' || hash === 'collection' || hash === 'battle' || hash === 'stats') {
+        setView(hash as View)
+      }
+    }
+
+    // Set initial view from URL
+    handleHashChange()
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [setView])
+
+  // Update URL when view changes
+  useEffect(() => {
+    const currentHash = window.location.hash.slice(1)
+    if (currentHash !== view) {
+      window.location.hash = view
+    }
+  }, [view])
 
   // Check for profiles on mount
   useEffect(() => {

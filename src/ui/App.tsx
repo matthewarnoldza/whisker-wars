@@ -205,7 +205,7 @@ export default function App() {
                   transition={{ duration: 0.6 }}
                 >
                   <img
-                    src="/images/logos/Whisker Wars White.png"
+                    src="/images/logos/Whisker_Wars_White_Logo_New.png"
                     alt="Whisker Wars Logo"
                     className="h-16 sm:h-28 w-auto drop-shadow-lg object-contain"
                   />
@@ -333,7 +333,7 @@ export default function App() {
             <div className="inline-block px-6 py-3 rounded-xl bg-premium-gradient border border-slate-700/50 shadow-premium mb-3">
               <p className="text-slate-300 text-sm flex items-center gap-3 justify-center">
                 <img
-                  src="/images/logos/Whisker Wars White.png"
+                  src="/images/logos/Whisker_Wars_White_Logo_New.png"
                   alt="Whisker Wars"
                   className="h-12 w-auto"
                 />

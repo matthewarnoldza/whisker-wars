@@ -360,10 +360,10 @@ export default function BattleArena() {
             )}
           </motion.div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-red-400 font-bold truncate">{dog.name}</div>
+            <div className="text-lg text-red-300 font-black truncate drop-shadow-lg">{dog.name}</div>
             <StatBar current={dogHp} max={dog.health} type="hp" showNumbers={true} />
             {dog.ability && (
-              <div className="text-[9px] text-slate-500 truncate mt-1">
+              <div className="text-xs text-slate-300 font-medium truncate mt-1">
                 ⚔️ {dog.ability.name}
               </div>
             )}
@@ -373,7 +373,7 @@ export default function BattleArena() {
         {/* Middle: Dice + Attack - Centered */}
         <div className="flex flex-col items-center justify-center gap-1 -my-4">
           {turn === 'player' && !battleEnded && (
-            <div className="text-white font-bold animate-pulse font-heading tracking-widest text-[10px] mb-0.5">
+            <div className="text-white font-black animate-pulse font-heading tracking-widest text-base mb-0.5 drop-shadow-lg">
               YOUR TURN
             </div>
           )}
@@ -388,27 +388,27 @@ export default function BattleArena() {
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleAttack}
-              className="px-4 py-1.5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-sm rounded-lg shadow-lg border-2 border-red-400 font-heading tracking-wider mt-0.5"
+              className="px-8 py-3 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-lg shadow-xl border-3 border-red-400 font-heading tracking-wider mt-0.5 drop-shadow-2xl"
             >
               ATTACK!
             </motion.button>
           )}
           {turn === 'player' && !selectedCatId && !battleEnded && (
-            <div className="text-slate-400 text-xs text-center italic">
+            <div className="text-slate-300 text-sm text-center font-medium">
               Tap a cat below
             </div>
           )}
           {turn === 'enemy' && !battleEnded && (
-            <div className="text-red-400 font-bold animate-pulse text-xs">
+            <div className="text-red-400 font-black animate-pulse text-base drop-shadow-lg">
               ENEMY TURN...
             </div>
           )}
         </div>
 
         {/* Battle Log - Compact 2 lines */}
-        <div className="bg-slate-900/80 rounded-lg p-2 border border-slate-700/50 mb-1 h-11 overflow-hidden">
+        <div className="bg-slate-900/80 rounded-lg p-2.5 border border-slate-700/50 mb-1 h-16 overflow-hidden">
           {log.slice(-2).map((l, i) => (
-            <div key={i} className={`text-[10px] truncate ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
+            <div key={i} className={`text-xs font-medium truncate leading-relaxed ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
                 l.type === 'damage' ? 'text-red-400' :
                   l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
               }`}>
@@ -460,13 +460,13 @@ export default function BattleArena() {
 
                 {/* Selected indicator */}
                 {isSelected && !isDead && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gold-500 text-slate-900 text-[8px] font-bold px-1.5 rounded-full">
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gold-500 text-slate-900 text-[10px] font-black px-1.5 rounded-full shadow-lg">
                     ⚔️
                   </div>
                 )}
 
                 {/* Cat name */}
-                <div className="text-[9px] text-center text-slate-400 truncate mt-0.5">
+                <div className="text-xs text-center text-white font-semibold truncate mt-0.5 drop-shadow">
                   {cat.name.split(' ')[0]}
                 </div>
               </motion.div>

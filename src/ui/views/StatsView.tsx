@@ -97,7 +97,7 @@ export default function StatsView() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 mb-6"
+          className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/30 to-teal-500/30 border border-emerald-500/50 mb-6"
         >
           <p className="text-white text-center font-semibold">
             <span className="text-lg mr-2">📊</span>

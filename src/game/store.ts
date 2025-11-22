@@ -344,7 +344,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   healAllCats: ()=> {
     const state = get()
-    const HEAL_COST = 20
+    const HEAL_COST = 25
     if (state.coins < HEAL_COST) return false
     set(s=> ({
       coins: s.coins - HEAL_COST,
@@ -398,7 +398,7 @@ export const useGame = create<GameState>((set, get) => ({
     const oneDayMs = 24 * 60 * 60 * 1000
 
     if (now - lastReward >= oneDayMs) {
-      const rewardCoins = 100
+      const rewardCoins = 50
       get().addCoins(rewardCoins)
       set({ lastDailyReward: now })
       return true

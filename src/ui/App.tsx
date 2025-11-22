@@ -18,7 +18,7 @@ function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     <Modal isOpen={isOpen} onClose={onClose} title="Daily Reward" size="sm">
       <div className="text-center py-6">
         <div className="text-6xl mb-4 animate-bounce">🪙</div>
-        <h3 className="text-2xl font-bold text-matrix-400 mb-2">+100 Coins!</h3>
+        <h3 className="text-2xl font-bold text-matrix-400 mb-2">+50 Coins!</h3>
         <p className="text-gray-300 mb-6">
           Come back tomorrow for another reward!
         </p>
@@ -256,10 +256,11 @@ export default function App() {
                   >
                     <div className="flex items-center gap-1.5">
                       <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-                        <circle cx="9" cy="10" r="1"/>
-                        <circle cx="15" cy="10" r="1"/>
-                        <path d="M12 14c-1.1 0-2-.9-2-2h1c0 .55.45 1 1 1s1-.45 1-1h1c0 1.1-.9 2-2 2z"/>
+                        {/* Cat head silhouette */}
+                        <path d="M12 2L9 5.5C9 5.5 8 4 6 4C4 4 2 6 2 8.5C2 11 4 13 6 13C8 13 9 11.5 9 11.5L9 12C9 16 10 18 12 20C14 18 15 16 15 12L15 11.5C15 11.5 16 13 18 13C20 13 22 11 22 8.5C22 6 20 4 18 4C16 4 15 5.5 15 5.5L12 2Z"/>
+                        <circle cx="9" cy="10" r="1.2" fill="#1e293b"/>
+                        <circle cx="15" cy="10" r="1.2" fill="#1e293b"/>
+                        <path d="M12 12.5L11 13.5L12 14L13 13.5L12 12.5Z" fill="#1e293b"/>
                       </svg>
                       <span className="text-xs font-bold text-purple-300 hidden sm:inline">
                         {getCurrentProfile()?.name}

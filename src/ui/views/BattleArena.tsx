@@ -311,7 +311,7 @@ export default function BattleArena() {
     // Scale rewards based on difficulty level
     const difficultyMultiplier = 1 + (difficultyLevel * 0.5)
     const xpEarned = Math.floor((50 + (dogIndex * 25)) * difficultyMultiplier)
-    const coinsEarned = Math.floor((250 + (dogIndex * 50)) * difficultyMultiplier)
+    const coinsEarned = Math.floor((150 + (dogIndex * 30)) * difficultyMultiplier)
 
     addLog(`🎉 VICTORY!`, 'info')
     addLog(`+${xpEarned} XP, +${coinsEarned} Coins`, 'info')
@@ -338,11 +338,11 @@ export default function BattleArena() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30"
+        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-500/50"
       >
         <p className="text-white text-center font-semibold">
           <span className="text-lg mr-2">🎲</span>
-          Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat all 10 dog bosses!
+          Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat enemy dogs and bosses!
         </p>
       </motion.div>
 

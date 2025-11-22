@@ -23,7 +23,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
       'from-blue-500 to-blue-400',
       'from-purple-500 to-purple-400',
       'from-orange-500 to-orange-400',
-      'from-matrix-500 to-matrix-400',
+      'from-slate-900 to-slate-800',
     ]
     return colors[Math.min(tier - 1, colors.length - 1)]
   }
@@ -53,7 +53,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30"
+        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-500/50"
       >
         <p className="text-white text-center font-semibold">
           <span className="text-lg mr-2">✨</span>

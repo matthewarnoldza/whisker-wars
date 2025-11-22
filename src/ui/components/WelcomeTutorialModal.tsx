@@ -88,7 +88,7 @@ const slides = [
   },
   {
     title: 'Step 3: Battle & Conquer',
-    description: 'Face 10 challenging dog bosses and earn legendary rewards',
+    description: 'Face a range of challenging enemy dogs and bosses to earn legendary rewards',
     icon: '⚔️',
     content: (
       <div className="space-y-4">
@@ -104,7 +104,7 @@ const slides = [
         <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-xl border border-orange-500/30">
           <div className="text-5xl">🏆</div>
           <div className="flex-1">
-            <h4 className="font-bold text-white mb-1">Defeat All 10 Dog Bosses</h4>
+            <h4 className="font-bold text-white mb-1">Defeat Enemy Dogs & Bosses</h4>
             <p className="text-sm text-slate-400">
               Each victory earns coins, XP, and unlocks achievements. Can you defeat them all?
             </p>

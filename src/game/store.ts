@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
 
-export type View = 'bait' | 'collection' | 'battle' | 'stats'
+export type View = 'bait' | 'collection' | 'battle' | 'stats' | 'privacy' | 'terms'
 
 export interface OwnedCat extends Cat {
   instanceId: string // Unique identifier for this specific cat instance

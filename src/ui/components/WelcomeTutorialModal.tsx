@@ -21,7 +21,7 @@ const slides = [
           className="mb-6"
         >
           <img
-            src="/images/logos/Whisker Wars White.png"
+            src="/images/logos/Whisker_Wars_White_Logo_New.png"
             alt="Whisker Wars"
             className="h-32 w-auto mx-auto drop-shadow-2xl"
           />

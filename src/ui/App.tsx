@@ -6,6 +6,8 @@ import BaitingArea from './views/BaitingArea'
 import Collection from './views/Collection'
 import BattleArena from './views/BattleArena'
 import StatsView from './views/StatsView'
+import PrivacyPolicy from './views/PrivacyPolicy'
+import TermsOfService from './views/TermsOfService'
 import AnimatedBackground from './components/AnimatedBackground'
 import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
@@ -256,11 +258,8 @@ export default function App() {
                   >
                     <div className="flex items-center gap-1.5">
                       <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        {/* Cat head silhouette */}
-                        <path d="M12 2L9 5.5C9 5.5 8 4 6 4C4 4 2 6 2 8.5C2 11 4 13 6 13C8 13 9 11.5 9 11.5L9 12C9 16 10 18 12 20C14 18 15 16 15 12L15 11.5C15 11.5 16 13 18 13C20 13 22 11 22 8.5C22 6 20 4 18 4C16 4 15 5.5 15 5.5L12 2Z"/>
-                        <circle cx="9" cy="10" r="1.2" fill="#1e293b"/>
-                        <circle cx="15" cy="10" r="1.2" fill="#1e293b"/>
-                        <path d="M12 12.5L11 13.5L12 14L13 13.5L12 12.5Z" fill="#1e293b"/>
+                        {/* Simple user profile icon */}
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                       </svg>
                       <span className="text-xs font-bold text-purple-300 hidden sm:inline">
                         {getCurrentProfile()?.name}
@@ -324,6 +323,8 @@ export default function App() {
             {view === 'collection' && <Collection />}
             {view === 'battle' && <BattleArena />}
             {view === 'stats' && <StatsView />}
+            {view === 'privacy' && <PrivacyPolicy />}
+            {view === 'terms' && <TermsOfService />}
           </motion.div>
         </main>
 
@@ -341,7 +342,24 @@ export default function App() {
                 <span className="text-slate-400">Elite Cat Combat Simulator</span>
               </p>
             </div>
-            <p className="text-xs text-slate-500">Progress auto-saves • Built by Aaron and Matt Arnold</p>
+            <p className="text-xs text-slate-500">
+              Progress auto-saves • Built by Aaron and Matt Arnold
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-2">
+              <button
+                onClick={() => setView('privacy')}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline"
+              >
+                Privacy Policy
+              </button>
+              <span className="text-slate-700">•</span>
+              <button
+                onClick={() => setView('terms')}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline"
+              >
+                Terms of Service
+              </button>
+            </div>
           </div>
         </footer>
       </div>

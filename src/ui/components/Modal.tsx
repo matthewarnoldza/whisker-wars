@@ -39,7 +39,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
               >
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-800 shrink-0">
-                <h2 className="text-xl font-black text-gold-400 font-heading tracking-wide flex items-center gap-2">
+                <h2 className="text-xl font-black text-white font-heading tracking-wide flex items-center gap-2">
                   {title}
                 </h2>
                 <button

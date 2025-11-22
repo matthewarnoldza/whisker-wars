@@ -106,6 +106,18 @@ export default function Collection() {
 
   return (
     <div className="space-y-6">
+      {/* Instruction Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30"
+      >
+        <p className="text-white text-center font-semibold">
+          <span className="text-lg mr-2">⚔️</span>
+          Select up to 3 of your cats for battle by clicking the circles. Heal injured cats before sending them into combat!
+        </p>
+      </motion.div>
+
       {/* Compact Stats & Progress Bar */}
       <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-slate-700/50">
         {/* Mobile: 2x2 Grid, Desktop: Row */}

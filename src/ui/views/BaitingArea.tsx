@@ -49,6 +49,18 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
 
   return (
     <div className="space-y-6">
+      {/* Instruction Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30"
+      >
+        <p className="text-white text-center font-semibold">
+          <span className="text-lg mr-2">✨</span>
+          Use bait to summon cats! Higher tier bait attracts rarer cats. Each use is your chance to expand your legendary collection!
+        </p>
+      </motion.div>
+
       <motion.div
         initial="hidden"
         animate="show"
@@ -58,7 +70,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
         {/* Use Bait Section - First (Left) */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
           <div className="mb-4">
-            <h2 className="text-2xl font-bold text-gold-400 mb-1 flex items-center gap-2 font-heading">
+            <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 font-heading">
               <span className="text-3xl">🐟</span> Use Bait
             </h2>
             <p className="text-sm text-slate-400">
@@ -140,7 +152,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                       <GameCard character={result.cat} animate={false} />
                     </motion.div>
                     <div className="mt-4 text-center">
-                      <p className="font-bold text-xl text-gold-400 mb-1 font-heading">
+                      <p className="font-bold text-xl text-white mb-1 font-heading">
                         {result.cat.name} appeared!
                       </p>
                       <p className="text-sm text-slate-300">
@@ -168,7 +180,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
         {/* Buy Bait Section - Second (Right) */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
           <div className="mb-4">
-            <h2 className="text-2xl font-bold text-gold-400 mb-1 flex items-center gap-2 font-heading">
+            <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 font-heading">
               <span className="text-3xl">🎣</span> Buy Bait
             </h2>
             <p className="text-sm text-slate-400">

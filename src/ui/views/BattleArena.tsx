@@ -333,11 +333,23 @@ export default function BattleArena() {
   }
 
   return (
-    <div className="relative min-h-[80vh] flex flex-col">
+    <div className="relative min-h-[80vh] flex flex-col space-y-4">
+      {/* Instruction Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-4 rounded-xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30"
+      >
+        <p className="text-white text-center font-semibold">
+          <span className="text-lg mr-2">🎲</span>
+          Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat all 10 dog bosses!
+        </p>
+      </motion.div>
+
       {/* MOBILE LAYOUT (< lg) - Compact Portrait Battle */}
-      <div className="lg:hidden flex flex-col h-[85vh] px-3 py-1">
+      <div className="lg:hidden flex flex-col justify-between h-[85vh] px-3 py-2">
         {/* Boss Section - Compact */}
-        <div className="flex items-center gap-3 bg-slate-900/60 rounded-xl p-2 border border-slate-700/50 mb-1">
+        <div className="flex items-center gap-3 bg-slate-900/60 rounded-xl p-2 border border-slate-700/50">
           <motion.div
             variants={shakeVariants}
             animate={shaking ? 'shake' : 'idle'}
@@ -359,14 +371,14 @@ export default function BattleArena() {
         </div>
 
         {/* Middle: Dice + Attack - Centered */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-0.5">
+        <div className="flex flex-col items-center justify-center gap-1 -my-4">
           {turn === 'player' && !battleEnded && (
-            <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-[10px]">
+            <div className="text-white font-bold animate-pulse font-heading tracking-widest text-[10px] mb-0.5">
               YOUR TURN
             </div>
           )}
 
-          <div className="scale-[0.6] origin-center">
+          <div className="scale-[0.55] origin-center">
             <D20Dice value={dice} rolling={rolling} />
           </div>
 
@@ -376,7 +388,7 @@ export default function BattleArena() {
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleAttack}
-              className="px-5 py-2 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-sm rounded-lg shadow-lg border-2 border-red-400 font-heading tracking-wider"
+              className="px-4 py-1.5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-sm rounded-lg shadow-lg border-2 border-red-400 font-heading tracking-wider mt-0.5"
             >
               ATTACK!
             </motion.button>
@@ -394,7 +406,7 @@ export default function BattleArena() {
         </div>
 
         {/* Battle Log - Compact 2 lines */}
-        <div className="bg-slate-900/80 rounded-lg p-2 border border-slate-700/50 mb-2 h-12 overflow-hidden">
+        <div className="bg-slate-900/80 rounded-lg p-2 border border-slate-700/50 mb-1 h-11 overflow-hidden">
           {log.slice(-2).map((l, i) => (
             <div key={i} className={`text-[10px] truncate ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
                 l.type === 'damage' ? 'text-red-400' :
@@ -472,7 +484,7 @@ export default function BattleArena() {
             {/* Dice */}
             <div className="flex flex-col items-center gap-2">
               {turn === 'player' && !battleEnded && (
-                <div className="text-gold-400 font-bold animate-pulse font-heading tracking-widest text-xs mb-2">
+                <div className="text-white font-bold animate-pulse font-heading tracking-widest text-xs mb-2">
                   YOUR TURN
                 </div>
               )}

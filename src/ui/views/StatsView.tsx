@@ -93,6 +93,18 @@ export default function StatsView() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto"
       >
+        {/* Instruction Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 mb-6"
+        >
+          <p className="text-white text-center font-semibold">
+            <span className="text-lg mr-2">📊</span>
+            Track your legendary journey through the realm of Whisker Wars - view your battle record, collection progress, and achievements!
+          </p>
+        </motion.div>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gold-400 via-amber-300 to-gold-500 mb-2 font-heading drop-shadow-glow">
@@ -140,7 +152,7 @@ export default function StatsView() {
 
         {/* Collection Stats */}
         <div className="premium-card p-6 rounded-xl mb-8">
-          <h2 className="text-2xl font-bold text-gold-400 mb-4 flex items-center gap-2 font-heading">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2 font-heading">
             <span className="text-3xl">📊</span> Collection Statistics
           </h2>
 
@@ -194,7 +206,7 @@ export default function StatsView() {
 
         {/* Achievements Progress */}
         <div className="premium-card p-6 rounded-xl">
-          <h2 className="text-2xl font-bold text-gold-400 mb-4 flex items-center gap-2 font-heading">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2 font-heading">
             <span className="text-3xl">🏅</span> Achievements
           </h2>
 

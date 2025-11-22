@@ -61,6 +61,7 @@ interface GameState {
   achievements: Achievement[]
   stats: GameStats
   lastDailyReward: number
+  tutorialCompleted: boolean
   setView: (v:View)=>void
   addCoins: (n:number)=>void
   buyBait: (baitId:string)=>void
@@ -78,6 +79,7 @@ interface GameState {
   claimDailyReward: ()=>boolean
   unlockAchievement: (id:string)=>void
   claimAchievement: (id:string)=>void
+  completeTutorial: ()=>void
   save: ()=>void
   load: ()=>void
   setTheme: (t:'light'|'dark')=>void
@@ -186,6 +188,7 @@ const getInitialGameState = () => ({
   },
   lastDailyReward: 0,
   difficultyLevel: 0, // For multi-dog battles after beating all dogs
+  tutorialCompleted: false,
 })
 
 export const useGame = create<GameState>((set, get) => ({
@@ -427,6 +430,8 @@ export const useGame = create<GameState>((set, get) => ({
     }
   }),
 
+  completeTutorial: ()=> set({ tutorialCompleted: true }),
+
   save: ()=> {
     const profilesData = getProfilesData()
     if (!profilesData.activeProfileId) return
@@ -443,6 +448,7 @@ export const useGame = create<GameState>((set, get) => ({
       achievements: s.achievements,
       stats: s.stats,
       lastDailyReward: s.lastDailyReward,
+      tutorialCompleted: s.tutorialCompleted,
     })
     localStorage.setItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`, payload)
 
@@ -479,6 +485,7 @@ export const useGame = create<GameState>((set, get) => ({
           highestDogDefeated: -1,
         },
         lastDailyReward: d.lastDailyReward || 0,
+        tutorialCompleted: d.tutorialCompleted || false,
       })
     } catch {}
   },

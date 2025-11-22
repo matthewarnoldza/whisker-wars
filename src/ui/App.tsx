@@ -9,6 +9,7 @@ import StatsView from './views/StatsView'
 import AnimatedBackground from './components/AnimatedBackground'
 import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
+import WelcomeTutorialModal from './components/WelcomeTutorialModal'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 
@@ -133,9 +134,12 @@ export default function App() {
   const stats = useGame(s => s.stats)
   const getCurrentProfile = useGame(s => s.getCurrentProfile)
   const getProfiles = useGame(s => s.getProfiles)
+  const tutorialCompleted = useGame(s => s.tutorialCompleted)
+  const completeTutorial = useGame(s => s.completeTutorial)
 
   const [showDailyReward, setShowDailyReward] = useState(false)
   const [showProfileSelector, setShowProfileSelector] = useState(false)
+  const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
 
   // Check for profiles on mount
@@ -148,10 +152,19 @@ export default function App() {
     } else {
       load()
       setProfileLoaded(true)
+
+      // Check if this is a new profile (created within last 10 seconds)
+      const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000
+
       // Check for daily reward
       const canClaim = claimDailyReward()
       if (canClaim) {
         setTimeout(() => setShowDailyReward(true), 1000)
+      }
+
+      // Show tutorial for new profiles who haven't completed it
+      if (isNewProfile && !tutorialCompleted) {
+        setTimeout(() => setShowWelcomeTutorial(true), 500)
       }
     }
   }, [])
@@ -181,7 +194,7 @@ export default function App() {
 
           <div className="max-w-7xl mx-auto px-4 py-3 relative">
             {/* Single Compact Row */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
               {/* Left: Logo + Title + Navigation */}
               <div className="flex items-center gap-6">
                 {/* Logo */}
@@ -194,7 +207,7 @@ export default function App() {
                   <img
                     src="/images/logos/Whisker Wars White.png"
                     alt="Whisker Wars Logo"
-                    className="h-20 sm:h-28 w-auto drop-shadow-lg"
+                    className="h-16 sm:h-28 w-auto drop-shadow-lg object-contain"
                   />
                 </motion.div>
 
@@ -337,15 +350,32 @@ export default function App() {
         onClose={() => setShowDailyReward(false)}
       />
 
+      <WelcomeTutorialModal
+        isOpen={showWelcomeTutorial}
+        onClose={() => {
+          setShowWelcomeTutorial(false)
+          completeTutorial()
+        }}
+      />
+
       {showProfileSelector && (
         <ProfileSelector
           onProfileSelected={() => {
             setShowProfileSelector(false)
             setProfileLoaded(true)
             load()
+
+            const currentProfile = getCurrentProfile()
+            const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000
+
             const canClaim = claimDailyReward()
-            if (canClaim) {
+            if (canClaim && !isNewProfile) {
               setTimeout(() => setShowDailyReward(true), 1000)
+            }
+
+            // Show tutorial for new profiles
+            if (isNewProfile && !tutorialCompleted) {
+              setTimeout(() => setShowWelcomeTutorial(true), 800)
             }
           }}
         />

@@ -290,12 +290,22 @@ export default function Collection() {
 
                   {/* Battle Selection Checkbox - Top Left */}
                   <motion.button
-                    onClick={(e) => {
+                    onTouchEnd={(e) => {
+                      e.preventDefault()
                       e.stopPropagation()
-                      toggle(cat.instanceId)
+                      if (isSelected || selected.length < 3) {
+                        toggle(cat.instanceId)
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (isSelected || selected.length < 3) {
+                        toggle(cat.instanceId)
+                      }
                     }}
                     disabled={!isSelected && selected.length >= 3}
-                    className={`absolute top-2 left-2 z-20 w-10 h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
+                    className={`absolute top-2 left-2 z-20 w-12 h-12 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
                       isSelected
                         ? 'bg-gold-500 text-slate-900 shadow-glow-gold border-2 border-gold-300'
                         : selected.length >= 3

@@ -59,7 +59,7 @@ export default {
       },
       fontFamily: {
         'sans': ['Inter', 'system-ui', 'sans-serif'],
-        'heading': ['Cinzel', 'serif'],
+        'heading': ['Inter', 'system-ui', 'sans-serif'],
       },
       backdropBlur: {
         'xs': '2px',

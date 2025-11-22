@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -20,11 +20,24 @@ body {
     min-height: 100vh;
 }
 
-/* Ensure background works on mobile */
+/* Mobile: Solid gradient background instead of image */
+@media (max-width: 1023px) {
+    body {
+        background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #5b21b6 100%);
+        background-attachment: fixed;
+    }
+}
+
+/* Ensure background works on mobile Safari */
 @supports (-webkit-touch-callout: none) {
     body {
         background-attachment: scroll;
         background-size: cover;
+    }
+    @media (max-width: 1023px) {
+        body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #5b21b6 100%);
+        }
     }
 }
 

@@ -13,8 +13,10 @@ import AnimatedBackground from './components/AnimatedBackground'
 import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
 import WelcomeTutorialModal from './components/WelcomeTutorialModal'
+import SplashScreen from './components/SplashScreen'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
+import { isWeb } from '../utils/platform'
 
 function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
@@ -144,6 +146,8 @@ export default function App() {
   const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
+  const [showSplash, setShowSplash] = useState(isWeb())
+  const [isPublicPage, setIsPublicPage] = useState(false)
 
   // Sync view with URL hash
   useEffect(() => {
@@ -151,6 +155,8 @@ export default function App() {
       const hash = window.location.hash.slice(1) // Remove the #
       if (hash === 'privacy' || hash === 'terms' || hash === 'bait' || hash === 'collection' || hash === 'battle' || hash === 'stats') {
         setView(hash as View)
+        // Check if viewing public pages (privacy/terms)
+        setIsPublicPage(hash === 'privacy' || hash === 'terms')
       }
     }
 
@@ -172,6 +178,14 @@ export default function App() {
 
   // Check for profiles on mount
   useEffect(() => {
+    // Skip profile check if viewing public pages (privacy/terms)
+    const currentHash = window.location.hash.slice(1)
+    if (currentHash === 'privacy' || currentHash === 'terms') {
+      setIsPublicPage(true)
+      setProfileLoaded(true)
+      return
+    }
+
     const profiles = getProfiles()
     const currentProfile = getCurrentProfile()
 
@@ -403,7 +417,15 @@ export default function App() {
         }}
       />
 
-      {showProfileSelector && (
+      {/* Splash Screen for Web Only */}
+      <AnimatePresence>
+        {showSplash && !isPublicPage && (
+          <SplashScreen onClose={() => setShowSplash(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Profile Selector - Don't show on public pages */}
+      {showProfileSelector && !isPublicPage && (
         <ProfileSelector
           onProfileSelected={() => {
             setShowProfileSelector(false)

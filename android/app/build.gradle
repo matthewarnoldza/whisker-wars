@@ -3,6 +3,18 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.whiskerwars.app"
     compileSdk rootProject.ext.compileSdkVersion
+
+    signingConfigs {
+        release {
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
+                storeFile file(project.property('MYAPP_RELEASE_STORE_FILE'))
+                storePassword project.property('MYAPP_RELEASE_STORE_PASSWORD')
+                keyAlias project.property('MYAPP_RELEASE_KEY_ALIAS')
+                keyPassword project.property('MYAPP_RELEASE_KEY_PASSWORD')
+            }
+        }
+    }
+
     defaultConfig {
         applicationId "com.whiskerwars.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -16,10 +28,15 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }

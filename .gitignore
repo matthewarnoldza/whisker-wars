@@ -37,3 +37,6 @@ yarn-error.log*
 
 # Claude Code
 .claude/settings.local.json
+
+# Android signing key
+my-release-key.keystore

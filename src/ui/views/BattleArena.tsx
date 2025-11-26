@@ -370,7 +370,7 @@ export default function BattleArena() {
             />
           </motion.div>
           {/* Enemy Health Bar - Below Card */}
-          <div className="w-32 -mt-2">
+          <div className="w-32 -mt-1">
             <StatBar current={dogHp} max={dog.health} type="hp" showNumbers={false} />
           </div>
         </div>
@@ -458,7 +458,7 @@ export default function BattleArena() {
                 <motion.div
                   animate={isSelected ? { y: -4, scale: 0.57 } : { y: 0, scale: 0.55 }}
                   transition={{ duration: 0.2 }}
-                  className={`origin-top-center ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
+                  className={`origin-top-center -mt-2 ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
                 >
                   <GameCard
                     character={cat}

@@ -115,7 +115,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
             animate={{ scale: 1, opacity: 1, rotateY: 0 }}
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-            className="relative w-full max-w-[90vw] sm:max-w-[320px] lg:max-w-[360px] holographic-card touch-auto"
+            className="relative w-full max-w-[100vw] sm:max-w-[320px] lg:max-w-[360px] holographic-card touch-auto"
             style={holographic.style}
             {...(holographic.isSupported ? (isWeb() ? {
               onMouseMove: holographic.handlers.onMouseMove,

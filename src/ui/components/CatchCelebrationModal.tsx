@@ -30,7 +30,12 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
     }
   }, [isOpen, cat])
 
-  if (!cat) return null
+  // Enhanced holographic effect for celebration - MUST be called before any conditional returns
+  const holographic = useHolographicCard({
+    mode: 'full',
+    maxRotation: 25, // Extra dramatic for celebration!
+    shineIntensity: 0.9
+  })
 
   const getRarityGradient = (rarity: string) => {
     switch (rarity) {
@@ -56,15 +61,13 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
     }
   }
 
+  // Guard clause - only access cat properties if cat exists
+  if (!cat) {
+    return null
+  }
+
   const rarityGradient = getRarityGradient(cat.rarity)
   const rarityGlow = getRarityGlow(cat.rarity)
-
-  // Enhanced holographic effect for celebration
-  const holographic = useHolographicCard({
-    mode: 'full',
-    maxRotation: 25, // Extra dramatic for celebration!
-    shineIntensity: 0.9
-  })
 
   return (
     <AnimatePresence>

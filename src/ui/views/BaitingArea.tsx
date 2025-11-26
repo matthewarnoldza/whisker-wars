@@ -45,11 +45,15 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
     if (cat) {
       // Show celebration modal instead of inline result
       setCaughtCat(cat)
-      setShowCelebration(true)
+      // Use setTimeout to ensure state is set before showing modal
+      setTimeout(() => {
+        setShowCelebration(true)
+      }, 50)
       setResult({ cat, ok: true })
     } else {
       setResult({ ok: false })
       setCaughtCat(null)
+      setShowCelebration(false)
     }
   }
 

@@ -354,12 +354,12 @@ export default function BattleArena() {
 
       {/* MOBILE LAYOUT (< lg) - Compact Layout Matching Mockup */}
       <div className="lg:hidden flex flex-col gap-2 px-2 py-2 pb-safe">
-        {/* Enemy Section - Large Card Centered */}
-        <div className="flex flex-col items-center gap-1">
+        {/* Enemy Section - Card with Health Bar Below */}
+        <div className="flex flex-col items-center">
           <motion.div
             variants={shakeVariants}
             animate={shaking ? 'shake' : 'idle'}
-            className="scale-[0.75] origin-center"
+            className="scale-[0.60] origin-center"
           >
             <GameCard
               character={dog}
@@ -369,6 +369,10 @@ export default function BattleArena() {
               holographicMode="full"
             />
           </motion.div>
+          {/* Enemy Health Bar - Below Card */}
+          <div className="w-32 -mt-2">
+            <StatBar current={dogHp} max={dog.health} type="hp" showNumbers={false} />
+          </div>
         </div>
 
         {/* Turn Indicator */}
@@ -384,15 +388,10 @@ export default function BattleArena() {
         )}
 
         {/* Dice + Battle Log - Side by Side with Expanded Log */}
-        <div className="grid grid-cols-[auto_1fr] gap-2 items-start -ml-4">
+        <div className="grid grid-cols-[auto_1fr] gap-2 items-start -ml-8">
           {/* Dice - Smaller scale */}
           <div className="scale-[0.65] origin-top-left -mt-3">
             <D20Dice value={dice} rolling={rolling} />
-            {dice > 0 && (
-              <div className="text-center text-white font-bold text-sm mt-1">
-                ROLL: {dice}
-              </div>
-            )}
           </div>
 
           {/* Battle Log - 20% wider by moving left edge */}
@@ -445,7 +444,7 @@ export default function BattleArena() {
                 variants={attackVariants}
                 animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
                 onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
-                className={`flex flex-col gap-1 ${isDead ? 'opacity-40 grayscale' : ''}`}
+                className={`flex flex-col ${isDead ? 'opacity-40 grayscale' : ''}`}
                 style={{ willChange: 'transform', width: `${cardWidth}px` }}
               >
                 {/* Health Bar Above Card - Centered and narrower than card */}

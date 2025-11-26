@@ -40,7 +40,8 @@ export default function BattleArena() {
   const [showVictoryModal, setShowVictoryModal] = useState(false)
   const [victoryRewards, setVictoryRewards] = useState({ coins: 0, xp: 0 })
   const [silenced, setSilenced] = useState(false) // Omega Fenrir ability
-  const logRef = useRef<HTMLDivElement>(null)
+  const mobileLogRef = useRef<HTMLDivElement>(null)
+  const desktopLogRef = useRef<HTMLDivElement>(null)
 
   const dog = DOGS[dogIndex]
 
@@ -56,8 +57,13 @@ export default function BattleArena() {
 
   // Auto-scroll log to bottom when updated
   useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight
+    // Scroll mobile battle log
+    if (mobileLogRef.current) {
+      mobileLogRef.current.scrollTop = mobileLogRef.current.scrollHeight
+    }
+    // Scroll desktop battle log
+    if (desktopLogRef.current) {
+      desktopLogRef.current.scrollTop = desktopLogRef.current.scrollHeight
     }
   }, [log])
 
@@ -391,7 +397,7 @@ export default function BattleArena() {
 
           {/* Battle Log - 20% wider by moving left edge */}
           <div
-            ref={logRef}
+            ref={mobileLogRef}
             className="bg-slate-900/90 rounded-lg p-2 border border-slate-700/50 h-[180px] overflow-y-auto custom-scrollbar"
           >
             {log.slice(-12).map((l, i) => (
@@ -453,7 +459,7 @@ export default function BattleArena() {
                 <motion.div
                   animate={isSelected ? { y: -4, scale: 0.57 } : { y: 0, scale: 0.55 }}
                   transition={{ duration: 0.2 }}
-                  className={`origin-top ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
+                  className={`origin-top-center ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
                 >
                   <GameCard
                     character={cat}
@@ -538,7 +544,7 @@ export default function BattleArena() {
 
           {/* Battle Log - Right Side */}
           <div
-            ref={logRef}
+            ref={desktopLogRef}
             className="w-64 h-80 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy custom-scrollbar"
           >
             {log.map((l, i) => (

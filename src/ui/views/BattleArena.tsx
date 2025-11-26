@@ -378,9 +378,9 @@ export default function BattleArena() {
         )}
 
         {/* Dice + Battle Log - Side by Side with Expanded Log */}
-        <div className="grid grid-cols-[auto_1fr] gap-2 items-start">
-          {/* Dice */}
-          <div className="scale-[0.75] origin-top-left -mt-2">
+        <div className="grid grid-cols-[auto_1fr] gap-2 items-start -ml-4">
+          {/* Dice - Smaller scale */}
+          <div className="scale-[0.65] origin-top-left -mt-3">
             <D20Dice value={dice} rolling={rolling} />
             {dice > 0 && (
               <div className="text-center text-white font-bold text-sm mt-1">
@@ -389,7 +389,7 @@ export default function BattleArena() {
             )}
           </div>
 
-          {/* Battle Log - Expanded to fill space next to dice */}
+          {/* Battle Log - 20% wider by moving left edge */}
           <div
             ref={logRef}
             className="bg-slate-900/90 rounded-lg p-2 border border-slate-700/50 h-[180px] overflow-y-auto custom-scrollbar"
@@ -429,6 +429,8 @@ export default function BattleArena() {
           {party.map(cat => {
             const isSelected = selectedCatId === cat.instanceId
             const isDead = cat.currentHp <= 0
+            // Calculate card width: base 208px * 0.55 scale = 114.4px
+            const cardWidth = 114
 
             return (
               <motion.div
@@ -437,10 +439,10 @@ export default function BattleArena() {
                 animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
                 onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
                 className={`flex flex-col gap-1 ${isDead ? 'opacity-40 grayscale' : ''}`}
-                style={{ willChange: 'transform' }}
+                style={{ willChange: 'transform', width: `${cardWidth}px` }}
               >
-                {/* Health Bar Above Card */}
-                <div className="w-[114px]">
+                {/* Health Bar Above Card - Same width as card */}
+                <div style={{ width: `${cardWidth}px` }}>
                   <StatBar current={cat.currentHp} max={cat.maxHp} type="hp" showNumbers={false} />
                 </div>
 

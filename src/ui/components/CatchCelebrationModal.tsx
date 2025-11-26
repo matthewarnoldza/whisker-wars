@@ -77,7 +77,8 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md overflow-hidden"
+          style={{ padding: 'max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left))' }}
         >
           {/* Celebration Particles */}
           {windowSize.width > 0 && (
@@ -96,7 +97,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 200 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[280px] sm:max-w-[320px] lg:max-w-[360px] my-auto holographic-card"
+            className="relative w-full max-w-[90vw] sm:max-w-[320px] lg:max-w-[360px] holographic-card"
             style={holographic.style}
             {...(holographic.isSupported ? (isWeb() ? {
               onMouseMove: holographic.handlers.onMouseMove,

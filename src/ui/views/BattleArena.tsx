@@ -353,7 +353,7 @@ export default function BattleArena() {
       </motion.div>
 
       {/* MOBILE LAYOUT (< lg) - Compact Layout Matching Mockup */}
-      <div className="lg:hidden flex flex-col gap-2 px-2 py-2 pb-safe">
+      <div className="lg:hidden flex flex-col gap-3 px-2 py-3 pb-6">
         {/* Enemy Section - Card with Health Bar Below */}
         <div className="flex flex-col items-center">
           <motion.div
@@ -370,7 +370,7 @@ export default function BattleArena() {
             />
           </motion.div>
           {/* Enemy Health Bar - Below Card */}
-          <div className="w-32 -mt-1">
+          <div className="w-[125px] mt-0">
             <StatBar current={dogHp} max={dog.health} type="hp" showNumbers={false} />
           </div>
         </div>
@@ -388,9 +388,9 @@ export default function BattleArena() {
         )}
 
         {/* Dice + Battle Log - Side by Side with Expanded Log */}
-        <div className="grid grid-cols-[auto_1fr] gap-2 items-start -ml-8">
+        <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
           {/* Dice - Smaller scale */}
-          <div className="scale-[0.65] origin-top-left -mt-3">
+          <div className="scale-[0.65] origin-top-left -mt-8">
             <D20Dice value={dice} rolling={rolling} />
           </div>
 
@@ -400,7 +400,7 @@ export default function BattleArena() {
             className="bg-slate-900/90 rounded-lg p-2 border border-slate-700/50 h-[180px] overflow-y-auto custom-scrollbar"
           >
             {log.slice(-12).map((l, i) => (
-              <div key={i} className={`text-xs font-medium leading-relaxed mb-0.5 ${
+              <div key={i} className={`text-xs font-medium leading-relaxed mb-1 ${
                 l.type === 'crit' ? 'text-yellow-400 font-bold' :
                 l.type === 'damage' ? 'text-red-400' :
                 l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
@@ -430,13 +430,13 @@ export default function BattleArena() {
         )}
 
         {/* Player Party - Smaller Cards (55% scale) with Health Bars Above */}
-        <div className="flex gap-1.5 justify-center">
+        <div className="flex gap-2 justify-center">
           {party.map(cat => {
             const isSelected = selectedCatId === cat.instanceId
             const isDead = cat.currentHp <= 0
             // Calculate card width: base 208px * 0.55 scale = 114.4px
             const cardWidth = 114
-            const healthBarWidth = 85 // Reduced health bar width
+            const healthBarWidth = 100 // Closer to card width for better visual connection
 
             return (
               <motion.div
@@ -456,9 +456,9 @@ export default function BattleArena() {
 
                 {/* Card with Selection Highlight */}
                 <motion.div
-                  animate={isSelected ? { y: -4, scale: 0.57 } : { y: 0, scale: 0.55 }}
+                  animate={isSelected ? { y: -8, scale: 0.58 } : { y: 0, scale: 0.55 }}
                   transition={{ duration: 0.2 }}
-                  className={`origin-top-center -mt-2 ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
+                  className={`origin-top-center -mt-4 ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
                 >
                   <GameCard
                     character={cat}

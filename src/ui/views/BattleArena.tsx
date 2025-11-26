@@ -458,7 +458,7 @@ export default function BattleArena() {
                 <motion.div
                   animate={isSelected ? { y: -8, scale: 0.58 } : { y: 0, scale: 0.55 }}
                   transition={{ duration: 0.2 }}
-                  className={`origin-top-center -mt-4 ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''}`}
+                  className={`origin-top-center -mt-4 ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''} relative`}
                 >
                   <GameCard
                     character={cat}
@@ -468,14 +468,13 @@ export default function BattleArena() {
                     animate={false}
                     holographicMode="none"
                   />
+                  {/* Dead overlay - now inside card container */}
+                  {isDead && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl">
+                      <span className="text-4xl">💀</span>
+                    </div>
+                  )}
                 </motion.div>
-
-                {/* Dead overlay */}
-                {isDead && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl">
-                    <span className="text-4xl">💀</span>
-                  </div>
-                )}
               </motion.div>
             )
           })}

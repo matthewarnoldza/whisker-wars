@@ -147,6 +147,7 @@ export default function App() {
   const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [showSplash, setShowSplash] = useState(isWeb())
+  const [splashCompleted, setSplashCompleted] = useState(!isWeb())
   const [isPublicPage, setIsPublicPage] = useState(false)
 
   // Sync view with URL hash
@@ -176,13 +177,18 @@ export default function App() {
     }
   }, [view])
 
-  // Check for profiles on mount
+  // Check for profiles on mount - but only after splash completes
   useEffect(() => {
     // Skip profile check if viewing public pages (privacy/terms)
     const currentHash = window.location.hash.slice(1)
     if (currentHash === 'privacy' || currentHash === 'terms') {
       setIsPublicPage(true)
       setProfileLoaded(true)
+      return
+    }
+
+    // Wait for splash to complete before showing profile selector
+    if (!splashCompleted) {
       return
     }
 
@@ -209,7 +215,7 @@ export default function App() {
         setTimeout(() => setShowWelcomeTutorial(true), 500)
       }
     }
-  }, [])
+  }, [splashCompleted])
 
   // Force dark mode
   useEffect(() => {
@@ -420,7 +426,10 @@ export default function App() {
       {/* Splash Screen for Web Only */}
       <AnimatePresence>
         {showSplash && !isPublicPage && (
-          <SplashScreen onClose={() => setShowSplash(false)} />
+          <SplashScreen onClose={() => {
+            setShowSplash(false)
+            setSplashCompleted(true)
+          }} />
         )}
       </AnimatePresence>
 

@@ -13,6 +13,14 @@ interface CatchCelebrationModalProps {
 
 export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCelebrationModalProps) {
   const [particleActive, setParticleActive] = useState(false)
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    // Initialize window size
+    if (typeof window !== 'undefined') {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+  }, [])
 
   useEffect(() => {
     if (isOpen && cat) {
@@ -69,12 +77,14 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto"
         >
           {/* Celebration Particles */}
-          <ParticleSystem
-            x={window.innerWidth / 2}
-            y={window.innerHeight / 2}
-            active={particleActive}
-            count={30}
-          />
+          {windowSize.width > 0 && (
+            <ParticleSystem
+              x={windowSize.width / 2}
+              y={windowSize.height / 2}
+              active={particleActive}
+              count={30}
+            />
+          )}
 
           <motion.div
             ref={holographic.cardRef}

@@ -30,6 +30,25 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
     }
   }, [isOpen, cat])
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+
+      return () => {
+        document.body.style.overflow = ''
+        document.body.style.position = ''
+        document.body.style.top = ''
+        document.body.style.width = ''
+        window.scrollTo(0, scrollY)
+      }
+    }
+  }, [isOpen])
+
   // Enhanced holographic effect for celebration - MUST be called before any conditional returns
   const holographic = useHolographicCard({
     mode: 'full',
@@ -77,7 +96,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md overflow-hidden"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-md overflow-hidden touch-none"
           style={{ padding: 'max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left))' }}
         >
           {/* Celebration Particles */}
@@ -96,8 +115,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
             animate={{ scale: 1, opacity: 1, rotateY: 0 }}
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[90vw] sm:max-w-[320px] lg:max-w-[360px] holographic-card"
+            className="relative w-full max-w-[90vw] sm:max-w-[320px] lg:max-w-[360px] holographic-card touch-auto"
             style={holographic.style}
             {...(holographic.isSupported ? (isWeb() ? {
               onMouseMove: holographic.handlers.onMouseMove,

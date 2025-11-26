@@ -11,7 +11,10 @@ const config: CapacitorConfig = {
     contentInset: 'automatic'
   },
   android: {
-    backgroundColor: '#0f172a'
+    backgroundColor: '#0f172a',
+    // Enable hardware acceleration for smooth 3D transforms and holographic effects
+    webContentsDebuggingEnabled: false,
+    allowMixedContent: false
   }
 };
 

@@ -5,10 +5,13 @@ import type { Bait, Cat } from '../../game/data'
 import GameCard from '../components/GameCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParticleSystem from '../components/ParticleSystem'
+import CatchCelebrationModal from '../components/CatchCelebrationModal'
 import { containerVariants, cardVariants } from '../animations'
 
 export default function BaitingArea({ baits }: { baits: Bait[] }) {
   const [result, setResult] = useState<{ cat?: Cat, ok: boolean } | null>(null)
+  const [caughtCat, setCaughtCat] = useState<Cat | null>(null)
+  const [showCelebration, setShowCelebration] = useState(false)
   const [particlePos, setParticlePos] = useState({ x: 0, y: 0, active: false })
   const coins = useGame(s => s.coins)
   const buyBait = useGame(s => s.buyBait)
@@ -40,10 +43,25 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
 
     const cat = useB(id)
     if (cat) {
+      // Show celebration modal instead of inline result
+      setCaughtCat(cat)
+      setShowCelebration(true)
       setResult({ cat, ok: true })
-      setTimeout(() => befriend(cat), 2500) // Increased time to admire the card
     } else {
       setResult({ ok: false })
+      setCaughtCat(null)
+    }
+  }
+
+  const handleCelebrationClose = () => {
+    setShowCelebration(false)
+    if (caughtCat) {
+      befriend(caughtCat)
+      // Clear after a brief delay
+      setTimeout(() => {
+        setCaughtCat(null)
+        setResult(null)
+      }, 300)
     }
   }
 
@@ -131,42 +149,21 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
             )}
           </div>
 
-          {/* Result Display */}
+          {/* Fail Result Display (only show when no cat caught) */}
           <AnimatePresence mode="wait">
-            {result && (
+            {result && !result.ok && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8, y: -20 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                className={`mt-4 p-6 rounded-xl border ${result.ok
-                    ? 'border-gold-500/50 bg-gold-500/10 shadow-gold-glow'
-                    : 'border-red-500/50 bg-red-500/10'
-                  }`}
+                className="mt-4 p-6 rounded-xl border border-red-500/50 bg-red-500/10"
               >
-                {result.ok && result.cat ? (
-                  <div className="flex flex-col items-center">
-                    <motion.div
-                      className="flip-in"
-                    >
-                      <GameCard character={result.cat} animate={false} />
-                    </motion.div>
-                    <div className="mt-4 text-center">
-                      <p className="font-bold text-xl text-white mb-1 font-heading">
-                        {result.cat.name} appeared!
-                      </p>
-                      <p className="text-sm text-slate-300">
-                        Added to your collection!
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <div className="text-3xl mb-2">😿</div>
-                    <p className="text-red-300 font-semibold">No cat appeared...</p>
-                    <p className="text-xs text-red-200/70 mt-1">Try again!</p>
-                  </div>
-                )}
+                <div className="text-center">
+                  <div className="text-3xl mb-2">😿</div>
+                  <p className="text-red-300 font-semibold">No cat appeared...</p>
+                  <p className="text-xs text-red-200/70 mt-1">Try again!</p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -241,6 +238,13 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
       </motion.div>
 
       <ParticleSystem {...particlePos} count={15} />
+
+      {/* Catch Celebration Modal */}
+      <CatchCelebrationModal
+        cat={caughtCat}
+        isOpen={showCelebration}
+        onClose={handleCelebrationClose}
+      />
     </div>
   )
 }

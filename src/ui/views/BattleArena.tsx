@@ -346,132 +346,134 @@ export default function BattleArena() {
         </p>
       </motion.div>
 
-      {/* MOBILE LAYOUT (< lg) - Compact Portrait Battle */}
-      <div className="lg:hidden flex flex-col justify-between h-[85vh] px-3 py-2">
-        {/* Boss Section - Compact */}
-        <div className="flex items-center gap-3 bg-slate-900/60 rounded-xl p-2 border border-slate-700/50">
+      {/* MOBILE LAYOUT (< lg) - Redesigned for Better Visibility */}
+      <div className="lg:hidden flex flex-col gap-3 px-3 py-2 pb-safe">
+        {/* Enemy Section - Actual GameCard at 70% scale */}
+        <div className="flex flex-col items-center gap-2 bg-slate-900/60 rounded-xl p-3 border border-slate-700/50">
           <motion.div
             variants={shakeVariants}
             animate={shaking ? 'shake' : 'idle'}
-            className="w-20 h-20 rounded-lg overflow-hidden border-2 border-red-500/50 flex-shrink-0"
+            className="scale-[0.7] origin-center"
           >
-            {dog.imageUrl && (
-              <img src={dog.imageUrl} alt={dog.name} className="w-full h-full object-cover" />
-            )}
+            <GameCard
+              character={dog}
+              isEnemy={true}
+              animate={false}
+              showStats={false}
+              holographicMode="full"
+            />
           </motion.div>
-          <div className="flex-1 min-w-0">
-            <div className="text-lg text-red-300 font-black truncate drop-shadow-lg">{dog.name}</div>
+          <div className="w-full px-2">
             <StatBar current={dogHp} max={dog.health} type="hp" showNumbers={true} />
-            {dog.ability && (
-              <div className="text-xs text-slate-300 font-medium truncate mt-1">
-                ⚔️ {dog.ability.name}
-              </div>
-            )}
           </div>
-        </div>
-
-        {/* Middle: Dice + Attack - Centered */}
-        <div className="flex flex-col items-center justify-center gap-1 -my-4">
-          {turn === 'player' && !battleEnded && (
-            <div className="text-white font-black animate-pulse font-heading tracking-widest text-base mb-0.5 drop-shadow-lg">
-              YOUR TURN
+          {dog.ability && (
+            <div className="text-xs text-slate-300 font-medium text-center">
+              ⚔️ {dog.ability.name}
             </div>
           )}
+        </div>
 
-          <div className="scale-[0.55] origin-center">
+        {/* Turn Indicator */}
+        {turn === 'player' && !battleEnded && (
+          <div className="text-white font-black text-center animate-pulse font-heading tracking-widest text-lg drop-shadow-lg">
+            YOUR TURN
+          </div>
+        )}
+        {turn === 'enemy' && !battleEnded && (
+          <div className="text-red-400 font-black text-center animate-pulse text-lg drop-shadow-lg">
+            ENEMY TURN...
+          </div>
+        )}
+
+        {/* Dice + Battle Log - Side by Side */}
+        <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+          {/* Dice - 80% scale */}
+          <div className="scale-[0.8] origin-top-left">
             <D20Dice value={dice} rolling={rolling} />
           </div>
 
-          {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleAttack}
-              className="px-8 py-3 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-lg shadow-xl border-3 border-red-400 font-heading tracking-wider mt-0.5 drop-shadow-2xl"
-            >
-              ATTACK!
-            </motion.button>
-          )}
-          {turn === 'player' && !selectedCatId && !battleEnded && (
-            <div className="text-slate-300 text-sm text-center font-medium">
-              Tap a cat below
-            </div>
-          )}
-          {turn === 'enemy' && !battleEnded && (
-            <div className="text-red-400 font-black animate-pulse text-base drop-shadow-lg">
-              ENEMY TURN...
-            </div>
-          )}
-        </div>
-
-        {/* Battle Log - Compact 2 lines */}
-        <div className="bg-slate-900/80 rounded-lg p-2.5 border border-slate-700/50 mb-1 h-16 overflow-hidden">
-          {log.slice(-2).map((l, i) => (
-            <div key={i} className={`text-xs font-medium truncate leading-relaxed ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
+          {/* Battle Log - 4 lines with scroll */}
+          <div
+            ref={logRef}
+            className="bg-slate-900/80 rounded-lg p-2 border border-slate-700/50 h-32 overflow-y-auto custom-scrollbar"
+          >
+            {log.slice(-8).map((l, i) => (
+              <div key={i} className={`text-xs font-medium leading-relaxed ${
+                l.type === 'crit' ? 'text-yellow-400 font-bold' :
                 l.type === 'damage' ? 'text-red-400' :
-                  l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
+                l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
               }`}>
-              {l.text}
-            </div>
-          ))}
+                {l.text}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Player Party - Mini Thumbnails Row */}
-        <div className="flex justify-center gap-1.5 pb-2">
-          {party.map(cat => {
-            const isSelected = selectedCatId === cat.instanceId
-            const isDead = cat.currentHp <= 0
-            const hpPercent = (cat.currentHp / cat.maxHp) * 100
+        {/* Attack Button - Prominent */}
+        {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleAttack}
+            className="w-full px-6 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-2xl border-3 border-red-400 font-heading tracking-wider"
+          >
+            ⚔️ ATTACK!
+          </motion.button>
+        )}
+        {turn === 'player' && !selectedCatId && !battleEnded && (
+          <div className="text-slate-300 text-base text-center font-medium py-2">
+            Tap a cat below to select
+          </div>
+        )}
 
-            return (
-              <motion.div
-                key={cat.instanceId}
-                variants={attackVariants}
-                animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
-                onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
-                className={`relative cursor-pointer transition-all ${isDead ? 'opacity-40 grayscale' : ''}`}
-              >
+        {/* Player Party - Actual GameCards at 65% scale */}
+        <div className="overflow-x-auto -mx-3 px-3 pb-2">
+          <div className="flex gap-2 min-w-max">
+            {party.map(cat => {
+              const isSelected = selectedCatId === cat.instanceId
+              const isDead = cat.currentHp <= 0
+
+              return (
                 <motion.div
-                  animate={isSelected ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
-                  className={`w-[calc((100vw-2rem)/3-0.5rem)] max-w-[100px] aspect-[4/5] rounded-lg overflow-hidden border-2 ${
-                    isSelected ? 'border-gold-400 shadow-gold-glow' : 'border-slate-600'
-                  }`}
+                  key={cat.instanceId}
+                  variants={attackVariants}
+                  animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
+                  onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
+                  className={`relative ${isDead ? 'opacity-40 grayscale' : ''}`}
+                  style={{ willChange: 'transform' }}
                 >
-                  {cat.imageUrl && (
-                    <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover" />
+                  {/* Selected Glow */}
+                  {isSelected && !isDead && (
+                    <div className="absolute -inset-2 bg-gradient-to-r from-gold-500/50 via-purple-500/50 to-gold-500/50 rounded-xl blur-lg animate-pulse-glow" />
                   )}
 
-                  {/* HP Bar overlay at bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-900/80">
-                    <div
-                      className={`h-full transition-all ${hpPercent > 50 ? 'bg-emerald-500' : hpPercent > 25 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                      style={{ width: `${hpPercent}%` }}
+                  {/* Actual GameCard scaled to 65% */}
+                  <motion.div
+                    animate={isSelected ? { y: -8, scale: 0.68 } : { y: 0, scale: 0.65 }}
+                    transition={{ duration: 0.2 }}
+                    className="origin-top"
+                  >
+                    <GameCard
+                      character={cat}
+                      selected={isSelected}
+                      disabled={isDead || turn !== 'player'}
+                      showStats={true}
+                      animate={false}
+                      holographicMode="full"
                     />
-                  </div>
+                  </motion.div>
 
                   {/* Dead overlay */}
                   {isDead && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <span className="text-lg">💀</span>
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl">
+                      <span className="text-4xl">💀</span>
                     </div>
                   )}
                 </motion.div>
-
-                {/* Selected indicator */}
-                {isSelected && !isDead && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gold-500 text-slate-900 text-[10px] font-black px-1.5 rounded-full shadow-lg">
-                    ⚔️
-                  </div>
-                )}
-
-                {/* Cat name */}
-                <div className="text-xs text-center text-white font-semibold truncate mt-0.5 drop-shadow">
-                  {cat.name.split(' ')[0]}
-                </div>
-              </motion.div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
 

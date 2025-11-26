@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import Avatar from './Avatar'
 import type { Cat, Dog } from '../../game/data'
+import { useHolographicCard } from '../hooks/useHolographicCard'
+import { isWeb } from '../../utils/platform'
 
 interface GameCardProps {
     character: Cat | Dog
@@ -10,6 +12,7 @@ interface GameCardProps {
     disabled?: boolean
     showStats?: boolean
     animate?: boolean
+    holographicMode?: 'subtle' | 'full' | 'none'
 }
 
 export default function GameCard({
@@ -19,11 +22,21 @@ export default function GameCard({
     selected = false,
     disabled = false,
     showStats = true,
-    animate = true
+    animate = true,
+    holographicMode = 'full'
 }: GameCardProps) {
 
     const isCat = !isEnemy
     const rarity = (character as Cat).rarity || 'Common'
+
+    // Holographic effect
+    const holographic = useHolographicCard({
+        mode: holographicMode === 'none' ? 'subtle' : holographicMode,
+        maxRotation: holographicMode === 'full' ? 15 : 8,
+        shineIntensity: rarity === 'Mythical' ? 0.8 : rarity === 'Legendary' ? 0.7 : 0.6,
+        enableMobile: !disabled && animate && holographicMode !== 'none',
+        enableWeb: !disabled && animate && holographicMode !== 'none'
+    })
 
     const getRarityGradient = (r: string) => {
         switch (r) {
@@ -58,7 +71,16 @@ export default function GameCard({
 
     return (
         <motion.div
-            className={`relative w-52 h-80 select-none cursor-pointer ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            ref={holographic.cardRef}
+            className={`relative w-52 h-80 select-none cursor-pointer holographic-card ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            style={holographic.style}
+            {...(holographic.isSupported && holographicMode !== 'none' ? (isWeb() ? {
+                onMouseMove: holographic.handlers.onMouseMove,
+                onMouseLeave: holographic.handlers.onMouseLeave
+            } : {
+                onTouchMove: holographic.handlers.onTouchMove,
+                onTouchEnd: holographic.handlers.onTouchEnd
+            }) : {})}
             whileHover={!disabled && animate ? { scale: 1.05 } : {}}
             whileTap={!disabled && animate ? { scale: 0.98 } : {}}
             onClick={!disabled ? onClick : undefined}
@@ -69,6 +91,13 @@ export default function GameCard({
             {/* Selection Glow */}
             {selected && (
                 <div className="absolute -inset-3 bg-gradient-to-r from-gold-500/50 via-purple-500/50 to-gold-500/50 rounded-2xl blur-xl animate-pulse-glow" />
+            )}
+
+            {/* Holographic Overlay - z-index 2, below mythical particles */}
+            {holographic.isSupported && holographicMode !== 'none' && (
+                <div
+                    className={`holographic-overlay ${holographicMode} ${holographic.isActive ? 'active' : ''} rarity-${rarity.toLowerCase()}`}
+                />
             )}
 
             {/* Mythical Particles */}

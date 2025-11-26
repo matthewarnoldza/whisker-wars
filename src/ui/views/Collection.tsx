@@ -297,6 +297,7 @@ export default function Collection() {
                     character={cat}
                     selected={isSelected}
                     onClick={() => setZoomedCat(cat)}
+                    holographicMode="subtle"
                     disabled={false}
                   />
 

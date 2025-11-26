@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { OwnedCat } from '../../game/store'
+import { useHolographicCard } from '../hooks/useHolographicCard'
+import { isWeb } from '../../utils/platform'
 
 interface CardZoomModalProps {
   cat: OwnedCat | null
@@ -37,6 +39,13 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   const rarityGradient = getRarityGradient(cat.rarity)
   const rarityGlow = getRarityGlow(cat.rarity)
 
+  // Enhanced holographic effect for zoomed view
+  const holographic = useHolographicCard({
+    mode: 'full',
+    maxRotation: 20, // More dramatic in zoom
+    shineIntensity: cat.rarity === 'Mythical' ? 0.9 : cat.rarity === 'Legendary' ? 0.8 : 0.7
+  })
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -48,12 +57,21 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
         >
           <motion.div
+            ref={holographic.cardRef}
             initial={{ scale: 0.8, opacity: 0, y: 50 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 50 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px] my-auto"
+            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px] my-auto holographic-card"
+            style={holographic.style}
+            {...(holographic.isSupported ? (isWeb() ? {
+              onMouseMove: holographic.handlers.onMouseMove,
+              onMouseLeave: holographic.handlers.onMouseLeave
+            } : {
+              onTouchMove: holographic.handlers.onTouchMove,
+              onTouchEnd: holographic.handlers.onTouchEnd
+            }) : {})}
           >
             {/* Close Button */}
             <button
@@ -67,6 +85,13 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
 
             {/* Card Container */}
             <div className={`relative w-full rounded-2xl overflow-hidden shadow-2xl ${rarityGlow}`}>
+              {/* Holographic Overlay */}
+              {holographic.isSupported && (
+                <div
+                  className={`holographic-overlay full ${holographic.isActive ? 'active' : ''} rarity-${cat.rarity.toLowerCase()}`}
+                />
+              )}
+
               {/* Mythical Particles */}
               {cat.rarity === 'Mythical' && (
                 <>

@@ -346,6 +346,11 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const HEAL_COST = 25
     if (state.coins < HEAL_COST) return false
+
+    // Check if any cats need healing
+    const needsHealing = state.owned.some(cat => cat.currentHp < cat.maxHp)
+    if (!needsHealing) return false
+
     set(s=> ({
       coins: s.coins - HEAL_COST,
       owned: s.owned.map(cat => ({ ...cat, currentHp: cat.maxHp }))

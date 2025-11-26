@@ -29,6 +29,7 @@ export default function Collection() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [zoomedCat, setZoomedCat] = useState<OwnedCat | null>(null)
+  const [healFlash, setHealFlash] = useState(false)
 
   const rarityColors: Record<Rarity, string> = {
     Common: 'text-gray-400 border-gray-500',
@@ -181,19 +182,43 @@ export default function Collection() {
             onClick={() => {
               const success = healAllCats()
               if (!success) {
-                alert('Not enough coins! Need 25 coins to heal all cats.')
+                if (coins < 25) {
+                  alert('Not enough coins! Need 25 coins to heal all cats.')
+                } else {
+                  alert('All cats are already at full health!')
+                }
+              } else {
+                // Trigger green flash animation
+                setHealFlash(true)
+                setTimeout(() => setHealFlash(false), 500)
               }
             }}
             disabled={coins < 25}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap relative overflow-hidden ${
               coins < 25
                 ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
                 : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg'
             }`}
             whileHover={coins >= 25 ? { scale: 1.05 } : {}}
             whileTap={coins >= 25 ? { scale: 0.95 } : {}}
+            animate={healFlash ? {
+              boxShadow: [
+                '0 0 0px rgba(16, 185, 129, 0)',
+                '0 0 40px rgba(16, 185, 129, 1)',
+                '0 0 0px rgba(16, 185, 129, 0)'
+              ]
+            } : {}}
+            transition={{ duration: 0.5 }}
           >
-            💊 Heal All (25💰)
+            {healFlash && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0 bg-emerald-300/60 rounded-lg"
+              />
+            )}
+            <span className="relative z-10">💊 Heal All (25💰)</span>
           </motion.button>
         </div>
 

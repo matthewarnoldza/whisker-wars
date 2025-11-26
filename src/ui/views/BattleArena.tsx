@@ -431,6 +431,7 @@ export default function BattleArena() {
             const isDead = cat.currentHp <= 0
             // Calculate card width: base 208px * 0.55 scale = 114.4px
             const cardWidth = 114
+            const healthBarWidth = 85 // Reduced health bar width
 
             return (
               <motion.div
@@ -441,9 +442,11 @@ export default function BattleArena() {
                 className={`flex flex-col gap-1 ${isDead ? 'opacity-40 grayscale' : ''}`}
                 style={{ willChange: 'transform', width: `${cardWidth}px` }}
               >
-                {/* Health Bar Above Card - Same width as card */}
-                <div style={{ width: `${cardWidth}px` }}>
-                  <StatBar current={cat.currentHp} max={cat.maxHp} type="hp" showNumbers={false} />
+                {/* Health Bar Above Card - Centered and narrower than card */}
+                <div className="flex justify-center" style={{ width: `${cardWidth}px` }}>
+                  <div style={{ width: `${healthBarWidth}px` }}>
+                    <StatBar current={cat.currentHp} max={cat.maxHp} type="hp" showNumbers={false} />
+                  </div>
                 </div>
 
                 {/* Card with Selection Highlight */}

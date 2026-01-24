@@ -152,14 +152,14 @@ export default React.memo(function GameCard({
                     </div>
 
                     {/* Bottom Section: Ability + Stats */}
-                    <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col gap-1.5">
                         {/* Enhanced Ability */}
                         {character.ability && (
-                            <div className="px-3 py-2 bg-black/75 backdrop-blur-md rounded-xl border-2 border-white/20 shadow-lg">
-                                <div className="text-[10px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-md">
+                            <div className="px-2 py-1.5 bg-black/75 backdrop-blur-md rounded-lg border border-white/20 shadow-lg">
+                                <div className="text-[9px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-md">
                                     {character.ability.name}
                                 </div>
-                                <p className="text-[9px] text-slate-200 leading-tight text-center line-clamp-1 mt-1">
+                                <p className="text-[8px] text-slate-200 leading-tight text-center line-clamp-1 mt-0.5">
                                     {character.ability.description}
                                 </p>
                             </div>
@@ -170,32 +170,32 @@ export default React.memo(function GameCard({
                             <div className="flex justify-between items-center px-1">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-10 h-10 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-lg">
-                                        <span className="font-black text-amber-400 text-lg" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{character.attack}</span>
+                                    <div className="w-9 h-9 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-lg">
+                                        <span className="font-black text-amber-400 text-base" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{character.attack}</span>
                                     </div>
-                                    <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
+                                    <span className="text-[7px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
 
                                 {/* Level */}
                                 {(character as any).level !== undefined && (
-                                    <div className="px-2.5 py-1 bg-black rounded border-2 border-slate-400 shadow-lg">
+                                    <div className="px-2 py-0.5 bg-black rounded border-2 border-slate-400 shadow-lg">
                                         <div className="flex flex-col items-center">
-                                            <span className="text-[7px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
-                                            <span className="text-lg font-black text-white leading-none" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{(character as any).level}</span>
+                                            <span className="text-[6px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
+                                            <span className="text-base font-black text-white leading-none" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{(character as any).level}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Health */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-12 h-10 bg-black rounded border-2 border-emerald-500 flex items-center justify-center shadow-lg px-1">
-                                        <span className="font-black text-emerald-400 text-sm" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>
+                                    <div className="w-11 h-9 bg-black rounded border-2 border-emerald-500 flex items-center justify-center shadow-lg px-1">
+                                        <span className="font-black text-emerald-400 text-xs" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>
                                             {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
                                                 ? `${(character as any).currentHp}/${(character as any).maxHp}`
                                                 : (character as any).currentHp || character.health || 0}
                                         </span>
                                     </div>
-                                    <span className="text-[8px] text-emerald-200 font-bold tracking-wide uppercase">HP</span>
+                                    <span className="text-[7px] text-emerald-200 font-bold tracking-wide uppercase">HP</span>
                                 </div>
                             </div>
                         )}

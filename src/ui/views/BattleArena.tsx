@@ -422,7 +422,7 @@ export default function BattleArena() {
         </div>
 
         {/* Attack Button - Large and Prominent */}
-        <div className="mt-6">
+        <div className="mt-12">
           {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
             <motion.button
               initial={{ scale: 0 }}

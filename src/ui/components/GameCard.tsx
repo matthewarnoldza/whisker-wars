@@ -167,7 +167,7 @@ export default React.memo(function GameCard({
 
                         {/* Vintage Stats */}
                         {showStats && (
-                            <div className="flex justify-between items-center px-1 relative z-20">
+                            <div className="flex justify-between items-center px-1">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
                                     <div className="w-10 h-10 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-lg">

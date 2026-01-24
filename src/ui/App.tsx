@@ -235,6 +235,8 @@ export default function App() {
             <img
               src="/images/header/WW header.png"
               alt=""
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover opacity-30"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
@@ -255,6 +257,8 @@ export default function App() {
                   <img
                     src="/images/logos/Whisker_Wars_White_Logo_New.png"
                     alt="Whisker Wars Logo"
+                    loading="lazy"
+                    decoding="async"
                     className="h-16 sm:h-28 w-auto drop-shadow-lg object-contain"
                   />
                 </motion.div>
@@ -382,6 +386,8 @@ export default function App() {
                 <img
                   src="/images/logos/Whisker_Wars_White_Logo_New.png"
                   alt="Whisker Wars"
+                  loading="lazy"
+                  decoding="async"
                   className="h-12 w-auto"
                 />
                 <span className="mx-2 text-slate-600">•</span>

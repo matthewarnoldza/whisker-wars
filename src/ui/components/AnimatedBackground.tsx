@@ -14,8 +14,8 @@ export default function AnimatedBackground() {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
-    // Generate random particles
-    const newParticles: Particle[] = Array.from({ length: 30 }, (_, i) => ({
+    // Generate random particles (reduced from 30 to 12 for better performance)
+    const newParticles: Particle[] = Array.from({ length: 12 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,

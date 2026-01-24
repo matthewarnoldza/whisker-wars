@@ -1,8 +1,28 @@
+import React from 'react'
 import { motion } from 'framer-motion'
 import Avatar from './Avatar'
 import type { Cat, Dog } from '../../game/data'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
+
+// Rarity lookup tables for O(1) access instead of switch statements
+const RARITY_GRADIENTS: Record<string, string> = {
+    'Common': 'from-slate-500 to-slate-600',
+    'Uncommon': 'from-green-500 to-emerald-600',
+    'Rare': 'from-blue-500 to-cyan-600',
+    'Epic': 'from-purple-500 to-fuchsia-600',
+    'Legendary': 'from-orange-500 to-amber-600',
+    'Mythical': 'from-red-600 to-rose-700',
+}
+
+const RARITY_GLOWS: Record<string, string> = {
+    'Common': 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]',
+    'Uncommon': 'drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]',
+    'Rare': 'drop-shadow-[0_0_25px_rgba(59,130,246,0.9)]',
+    'Epic': 'drop-shadow-[0_0_30px_rgba(168,85,247,1)]',
+    'Legendary': 'drop-shadow-[0_0_35px_rgba(251,146,60,1.2)]',
+    'Mythical': 'drop-shadow-[0_0_40px_rgba(239,68,68,1.3)]',
+}
 
 interface GameCardProps {
     character: Cat | Dog
@@ -15,7 +35,7 @@ interface GameCardProps {
     holographicMode?: 'subtle' | 'full' | 'none'
 }
 
-export default function GameCard({
+export default React.memo(function GameCard({
     character,
     isEnemy = false,
     onClick,
@@ -38,32 +58,8 @@ export default function GameCard({
         enableWeb: !disabled && animate && holographicMode !== 'none'
     })
 
-    const getRarityGradient = (r: string) => {
-        switch (r) {
-            case 'Common': return 'from-slate-500 to-slate-600'
-            case 'Uncommon': return 'from-green-500 to-emerald-600'
-            case 'Rare': return 'from-blue-500 to-cyan-600'
-            case 'Epic': return 'from-purple-500 to-fuchsia-600'
-            case 'Legendary': return 'from-orange-500 to-amber-600'
-            case 'Mythical': return 'from-red-600 to-rose-700'
-            default: return 'from-slate-500 to-slate-600'
-        }
-    }
-
-    const getRarityGlow = (r: string) => {
-        switch (r) {
-            case 'Common': return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
-            case 'Uncommon': return 'drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]'
-            case 'Rare': return 'drop-shadow-[0_0_25px_rgba(59,130,246,0.9)]'
-            case 'Epic': return 'drop-shadow-[0_0_30px_rgba(168,85,247,1)]'
-            case 'Legendary': return 'drop-shadow-[0_0_35px_rgba(251,146,60,1.2)]'
-            case 'Mythical': return 'drop-shadow-[0_0_40px_rgba(239,68,68,1.3)]'
-            default: return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
-        }
-    }
-
-    const rarityGradient = getRarityGradient(rarity)
-    const rarityGlow = getRarityGlow(rarity)
+    const rarityGradient = RARITY_GRADIENTS[rarity] || RARITY_GRADIENTS['Common']
+    const rarityGlow = RARITY_GLOWS[rarity] || RARITY_GLOWS['Common']
 
     // Determine if card should have special animations
     const hasSpecialGlow = rarity === 'Mythical' || rarity === 'Legendary'
@@ -121,6 +117,8 @@ export default function GameCard({
                         <img
                             src={character.imageUrl}
                             alt={character.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                         />
                     ) : (
@@ -206,4 +204,4 @@ export default function GameCard({
             </div>
         </motion.div>
     )
-}
+})

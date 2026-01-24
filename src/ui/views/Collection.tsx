@@ -6,7 +6,7 @@ import CardZoomModal from '../components/CardZoomModal'
 import { useGame } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { containerVariants, cardVariants } from '../animations'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import type { OwnedCat } from '../../game/store'
 import type { Rarity } from '../../game/data'
 import { CATS } from '../../game/data'
@@ -30,6 +30,14 @@ export default function Collection() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [zoomedCat, setZoomedCat] = useState<OwnedCat | null>(null)
   const [healFlash, setHealFlash] = useState(false)
+
+  // O(1) lookups instead of O(n) array.includes() in render loop
+  const selectedSet = useMemo(() => new Set(selected), [selected])
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites])
+
+  // Memoized handlers to prevent recreation on every render
+  const handleSortChange = useCallback((option: SortOption) => setSortBy(option), [])
+  const handleFilterChange = useCallback((option: FilterOption) => setFilterBy(option), [])
 
   const rarityColors: Record<Rarity, string> = {
     Common: 'text-gray-400 border-gray-500',
@@ -230,7 +238,7 @@ export default function Collection() {
             {(['level', 'rarity', 'name', 'hp', 'attack'] as SortOption[]).map(option => (
               <motion.button
                 key={option}
-                onClick={() => setSortBy(option)}
+                onClick={() => handleSortChange(option)}
                 className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${sortBy === option
                   ? 'bg-gradient-to-r from-gold-400 to-gold-600 text-slate-900 shadow-md'
                   : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-gold-500/50 hover:text-gold-300'
@@ -253,7 +261,7 @@ export default function Collection() {
               option => (
                 <motion.button
                   key={option}
-                  onClick={() => setFilterBy(option)}
+                  onClick={() => handleFilterChange(option)}
                   className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${filterBy === option
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
                     : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-purple-500/50 hover:text-purple-300'
@@ -297,9 +305,9 @@ export default function Collection() {
       >
         <AnimatePresence mode="popLayout">
           {filteredAndSortedCats.map(cat => {
-            const isSelected = selected.includes(cat.instanceId)
-            const isFavorite = favorites.includes(cat.instanceId)
-            const battlePosition = selected.indexOf(cat.instanceId) + 1 // 1, 2, 3 or 0 if not selected
+            const isSelected = selectedSet.has(cat.instanceId)
+            const isFavorite = favoritesSet.has(cat.instanceId)
+            const battlePosition = isSelected ? selected.indexOf(cat.instanceId) + 1 : 0 // Only compute if selected
             const hpPercent = (cat.currentHp / cat.maxHp) * 100
             const xpForNext = calculateXpForNextLevel(cat.level)
             const xpPercent = cat.level >= 10 ? 100 : (cat.xp / xpForNext) * 100

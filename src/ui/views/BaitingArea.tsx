@@ -120,6 +120,8 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                         <img
                           src={bait.iconUrl}
                           alt={bait.name}
+                          loading="lazy"
+                          decoding="async"
                           className="w-10 h-10 object-contain drop-shadow-lg"
                         />
                       )}
@@ -221,6 +223,8 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                       <img
                         src={b.iconUrl}
                         alt={b.name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-12 h-12 object-contain drop-shadow-lg"
                       />
                     )}

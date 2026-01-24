@@ -553,10 +553,10 @@ export const useGame = create<GameState>((set, get) => ({
   },
 }))
 
-// Auto-save every 1.5 seconds
+// Auto-save every 5 seconds (reduced from 1.5s to reduce main thread blocking)
 setInterval(() => {
   useGame.getState().save()
-}, 1500)
+}, 5000)
 
 // Save when page becomes hidden (tab switch, app switch, lid close)
 // Critical for Chromebooks which aggressively freeze tabs

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import GameCard from '../components/GameCard'
 import D20Dice from '../components/D20Dice'
 import StatBar from '../components/StatBar'
@@ -13,7 +13,13 @@ import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '
 interface BattleLog { text: string; type?: 'damage' | 'heal' | 'crit' | 'info' }
 
 export default function BattleArena() {
-  const party = useGame(s => s.owned.filter(o => s.selectedForBattle.includes(o.instanceId)))
+  // Separate selectors + useMemo to avoid recomputing on every store update
+  const owned = useGame(s => s.owned)
+  const selectedForBattle = useGame(s => s.selectedForBattle)
+  const party = useMemo(
+    () => owned.filter(o => selectedForBattle.includes(o.instanceId)),
+    [owned, selectedForBattle]
+  )
   const dogIndex = useGame(s => s.dogIndex)
   const difficultyLevel = useGame(s => s.difficultyLevel)
   const addCoins = useGame(s => s.addCoins)

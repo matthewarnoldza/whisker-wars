@@ -167,29 +167,29 @@ export default React.memo(function GameCard({
 
                         {/* Vintage Stats */}
                         {showStats && (
-                            <div className="flex justify-between items-center px-1">
+                            <div className="flex justify-between items-center px-1 relative z-20">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-10 h-10 bg-black/80 rounded border-2 border-amber-600/70 flex items-center justify-center shadow-md">
-                                        <span className="font-black text-amber-300 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{character.attack}</span>
+                                    <div className="w-10 h-10 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-lg">
+                                        <span className="font-black text-amber-400 text-lg" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{character.attack}</span>
                                     </div>
                                     <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
 
                                 {/* Level */}
                                 {(character as any).level !== undefined && (
-                                    <div className="px-2.5 py-1 bg-black/80 rounded border-2 border-slate-500/70 shadow-md">
+                                    <div className="px-2.5 py-1 bg-black rounded border-2 border-slate-400 shadow-lg">
                                         <div className="flex flex-col items-center">
                                             <span className="text-[7px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
-                                            <span className="text-lg font-black text-white leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{(character as any).level}</span>
+                                            <span className="text-lg font-black text-white leading-none" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{(character as any).level}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Health */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-12 h-10 bg-black/80 rounded border-2 border-emerald-600/70 flex items-center justify-center shadow-md px-1">
-                                        <span className="font-black text-emerald-300 text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                                    <div className="w-12 h-10 bg-black rounded border-2 border-emerald-500 flex items-center justify-center shadow-lg px-1">
+                                        <span className="font-black text-emerald-400 text-sm" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>
                                             {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
                                                 ? `${(character as any).currentHp}/${(character as any).maxHp}`
                                                 : (character as any).currentHp || character.health || 0}

@@ -422,24 +422,26 @@ export default function BattleArena() {
         </div>
 
         {/* Attack Button - Large and Prominent */}
-        {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
-          <motion.button
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleAttack}
-            className="w-full px-6 py-5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-red-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
-          >
-            ⚔️ ATTACK!
-          </motion.button>
-        )}
-        {turn === 'player' && !selectedCatId && !battleEnded && (
-          <div className="flex justify-center">
-            <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
-              Tap a cat below to select
+        <div className="mt-6">
+          {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleAttack}
+              className="w-full px-6 py-5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-red-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+            >
+              ⚔️ ATTACK!
+            </motion.button>
+          )}
+          {turn === 'player' && !selectedCatId && !battleEnded && (
+            <div className="flex justify-center">
+              <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
+                Tap a cat below to select
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Player Party - Smaller Cards (55% scale) with Health Bars Above */}
         <div className="flex gap-2 justify-center">

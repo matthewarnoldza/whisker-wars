@@ -68,10 +68,10 @@ export default function StatBar({
   return (
     <div className="w-full">
       {label && (
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-xs font-bold text-slate-300 tracking-wider font-heading">{label}</span>
+        <div className="flex justify-between items-center mb-1 bg-black/60 rounded px-2 py-0.5 backdrop-blur-sm">
+          <span className="text-xs font-bold text-white tracking-wider font-heading">{label}</span>
           {showNumbers && (
-            <span className="text-xs font-mono text-slate-400">
+            <span className="text-xs font-mono text-slate-200">
               {Math.round(displayValue)}/{max}
             </span>
           )}

@@ -154,12 +154,12 @@ export default React.memo(function GameCard({
                     {/* Bottom Section: Ability + Stats */}
                     <div className="flex flex-col gap-1">
                         {/* Enhanced Ability - Always render */}
-                        <div className="px-2 py-1 bg-black rounded-lg border-2 border-gold-500 shadow-lg flex-shrink-0">
-                            <div className="text-[9px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight">
+                        <div className="px-2 py-1.5 bg-black rounded-lg border-2 border-gold-500 shadow-lg flex-shrink-0">
+                            <div className="text-[11px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight">
                                 {character.ability?.name || 'ABILITY'}
                             </div>
                             {character.ability?.description && (
-                                <p className="text-[7px] text-white leading-tight text-center line-clamp-1 mt-0.5">
+                                <p className="text-[10px] text-white leading-tight text-center line-clamp-1 mt-0.5">
                                     {character.ability.description}
                                 </p>
                             )}

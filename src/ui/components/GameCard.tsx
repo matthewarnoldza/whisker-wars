@@ -155,7 +155,7 @@ export default React.memo(function GameCard({
                     <div className="flex flex-col gap-1.5">
                         {/* Enhanced Ability */}
                         {character.ability && (
-                            <div className="px-2 py-1.5 bg-black/75 backdrop-blur-md rounded-lg border border-white/20 shadow-lg">
+                            <div className="px-2 py-1.5 bg-black/75 backdrop-blur-md rounded-lg border border-white/20 shadow-lg flex-shrink-0">
                                 <div className="text-[9px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-md">
                                     {character.ability.name}
                                 </div>
@@ -167,7 +167,7 @@ export default React.memo(function GameCard({
 
                         {/* Vintage Stats */}
                         {showStats && (
-                            <div className="flex justify-between items-center px-1">
+                            <div className="flex justify-between items-center px-1 flex-shrink-0">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
                                     <div className="w-9 h-9 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-lg">

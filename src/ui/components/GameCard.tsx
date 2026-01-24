@@ -158,6 +158,11 @@ export default React.memo(function GameCard({
                             <div className="text-[9px] font-black text-gold-400 tracking-wider uppercase text-center leading-tight">
                                 {character.ability?.name || 'ABILITY'}
                             </div>
+                            {character.ability?.description && (
+                                <p className="text-[7px] text-white leading-tight text-center line-clamp-1 mt-0.5">
+                                    {character.ability.description}
+                                </p>
+                            )}
                         </div>
 
                         {/* Vintage Stats */}

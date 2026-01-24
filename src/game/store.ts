@@ -557,3 +557,16 @@ export const useGame = create<GameState>((set, get) => ({
 setInterval(() => {
   useGame.getState().save()
 }, 1500)
+
+// Save when page becomes hidden (tab switch, app switch, lid close)
+// Critical for Chromebooks which aggressively freeze tabs
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    useGame.getState().save()
+  }
+})
+
+// Save when page is being unloaded (browser close, navigation)
+window.addEventListener('pagehide', () => {
+  useGame.getState().save()
+})

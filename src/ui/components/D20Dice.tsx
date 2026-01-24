@@ -199,12 +199,12 @@ export default function D20Dice({ value, rolling }: D20DiceProps) {
           }}
         >
           <span
-            className={`text-sm font-bold tracking-wider uppercase ${
+            className={`text-base font-black tracking-wider uppercase px-3 py-1 rounded-lg ${
               isCriticalHit
-                ? 'text-gold-400 drop-shadow-glow'
+                ? 'text-gold-300 bg-gold-900/70 border border-gold-500/50'
                 : isCriticalFail
-                ? 'text-red-400'
-                : 'text-slate-400'
+                ? 'text-red-300 bg-red-900/70 border border-red-500/50'
+                : 'text-slate-200 bg-slate-800/70'
             }`}
           >
             {isCriticalHit ? '✨ CRITICAL! ✨' : isCriticalFail ? '💀 MISS! 💀' : `Roll: ${showValue}`}

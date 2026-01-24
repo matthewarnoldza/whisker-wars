@@ -107,7 +107,7 @@ export default React.memo(function GameCard({
             )}
 
             {/* Card Container with Rarity Glow */}
-            <div className={`relative z-[3] w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
+            <div className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
                 style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite`, willChange: 'transform, opacity' } : { willChange: 'transform' }}
             >
 
@@ -170,26 +170,26 @@ export default React.memo(function GameCard({
                             <div className="flex justify-between items-center px-1">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-amber-900/95 to-amber-950/95 rounded border-2 border-amber-600/70 flex items-center justify-center shadow-md backdrop-blur-sm">
-                                        <span className="font-black text-amber-100 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{character.attack}</span>
+                                    <div className="w-10 h-10 bg-black/80 rounded border-2 border-amber-600/70 flex items-center justify-center shadow-md">
+                                        <span className="font-black text-amber-300 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{character.attack}</span>
                                     </div>
                                     <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
 
                                 {/* Level */}
                                 {(character as any).level !== undefined && (
-                                    <div className="px-2.5 py-1 bg-gradient-to-br from-slate-700/95 to-slate-800/95 rounded border-2 border-slate-600/70 shadow-md backdrop-blur-sm">
+                                    <div className="px-2.5 py-1 bg-black/80 rounded border-2 border-slate-500/70 shadow-md">
                                         <div className="flex flex-col items-center">
                                             <span className="text-[7px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
-                                            <span className="text-lg font-black text-slate-100 leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{(character as any).level}</span>
+                                            <span className="text-lg font-black text-white leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{(character as any).level}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Health */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-12 h-10 bg-gradient-to-br from-emerald-900/95 to-emerald-950/95 rounded border-2 border-emerald-600/70 flex items-center justify-center shadow-md backdrop-blur-sm px-1">
-                                        <span className="font-black text-emerald-100 text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                                    <div className="w-12 h-10 bg-black/80 rounded border-2 border-emerald-600/70 flex items-center justify-center shadow-md px-1">
+                                        <span className="font-black text-emerald-300 text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
                                             {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
                                                 ? `${(character as any).currentHp}/${(character as any).maxHp}`
                                                 : (character as any).currentHp || character.health || 0}

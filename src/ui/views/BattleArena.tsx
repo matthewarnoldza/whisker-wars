@@ -383,13 +383,17 @@ export default function BattleArena() {
 
         {/* Turn Indicator */}
         {turn === 'player' && !battleEnded && (
-          <div className="text-white font-black text-center animate-pulse font-heading tracking-widest text-xl drop-shadow-lg py-1">
-            YOUR TURN
+          <div className="flex justify-center">
+            <div className="text-white font-black text-center animate-pulse font-heading tracking-widest text-xl py-2 px-4 bg-black/60 rounded-lg backdrop-blur-sm">
+              YOUR TURN
+            </div>
           </div>
         )}
         {turn === 'enemy' && !battleEnded && (
-          <div className="text-red-400 font-black text-center animate-pulse text-xl drop-shadow-lg py-1">
-            ENEMY TURN...
+          <div className="flex justify-center">
+            <div className="text-red-400 font-black text-center animate-pulse text-xl py-2 px-4 bg-black/60 rounded-lg backdrop-blur-sm">
+              ENEMY TURN...
+            </div>
           </div>
         )}
 
@@ -430,8 +434,10 @@ export default function BattleArena() {
           </motion.button>
         )}
         {turn === 'player' && !selectedCatId && !battleEnded && (
-          <div className="text-slate-400 text-sm text-center font-medium py-1 italic">
-            Tap a cat below to select
+          <div className="flex justify-center">
+            <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
+              Tap a cat below to select
+            </div>
           </div>
         )}
 
@@ -496,7 +502,7 @@ export default function BattleArena() {
             {/* Dice */}
             <div className="flex flex-col items-center gap-2">
               {turn === 'player' && !battleEnded && (
-                <div className="text-white font-bold animate-pulse font-heading tracking-widest text-xs mb-2">
+                <div className="text-white font-bold animate-pulse font-heading tracking-widest text-sm mb-2 py-1.5 px-3 bg-black/60 rounded-lg backdrop-blur-sm">
                   YOUR TURN
                 </div>
               )}
@@ -518,7 +524,7 @@ export default function BattleArena() {
                 </motion.button>
               )}
               {turn === 'player' && !selectedCatId && !battleEnded && (
-                <div className="text-slate-400 text-sm text-center italic px-4">
+                <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
                   Select a cat to attack
                 </div>
               )}

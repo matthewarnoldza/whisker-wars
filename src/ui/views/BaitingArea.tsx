@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ParticleSystem from '../components/ParticleSystem'
 import CatchCelebrationModal from '../components/CatchCelebrationModal'
 import { containerVariants, cardVariants } from '../animations'
+import { trackBaitUsed, trackCatchSuccess, trackCatchFailure } from '../../utils/analytics'
 
 export default function BaitingArea({ baits }: { baits: Bait[] }) {
   const [result, setResult] = useState<{ cat?: Cat, ok: boolean } | null>(null)
@@ -41,8 +42,12 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
 
     setTimeout(() => setParticlePos(p => ({ ...p, active: false })), 100)
 
+    const bait = baits.find(b => b.id === id)!
+    trackBaitUsed(bait.name, bait.tier)
+
     const cat = useB(id)
     if (cat) {
+      trackCatchSuccess(cat.name, cat.rarity, bait.name, bait.tier)
       // Show celebration modal instead of inline result
       setCaughtCat(cat)
       // Use setTimeout to ensure state is set before showing modal
@@ -51,6 +56,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
       }, 50)
       setResult({ cat, ok: true })
     } else {
+      trackCatchFailure(bait.name, bait.tier)
       setResult({ ok: false })
       setCaughtCat(null)
       setShowCelebration(false)

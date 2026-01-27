@@ -9,6 +9,7 @@ import { TRAINING_DOG } from '../../game/data'
 import { rollD20 } from '../../game/dice'
 import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, damageVariants } from '../animations'
+import { trackTrainingStart, trackTrainingComplete, trackAbilityTriggered } from '../../utils/analytics'
 
 const TRAINING_XP = 15
 const MAX_DAILY_SESSIONS = 3
@@ -79,6 +80,8 @@ export default function TrainingArena() {
   }
 
   const startTraining = (catId: string) => {
+    const cat = owned.find(c => c.instanceId === catId)
+    if (cat) trackTrainingStart(cat.name, cat.level)
     setSelectedCatId(catId)
     setDogHp(TRAINING_DOG.health)
     setTurn('player')
@@ -119,6 +122,7 @@ export default function TrainingArena() {
       if (v >= critThreshold) {
         dmg = Math.floor(dmg * critMultiplier)
         isCrit = true
+        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'crit', 'training')
       }
     }
     if (selectedCat.ability.effect === 'bleed') {
@@ -127,6 +131,7 @@ export default function TrainingArena() {
       if (v >= bleedThreshold) {
         dmg += bleedBonus
         addLog(`🔥 ${selectedCat.name}'s attack burns for +${bleedBonus} damage!`, 'crit')
+        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'bleed', 'training')
       }
     }
     if (selectedCat.ability.effect === 'heal') {
@@ -140,6 +145,7 @@ export default function TrainingArena() {
         const newHp = Math.min(selectedCat.maxHp, selectedCat.currentHp + healAmount)
         updateCatHp(selectedCat.instanceId, newHp)
         addLog(`${selectedCat.name} heals ${healAmount} HP! ✨`, 'heal')
+        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'heal', 'training')
       }
     }
     if (selectedCat.ability.effect === 'lifesteal') {
@@ -148,6 +154,7 @@ export default function TrainingArena() {
       const newHp = Math.min(selectedCat.maxHp, selectedCat.currentHp + healAmount)
       updateCatHp(selectedCat.instanceId, newHp)
       addLog(`${selectedCat.name} steals ${healAmount} HP! 🩸`, 'heal')
+      trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'lifesteal', 'training')
     }
 
     // Stun
@@ -155,6 +162,7 @@ export default function TrainingArena() {
       const stunThreshold = isElite ? (eliteTier >= 2 ? 13 : 15) : 17
       if (v >= stunThreshold) {
         addLog('💥 STUN! The dummy flinches!', 'crit')
+        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'stun', 'training')
         setShaking(true)
         setTimeout(() => setShaking(false), 400)
         setDogHp(h => Math.max(0, h - dmg))
@@ -170,6 +178,7 @@ export default function TrainingArena() {
       const speedThreshold = isElite ? (eliteTier >= 2 ? 10 : 12) : 14
       if (v >= speedThreshold) {
         addLog(`⚡ ${selectedCat.name} attacks with lightning speed!`, 'crit')
+        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'speed', 'training')
         setDogHp(h => Math.max(0, h - dmg))
         showDamage(dmg, window.innerWidth / 2, 100)
         setShaking(true)
@@ -223,6 +232,7 @@ export default function TrainingArena() {
       recordTrainingComplete(selectedCatId)
       const sessions = getTrainingSessions(selectedCatId)
       setSessionsAfterTraining(sessions.remaining)
+      trackTrainingComplete(selectedCat!.name, TRAINING_XP)
     }
 
     setTimeout(() => setShowCompleteModal(true), 1000)

@@ -11,6 +11,16 @@ import { useState, useMemo, useCallback } from 'react'
 import type { OwnedCat } from '../../game/store'
 import type { Rarity } from '../../game/data'
 import { CATS } from '../../game/data'
+import {
+  trackCardZoomed,
+  trackCatReleased,
+  trackMergeAttempted,
+  trackMergeSuccess,
+  trackHealAll,
+  trackSortUsed,
+  trackFilterUsed,
+  trackCoinsSpent,
+} from '../../utils/analytics'
 
 type SortOption = 'name' | 'level' | 'rarity' | 'hp' | 'attack'
 type FilterOption = 'all' | Rarity
@@ -58,8 +68,8 @@ export default function Collection() {
   }, [mergeMode, selectedForMerge, cats])
 
   // Memoized handlers to prevent recreation on every render
-  const handleSortChange = useCallback((option: SortOption) => setSortBy(option), [])
-  const handleFilterChange = useCallback((option: FilterOption) => setFilterBy(option), [])
+  const handleSortChange = useCallback((option: SortOption) => { trackSortUsed(option); setSortBy(option) }, [])
+  const handleFilterChange = useCallback((option: FilterOption) => { trackFilterUsed(option); setFilterBy(option) }, [])
 
   const handleMergeToggle = useCallback(() => {
     setMergeMode(m => !m)
@@ -78,15 +88,18 @@ export default function Collection() {
 
   const handleMergeConfirm = useCallback(() => {
     if (selectedForMerge.length !== 3) return
+    const firstCat = cats.find(c => c.instanceId === selectedForMerge[0])
+    if (firstCat) trackMergeAttempted(firstCat.name, firstCat.eliteTier || 0)
     const result = mergeCats(selectedForMerge as [string, string, string])
     if (result) {
+      trackMergeSuccess(result.name, result.eliteTier || 1, (result.eliteTier || 0) >= 2)
       setMergeResultCat(result)
       setShowMergeConfirm(false)
       setShowMergeCelebration(true)
       setSelectedForMerge([])
       setMergeMode(false)
     }
-  }, [selectedForMerge, mergeCats])
+  }, [selectedForMerge, mergeCats, cats])
 
   const rarityColors: Record<Rarity, string> = {
     Common: 'text-gray-400 border-gray-500',
@@ -249,6 +262,7 @@ export default function Collection() {
           {/* Heal All Button */}
           <motion.button
             onClick={() => {
+              const catsNeedingHeal = cats.filter(c => c.currentHp < c.maxHp).length
               const success = healAllCats()
               if (!success) {
                 if (coins < 25) {
@@ -257,6 +271,8 @@ export default function Collection() {
                   alert('All cats are already at full health!')
                 }
               } else {
+                trackHealAll(25, catsNeedingHeal)
+                trackCoinsSpent('heal_all', 25)
                 // Trigger green flash animation
                 setHealFlash(true)
                 setTimeout(() => setHealFlash(false), 500)
@@ -412,7 +428,7 @@ export default function Collection() {
                   <GameCard
                     character={cat}
                     selected={mergeMode ? isMergeSelected : isSelected}
-                    onClick={() => setZoomedCat(cat)}
+                    onClick={() => { trackCardZoomed(cat.name, cat.rarity, cat.level); setZoomedCat(cat) }}
                     holographicMode="subtle"
                     disabled={false}
                   />
@@ -502,6 +518,7 @@ export default function Collection() {
                     onClick={(e) => {
                       e.stopPropagation()
                       if (window.confirm(`Release ${cat.name}? This cannot be undone!`)) {
+                        trackCatReleased(cat.name, cat.rarity, cat.level)
                         releaseCat(cat.instanceId)
                       }
                     }}

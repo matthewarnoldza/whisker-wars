@@ -18,6 +18,13 @@ import SplashScreen from './components/SplashScreen'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 import { isWeb } from '../utils/platform'
+import {
+  trackPageView,
+  trackTabNavigation,
+  trackAchievementsModalOpened,
+  trackTutorialCompleted,
+  trackProfileSwitched,
+} from '../utils/analytics'
 
 function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
@@ -50,7 +57,7 @@ function AchievementsButton() {
   return (
     <>
       <motion.button
-        onClick={() => setShowAchievements(true)}
+        onClick={() => { trackAchievementsModalOpened(); setShowAchievements(true) }}
         className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -176,6 +183,7 @@ export default function App() {
     if (currentHash !== view) {
       window.location.hash = view
     }
+    trackPageView(view)
   }, [view])
 
   // Check for profiles on mount - but only after splash completes
@@ -275,7 +283,7 @@ export default function App() {
                   ].map(tab => (
                     <motion.button
                       key={tab.id}
-                      onClick={() => setView(tab.id as any)}
+                      onClick={() => { trackTabNavigation(tab.id); setView(tab.id as any) }}
                       className={`relative px-4 py-2 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
                         ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
                         : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200'
@@ -347,7 +355,7 @@ export default function App() {
               ].map(tab => (
                 <motion.button
                   key={tab.id}
-                  onClick={() => setView(tab.id as any)}
+                  onClick={() => { trackTabNavigation(tab.id); setView(tab.id as any) }}
                   className={`relative flex-1 px-3 py-3 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
                     ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
                     : 'bg-slate-800/50 text-slate-400 border border-slate-700'
@@ -428,6 +436,7 @@ export default function App() {
       <WelcomeTutorialModal
         isOpen={showWelcomeTutorial}
         onClose={() => {
+          trackTutorialCompleted()
           setShowWelcomeTutorial(false)
           completeTutorial()
         }}
@@ -450,6 +459,7 @@ export default function App() {
             setShowProfileSelector(false)
             setProfileLoaded(true)
             load()
+            trackProfileSwitched(getCurrentProfile()?.id || 'unknown')
 
             const currentProfile = getCurrentProfile()
             const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000

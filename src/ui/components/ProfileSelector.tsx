@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGame } from '../../game/store'
 import type { ProfileMeta } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
+import { trackProfileSwitched } from '../../utils/analytics'
 
 interface ProfileSelectorProps {
   onProfileSelected: () => void
@@ -21,6 +22,7 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
   const [newProfileName, setNewProfileName] = useState('')
 
   const handleSelectProfile = (profileId: string) => {
+    trackProfileSwitched(profileId)
     loadProfile(profileId)
     onProfileSelected()
   }

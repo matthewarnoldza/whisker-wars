@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Modal from './Modal'
 import { motion, AnimatePresence } from 'framer-motion'
+import { trackTutorialSkipped } from '../../utils/analytics'
 
 interface WelcomeTutorialModalProps {
   isOpen: boolean
@@ -133,6 +134,7 @@ export default function WelcomeTutorialModal({ isOpen, onClose }: WelcomeTutoria
   }
 
   const handleSkip = () => {
+    trackTutorialSkipped(currentSlide)
     onClose()
   }
 

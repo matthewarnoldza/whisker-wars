@@ -2,6 +2,17 @@
 import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
+import {
+  trackBaitPurchased,
+  trackCoinsSpent,
+  trackCoinsEarned,
+  trackLevelUp,
+  trackAchievementUnlocked,
+  trackAchievementClaimed,
+  trackDailyRewardClaimed,
+  trackDogDefeated,
+  trackProfileCreated,
+} from '../utils/analytics'
 
 export type View = 'bait' | 'collection' | 'battle' | 'training' | 'stats' | 'privacy' | 'terms'
 
@@ -225,6 +236,8 @@ export const useGame = create<GameState>((set, get) => ({
   buyBait: (baitId)=> set(s=>{
     const bait = BAITS.find(b=>b.id===baitId)
     if (!bait || s.coins < bait.cost) return s
+    trackBaitPurchased(bait.name, bait.tier, bait.cost)
+    trackCoinsSpent('bait_purchase', bait.cost)
     return {
       coins: s.coins - bait.cost,
       baits: { ...s.baits, [baitId]: (s.baits[baitId]||0)+1 }
@@ -291,6 +304,8 @@ export const useGame = create<GameState>((set, get) => ({
   }),
 
   nextDog: ()=> set(s=> {
+    trackDogDefeated(DOGS[s.dogIndex].name, s.dogIndex, s.difficultyLevel)
+
     let newIndex = s.dogIndex + 1
     let newDifficultyLevel = s.difficultyLevel
 
@@ -330,6 +345,7 @@ export const useGame = create<GameState>((set, get) => ({
         newLevel++
         newMaxHp = calculateStatBoost(cat.health, newLevel)
         newCurrentAttack = calculateStatBoost(cat.attack, newLevel)
+        trackLevelUp(cat.name, newLevel, cat.rarity)
 
         // Check level 10 achievement
         if (newLevel === 10) {
@@ -366,10 +382,12 @@ export const useGame = create<GameState>((set, get) => ({
     const needsHealing = state.owned.some(cat => cat.currentHp < cat.maxHp)
     if (!needsHealing) return false
 
+    const catsHealed = state.owned.filter(cat => cat.currentHp < cat.maxHp).length
     set(s=> ({
       coins: s.coins - HEAL_COST,
       owned: s.owned.map(cat => ({ ...cat, currentHp: cat.maxHp }))
     }))
+    trackCoinsSpent('heal_all', HEAL_COST)
     return true
   },
 
@@ -421,6 +439,8 @@ export const useGame = create<GameState>((set, get) => ({
       const rewardCoins = 50
       get().addCoins(rewardCoins)
       set({ lastDailyReward: now })
+      trackDailyRewardClaimed(rewardCoins)
+      trackCoinsEarned('daily_reward', rewardCoins)
       return true
     }
     return false
@@ -429,6 +449,7 @@ export const useGame = create<GameState>((set, get) => ({
   unlockAchievement: (id)=> set(s=> {
     const achievements = s.achievements.map(ach => {
       if (ach.id === id && !ach.unlocked) {
+        trackAchievementUnlocked(id, ach.name)
         return { ...ach, unlocked: true, progress: ach.maxProgress }
       }
       return ach
@@ -523,6 +544,9 @@ export const useGame = create<GameState>((set, get) => ({
   claimAchievement: (id)=> set(s=> {
     const ach = s.achievements.find(a => a.id === id)
     if (!ach || !ach.unlocked || ach.claimed) return {}
+
+    trackAchievementClaimed(id, ach.name, 100)
+    trackCoinsEarned('achievement', 100)
 
     const achievements = s.achievements.map(a =>
       a.id === id ? { ...a, claimed: true } : a
@@ -657,6 +681,7 @@ export const useGame = create<GameState>((set, get) => ({
     }
     data.profiles.push(newProfile)
     saveProfilesData(data)
+    trackProfileCreated(newProfile.id)
     return newProfile.id
   },
 

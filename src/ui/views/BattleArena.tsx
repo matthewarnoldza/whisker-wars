@@ -9,6 +9,13 @@ import { DOGS } from '../../game/data'
 import { rollD20 } from '../../game/dice'
 import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '../animations'
+import {
+  trackBattleStart,
+  trackAbilityTriggered,
+  trackBattleWon,
+  trackBattleLost,
+  trackCoinsEarned,
+} from '../../utils/analytics'
 
 interface BattleLog { text: string; type?: 'damage' | 'heal' | 'crit' | 'info' }
 
@@ -68,6 +75,9 @@ export default function BattleArena() {
     setBattleEnded(false)
     setSelectedCatId(null)
     setSilenced(false)
+    if (party.length > 0) {
+      trackBattleStart(party.length, party.map(c => c.name).join(','), dog.name, difficultyLevel)
+    }
   }, [dogIndex])
 
   // Auto-scroll log to bottom when updated
@@ -155,6 +165,7 @@ export default function BattleArena() {
       if (v >= critThreshold) {
         dmg = Math.floor(dmg * critMultiplier)
         isCrit = true
+        trackAbilityTriggered(cat.name, cat.ability.name, 'crit', 'battle')
       }
     }
     if (!silenced && cat.ability.effect === 'bleed') {
@@ -163,6 +174,7 @@ export default function BattleArena() {
       if (v >= bleedThreshold) {
         dmg += bleedBonus
         addLog(`🔥 ${cat.name}'s attack burns for +${bleedBonus} damage!`, 'crit')
+        trackAbilityTriggered(cat.name, cat.ability.name, 'bleed', 'battle')
       }
     }
     if (!silenced && cat.ability.effect === 'heal') {
@@ -176,6 +188,7 @@ export default function BattleArena() {
         const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
         updateCatHp(cat.instanceId, newHp)
         addLog(`${cat.name} heals ${healAmount} HP! ✨`, 'heal')
+        trackAbilityTriggered(cat.name, cat.ability.name, 'heal', 'battle')
       }
     }
     if (!silenced && cat.ability.effect === 'lifesteal') {
@@ -184,6 +197,7 @@ export default function BattleArena() {
       const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
       updateCatHp(cat.instanceId, newHp)
       addLog(`${cat.name} steals ${healAmount} HP! 🩸`, 'heal')
+      trackAbilityTriggered(cat.name, cat.ability.name, 'lifesteal', 'battle')
     }
 
     // Stun
@@ -191,6 +205,7 @@ export default function BattleArena() {
       const stunThreshold = isElite ? (eliteTier >= 2 ? 13 : 15) : 17
       if (v >= stunThreshold) {
         addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
+        trackAbilityTriggered(cat.name, cat.ability.name, 'stun', 'battle')
         setShaking(true)
         setTimeout(() => setShaking(false), 400)
         setDogHp(h => Math.max(0, h - dmg))
@@ -207,6 +222,7 @@ export default function BattleArena() {
       const speedThreshold = isElite ? (eliteTier >= 2 ? 10 : 12) : 14
       if (v >= speedThreshold) {
         addLog(`⚡ ${cat.name} attacks with lightning speed!`, 'crit')
+        trackAbilityTriggered(cat.name, cat.ability.name, 'speed', 'battle')
         setDogHp(h => Math.max(0, h - dmg))
         showDamage(dmg, window.innerWidth / 2, 100)
 
@@ -377,6 +393,9 @@ export default function BattleArena() {
     addCoins(coinsEarned)
     recordBattleResult(true, xpEarned)
 
+    trackBattleWon(dog.name, coinsEarned, xpEarned, difficultyLevel)
+    trackCoinsEarned('battle', coinsEarned)
+
     setVictoryRewards({ coins: coinsEarned, xp: xpEarned })
     setTimeout(() => setShowVictoryModal(true), 1000)
   }
@@ -385,6 +404,7 @@ export default function BattleArena() {
     setBattleEnded(true)
     addLog(`💀 DEFEAT!`, 'info')
     recordBattleResult(false, 0)
+    trackBattleLost(dog.name, difficultyLevel)
     // Don't auto-heal - player must heal manually for 20 coins
     setTimeout(() => setShowDefeatModal(true), 1000)
   }

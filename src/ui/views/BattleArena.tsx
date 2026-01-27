@@ -51,10 +51,19 @@ export default function BattleArena() {
 
   const dog = DOGS[dogIndex]
 
+  // Elite Aura: +1 ATK per living elite cat in party
+  const eliteAuraBonus = useMemo(() => {
+    return party.filter(c => c.isElite && c.currentHp > 0).length
+  }, [party])
+
   // Reset battle when dog changes
   useEffect(() => {
     setDogHp(dog.health)
-    setLog([{ text: `⚔️ A wild ${dog.name} appears!`, type: 'info' }])
+    const initialLog: BattleLog[] = [{ text: `⚔️ A wild ${dog.name} appears!`, type: 'info' }]
+    if (eliteAuraBonus > 0) {
+      initialLog.push({ text: `✨ Elite Aura: +${eliteAuraBonus} ATK to all party members!`, type: 'info' })
+    }
+    setLog(initialLog)
     setTurn('player')
     setBattleEnded(false)
     setSelectedCatId(null)
@@ -127,8 +136,10 @@ export default function BattleArena() {
       return
     }
 
-    // Base damage
-    let dmg = cat.currentAttack + Math.floor(v / 5)
+    // Base damage with Elite Aura bonus
+    const isElite = cat.isElite === true
+    const eliteTier = cat.eliteTier || 0
+    let dmg = cat.currentAttack + eliteAuraBonus + Math.floor(v / 5)
     let isCrit = false
 
     // Check if silenced (Omega Fenrir ability)
@@ -137,65 +148,83 @@ export default function BattleArena() {
       setSilenced(false) // Silence wears off after one turn
     }
 
-    // Abilities (only if not silenced)
-    if (!silenced && cat.ability.effect === 'crit' && v >= 15) {
-      dmg = Math.floor(dmg * 1.5)
-      isCrit = true
-    }
-    if (!silenced && cat.ability.effect === 'bleed' && v >= 15) {
-      dmg += 3
-      addLog(`🔥 ${cat.name}'s attack burns for +3 damage!`, 'crit')
-    }
-    if (!silenced && cat.ability.effect === 'heal' && v >= 15) {
-      // Heal amount scales by rarity
-      const healByRarity: Record<string, number> = {
-        'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5, 'Mythical': 6
+    // Abilities (only if not silenced) - Elite cats get enhanced thresholds and values
+    if (!silenced && cat.ability.effect === 'crit') {
+      const critThreshold = isElite ? 13 : 15
+      const critMultiplier = isElite ? (eliteTier >= 2 ? 2.0 : 1.75) : 1.5
+      if (v >= critThreshold) {
+        dmg = Math.floor(dmg * critMultiplier)
+        isCrit = true
       }
-      const healAmount = healByRarity[cat.rarity] || 3
-      const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
-      updateCatHp(cat.instanceId, newHp)
-      addLog(`${cat.name} heals ${healAmount} HP! ✨`, 'heal')
+    }
+    if (!silenced && cat.ability.effect === 'bleed') {
+      const bleedThreshold = isElite ? 13 : 15
+      const bleedBonus = isElite ? (eliteTier >= 2 ? 7 : 5) : 3
+      if (v >= bleedThreshold) {
+        dmg += bleedBonus
+        addLog(`🔥 ${cat.name}'s attack burns for +${bleedBonus} damage!`, 'crit')
+      }
+    }
+    if (!silenced && cat.ability.effect === 'heal') {
+      const healThreshold = isElite ? 13 : 15
+      if (v >= healThreshold) {
+        const healByRarity: Record<string, number> = {
+          'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5, 'Mythical': 6
+        }
+        const healMultiplier = isElite ? (eliteTier >= 2 ? 1.75 : 1.5) : 1.0
+        const healAmount = Math.floor((healByRarity[cat.rarity] || 3) * healMultiplier)
+        const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
+        updateCatHp(cat.instanceId, newHp)
+        addLog(`${cat.name} heals ${healAmount} HP! ✨`, 'heal')
+      }
     }
     if (!silenced && cat.ability.effect === 'lifesteal') {
-      const healAmount = Math.floor(dmg * 0.5)
+      const lifestealPct = isElite ? (eliteTier >= 2 ? 0.75 : 0.65) : 0.50
+      const healAmount = Math.floor(dmg * lifestealPct)
       const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
       updateCatHp(cat.instanceId, newHp)
       addLog(`${cat.name} steals ${healAmount} HP! 🩸`, 'heal')
     }
 
-    // Stun on roll >= 17
-    if (!silenced && v >= 17 && cat.ability.effect === 'stun') {
-      addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
-      setShaking(true)
-      setTimeout(() => setShaking(false), 400)
-      setDogHp(h => Math.max(0, h - dmg))
-      showDamage(dmg, window.innerWidth / 2, 100)
+    // Stun
+    if (!silenced && cat.ability.effect === 'stun') {
+      const stunThreshold = isElite ? (eliteTier >= 2 ? 13 : 15) : 17
+      if (v >= stunThreshold) {
+        addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
+        setShaking(true)
+        setTimeout(() => setShaking(false), 400)
+        setDogHp(h => Math.max(0, h - dmg))
+        showDamage(dmg, window.innerWidth / 2, 100)
 
-      // Stun means player goes again
-      setAttackingId(null)
-      return
-    }
-
-    // Speed ability - extra attack on roll >= 14
-    if (!silenced && cat.ability.effect === 'speed' && v >= 14) {
-      addLog(`⚡ ${cat.name} attacks with lightning speed!`, 'crit')
-      setDogHp(h => Math.max(0, h - dmg))
-      showDamage(dmg, window.innerWidth / 2, 100)
-
-      setShaking(true)
-      setTimeout(() => setShaking(false), 400)
-      setParticleActive(true)
-      setTimeout(() => setParticleActive(false), 100)
-
-      // Check Victory
-      if (dogHp - dmg <= 0) {
-        handleVictory()
+        // Stun means player goes again
+        setAttackingId(null)
         return
       }
+    }
 
-      // Speed means player goes again
-      setAttackingId(null)
-      return
+    // Speed ability - extra attack
+    if (!silenced && cat.ability.effect === 'speed') {
+      const speedThreshold = isElite ? (eliteTier >= 2 ? 10 : 12) : 14
+      if (v >= speedThreshold) {
+        addLog(`⚡ ${cat.name} attacks with lightning speed!`, 'crit')
+        setDogHp(h => Math.max(0, h - dmg))
+        showDamage(dmg, window.innerWidth / 2, 100)
+
+        setShaking(true)
+        setTimeout(() => setShaking(false), 400)
+        setParticleActive(true)
+        setTimeout(() => setParticleActive(false), 100)
+
+        // Check Victory
+        if (dogHp - dmg <= 0) {
+          handleVictory()
+          return
+        }
+
+        // Speed means player goes again
+        setAttackingId(null)
+        return
+      }
     }
 
     setDogHp(h => Math.max(0, h - dmg))
@@ -249,19 +278,25 @@ export default function BattleArena() {
 
     const t = targets[Math.floor(Math.random() * targets.length)]
 
-    // Apply defensive abilities (only if not silenced - but dogs can't be silenced so always check)
+    // Apply defensive abilities - Elite cats get enhanced defenses
     let actualDamage = dmg
+    const tIsElite = t.isElite === true
+    const tEliteTier = t.eliteTier || 0
 
-    // Shield ability - 35% chance to block half damage
-    if (!silenced && t.ability.effect === 'shield' && Math.random() < 0.35) {
-      actualDamage = Math.floor(actualDamage * 0.5)
-      addLog(`${t.name}'s shield blocks half the damage! 🛡️`, 'info')
+    // Shield ability - Elite cats have higher block chance
+    if (!silenced && t.ability.effect === 'shield') {
+      const shieldChance = tIsElite ? (tEliteTier >= 2 ? 0.60 : 0.50) : 0.35
+      if (Math.random() < shieldChance) {
+        actualDamage = Math.floor(actualDamage * 0.5)
+        addLog(`${t.name}'s shield blocks half the damage! 🛡️`, 'info')
+      }
     }
 
-    // Armor ability - Reduce all damage by 3 (minimum 1)
+    // Armor ability - Elite cats absorb more damage
     if (!silenced && t.ability.effect === 'armor') {
-      actualDamage = Math.max(1, actualDamage - 3)
-      addLog(`${t.name}'s armor absorbs 3 damage! 🛡️`, 'info')
+      const armorReduction = tIsElite ? (tEliteTier >= 2 ? 7 : 5) : 3
+      actualDamage = Math.max(1, actualDamage - armorReduction)
+      addLog(`${t.name}'s armor absorbs ${armorReduction} damage! 🛡️`, 'info')
     }
 
     // === DOG ABILITY: Eternal Overlord - Damage Reflect ===
@@ -275,7 +310,17 @@ export default function BattleArena() {
       }
     }
 
-    const newHp = Math.max(0, t.currentHp - actualDamage)
+    let newHp = Math.max(0, t.currentHp - actualDamage)
+
+    // Stellar Resilience - Elite cats have a chance to survive lethal blow
+    if (newHp <= 0 && tIsElite) {
+      const surviveChance = tEliteTier >= 2 ? 0.25 : 0.15
+      if (Math.random() < surviveChance) {
+        newHp = 1
+        addLog(`✨ ${t.name}'s Stellar Resilience triggers! Survives with 1 HP!`, 'heal')
+      }
+    }
+
     updateCatHp(t.instanceId, newHp)
 
     // Find target position (approximate)

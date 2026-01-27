@@ -14,6 +14,9 @@ export interface OwnedCat extends Cat {
   currentAttack: number
   totalBattles?: number
   totalWins?: number
+  isElite?: boolean       // true if created via merge
+  eliteTier?: number      // 1 = Elite, 2 = Prismatic
+  mergedFromIds?: string[] // instanceIds of 3 consumed cats
 }
 
 export interface Achievement {
@@ -33,6 +36,7 @@ export interface GameStats {
   totalCatsCollected: number
   totalCoinsEarned: number
   highestDogDefeated: number
+  totalMerges: number
 }
 
 export interface ProfileMeta {
@@ -78,7 +82,9 @@ interface GameState {
   recordBattleResult: (won:boolean, xpEarned:number)=>void
   claimDailyReward: ()=>boolean
   unlockAchievement: (id:string)=>void
+  updateAchievementProgress: (id:string, progress:number)=>void
   claimAchievement: (id:string)=>void
+  mergeCats: (instanceIds:[string,string,string])=>OwnedCat|null
   completeTutorial: ()=>void
   save: ()=>void
   load: ()=>void
@@ -165,6 +171,10 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
   { id:'level-10', name:'Power Up', description:'Level a cat to level 10', unlocked:false, claimed:false, progress:0, maxProgress:1 },
   { id:'coin-hoarder', name:'Coin Hoarder', description:'Accumulate 1000 coins', unlocked:false, claimed:false, progress:0, maxProgress:1000 },
   { id:'dog-slayer', name:'Dog Slayer', description:'Defeat all dog enemies', unlocked:false, claimed:false, progress:0, maxProgress:DOGS.length },
+  { id:'first-merge', name:'First Fusion', description:'Merge 3 cats into your first Elite', unlocked:false, claimed:false, progress:0, maxProgress:1 },
+  { id:'merge-master', name:'Merge Master', description:'Perform 5 cat merges', unlocked:false, claimed:false, progress:0, maxProgress:5 },
+  { id:'fusion-champion', name:'Fusion Champion', description:'Perform 10 cat merges', unlocked:false, claimed:false, progress:0, maxProgress:10 },
+  { id:'prismatic-power', name:'Prismatic Power', description:'Create a Tier 2 Prismatic cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
 ]
 
 const getInitialGameState = () => ({
@@ -185,6 +195,7 @@ const getInitialGameState = () => ({
     totalCatsCollected: 0,
     totalCoinsEarned: 0,
     highestDogDefeated: -1,
+    totalMerges: 0,
   },
   lastDailyReward: 0,
   difficultyLevel: 0, // For multi-dog battles after beating all dogs
@@ -421,6 +432,90 @@ export const useGame = create<GameState>((set, get) => ({
     return { achievements }
   }),
 
+  updateAchievementProgress: (id, progress)=> set(s=> {
+    const achievements = s.achievements.map(ach => {
+      if (ach.id !== id) return ach
+      const newProgress = Math.min(ach.maxProgress, progress)
+      return {
+        ...ach,
+        progress: newProgress,
+        unlocked: newProgress >= ach.maxProgress ? true : ach.unlocked,
+      }
+    })
+    return { achievements }
+  }),
+
+  mergeCats: (instanceIds)=> {
+    const s = get()
+
+    // Validate: all 3 exist in owned collection
+    const sourceCats = instanceIds.map(id => s.owned.find(c => c.instanceId === id))
+    if (sourceCats.some(c => !c)) return null
+    const cats = sourceCats as OwnedCat[]
+
+    // Validate: all same template id
+    const templateId = cats[0].id
+    if (!cats.every(c => c.id === templateId)) return null
+
+    // Validate: all same elite tier
+    const tier = cats[0].eliteTier || 0
+    if (!cats.every(c => (c.eliteTier || 0) === tier)) return null
+
+    // Validate: cannot merge Tier 2 (max tier)
+    if (tier >= 2) return null
+
+    const newTier = tier + 1
+    const highestLevel = Math.max(...cats.map(c => c.level))
+    const statMultiplier = newTier === 1 ? 1.20 : 1.35
+    const baseCat = CATS.find(c => c.id === templateId)!
+
+    const newMaxHp = Math.floor(calculateStatBoost(baseCat.health, highestLevel) * statMultiplier)
+    const newAttack = Math.floor(calculateStatBoost(baseCat.attack, highestLevel) * statMultiplier)
+
+    const eliteCat: OwnedCat = {
+      ...baseCat,
+      instanceId: crypto.randomUUID(),
+      level: highestLevel,
+      xp: 0,
+      currentHp: newMaxHp,
+      maxHp: newMaxHp,
+      currentAttack: newAttack,
+      totalBattles: 0,
+      totalWins: 0,
+      isElite: true,
+      eliteTier: newTier,
+      mergedFromIds: instanceIds,
+    }
+
+    // Remove consumed cats, clean up battle selection and favorites
+    const consumedSet = new Set(instanceIds)
+    const newOwned = s.owned.filter(c => !consumedSet.has(c.instanceId))
+    newOwned.push(eliteCat)
+
+    const newSelected = s.selectedForBattle.filter(id => !consumedSet.has(id))
+    const newFavorites = s.favorites.filter(id => !consumedSet.has(id))
+    const newMerges = (s.stats.totalMerges || 0) + 1
+    const newStats = { ...s.stats, totalMerges: newMerges }
+
+    set({
+      owned: newOwned,
+      selectedForBattle: newSelected,
+      favorites: newFavorites,
+      stats: newStats,
+    })
+
+    // Check achievements
+    setTimeout(() => {
+      const g = get()
+      g.unlockAchievement('first-merge')
+      g.updateAchievementProgress('merge-master', newMerges)
+      g.updateAchievementProgress('fusion-champion', newMerges)
+      if (newTier === 2) g.unlockAchievement('prismatic-power')
+    }, 100)
+
+    return eliteCat
+  },
+
   claimAchievement: (id)=> set(s=> {
     const ach = s.achievements.find(a => a.id === id)
     if (!ach || !ach.unlocked || ach.claimed) return {}
@@ -472,6 +567,16 @@ export const useGame = create<GameState>((set, get) => ({
     if (!raw) return
     try {
       const d = JSON.parse(raw)
+
+      // Merge saved achievements with INITIAL_ACHIEVEMENTS to pick up new ones
+      const savedAchievements: Achievement[] = d.achievements || []
+      const savedIds = new Set(savedAchievements.map((a: Achievement) => a.id))
+      const mergedAchievements = [
+        ...savedAchievements,
+        ...INITIAL_ACHIEVEMENTS.filter(a => !savedIds.has(a.id)),
+      ]
+
+      const savedStats = d.stats || {}
       set({
         coins: d.coins || 120,
         baits: d.baits || { 'toy-mouse': 1, 'silver-sardine': 1 },
@@ -480,14 +585,15 @@ export const useGame = create<GameState>((set, get) => ({
         difficultyLevel: d.difficultyLevel || 0,
         favorites: d.favorites || [],
         theme: d.theme || 'dark',
-        achievements: d.achievements || INITIAL_ACHIEVEMENTS,
-        stats: d.stats || {
-          totalBattles: 0,
-          totalWins: 0,
-          totalLosses: 0,
-          totalCatsCollected: 0,
-          totalCoinsEarned: 0,
-          highestDogDefeated: -1,
+        achievements: mergedAchievements,
+        stats: {
+          totalBattles: savedStats.totalBattles || 0,
+          totalWins: savedStats.totalWins || 0,
+          totalLosses: savedStats.totalLosses || 0,
+          totalCatsCollected: savedStats.totalCatsCollected || 0,
+          totalCoinsEarned: savedStats.totalCoinsEarned || 0,
+          highestDogDefeated: savedStats.highestDogDefeated ?? -1,
+          totalMerges: savedStats.totalMerges || 0,
         },
         lastDailyReward: d.lastDailyReward || 0,
         tutorialCompleted: d.tutorialCompleted || false,

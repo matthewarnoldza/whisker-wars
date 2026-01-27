@@ -39,11 +39,14 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   const rarityGradient = getRarityGradient(cat.rarity)
   const rarityGlow = getRarityGlow(cat.rarity)
 
-  // Enhanced holographic effect for zoomed view
+  const isElite = cat.isElite === true
+  const eliteTier = cat.eliteTier || 0
+
+  // Enhanced holographic effect for zoomed view - elite cats get max shine
   const holographic = useHolographicCard({
     mode: 'full',
-    maxRotation: 20, // More dramatic in zoom
-    shineIntensity: cat.rarity === 'Mythical' ? 0.9 : cat.rarity === 'Legendary' ? 0.8 : 0.7
+    maxRotation: 20,
+    shineIntensity: isElite ? 0.9 : cat.rarity === 'Mythical' ? 0.9 : cat.rarity === 'Legendary' ? 0.8 : 0.7
   })
 
   return (
@@ -93,12 +96,28 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               )}
 
               {/* Mythical Particles */}
-              {cat.rarity === 'Mythical' && (
+              {cat.rarity === 'Mythical' && !isElite && (
                 <>
                   <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s', zIndex: 30 }} />
                   <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s', zIndex: 30 }} />
                   <div className="absolute bottom-12 left-8 w-2 h-2 bg-rose-500 rounded-full mythical-particle" style={{ animationDelay: '1s', zIndex: 30 }} />
                   <div className="absolute bottom-6 right-4 w-2 h-2 bg-red-600 rounded-full mythical-particle" style={{ animationDelay: '1.5s', zIndex: 30 }} />
+                </>
+              )}
+
+              {/* Elite Particles */}
+              {isElite && (
+                <>
+                  <div className="absolute top-6 left-6 w-2 h-2 bg-yellow-400 rounded-full elite-particle" style={{ animationDelay: '0s', zIndex: 30 }} />
+                  <div className="absolute top-10 right-8 w-2 h-2 bg-cyan-400 rounded-full elite-particle" style={{ animationDelay: '0.4s', zIndex: 30 }} />
+                  <div className="absolute bottom-14 left-10 w-2 h-2 bg-yellow-300 rounded-full elite-particle" style={{ animationDelay: '0.8s', zIndex: 30 }} />
+                  <div className="absolute bottom-8 right-6 w-2 h-2 bg-cyan-300 rounded-full elite-particle" style={{ animationDelay: '1.2s', zIndex: 30 }} />
+                  {eliteTier >= 2 && (
+                    <>
+                      <div className="absolute top-16 left-4 w-2 h-2 bg-pink-400 rounded-full elite-particle" style={{ animationDelay: '0.2s', zIndex: 30 }} />
+                      <div className="absolute bottom-20 right-10 w-2 h-2 bg-purple-400 rounded-full elite-particle" style={{ animationDelay: '0.6s', zIndex: 30 }} />
+                    </>
+                  )}
                 </>
               )}
 
@@ -147,8 +166,21 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               </div>
             </div>
 
+            {/* Elite Badge - Below Card */}
+            {isElite && (
+              <div className="mt-3 sm:mt-4 flex items-center justify-center">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-400 border-2 border-white/50 shadow-xl elite-badge-shimmer">
+                  <span className="text-base text-slate-900">&#x2726;</span>
+                  <span className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                    {eliteTier >= 2 ? 'PRISMATIC' : 'ELITE'}
+                  </span>
+                  <span className="text-base text-slate-900">&#x2726;</span>
+                </div>
+              </div>
+            )}
+
             {/* Breed and Rarity - Below Card */}
-            <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2">
+            <div className={`${isElite ? 'mt-2' : 'mt-3 sm:mt-4'} flex items-center justify-center gap-2`}>
               <div className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gradient-to-br from-slate-800/90 to-slate-900/95 backdrop-blur-md border-2 border-slate-600/50 shadow-xl flex items-center justify-center">
                 <span className="text-sm sm:text-base text-slate-200 uppercase tracking-widest font-bold">
                   {cat.breed}

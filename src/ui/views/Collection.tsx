@@ -3,6 +3,7 @@ import GameCard from '../components/GameCard'
 import Avatar from '../components/Avatar'
 import StatBar from '../components/StatBar'
 import CardZoomModal from '../components/CardZoomModal'
+import MergeCelebrationModal from '../components/MergeCelebrationModal'
 import { useGame } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { containerVariants, cardVariants } from '../animations'
@@ -22,6 +23,7 @@ export default function Collection() {
   const favorites = useGame(s => s.favorites)
   const healAllCats = useGame(s => s.healAllCats)
   const releaseCat = useGame(s => s.releaseCat)
+  const mergeCats = useGame(s => s.mergeCats)
   const coins = useGame(s => s.coins)
 
   const [sortBy, setSortBy] = useState<SortOption>('level')
@@ -31,13 +33,60 @@ export default function Collection() {
   const [zoomedCat, setZoomedCat] = useState<OwnedCat | null>(null)
   const [healFlash, setHealFlash] = useState(false)
 
+  // Merge mode state
+  const [mergeMode, setMergeMode] = useState(false)
+  const [selectedForMerge, setSelectedForMerge] = useState<string[]>([])
+  const [showMergeConfirm, setShowMergeConfirm] = useState(false)
+  const [mergeResultCat, setMergeResultCat] = useState<OwnedCat | null>(null)
+  const [showMergeCelebration, setShowMergeCelebration] = useState(false)
+
   // O(1) lookups instead of O(n) array.includes() in render loop
   const selectedSet = useMemo(() => new Set(selected), [selected])
   const favoritesSet = useMemo(() => new Set(favorites), [favorites])
+  const mergeSelectedSet = useMemo(() => new Set(selectedForMerge), [selectedForMerge])
+
+  // Determine which cats are eligible for merge selection
+  const mergeEligibleSet = useMemo(() => {
+    if (!mergeMode || selectedForMerge.length === 0) return null
+    const firstCat = cats.find(c => c.instanceId === selectedForMerge[0])
+    if (!firstCat) return null
+    return new Set(
+      cats
+        .filter(c => c.id === firstCat.id && (c.eliteTier || 0) === (firstCat.eliteTier || 0))
+        .map(c => c.instanceId)
+    )
+  }, [mergeMode, selectedForMerge, cats])
 
   // Memoized handlers to prevent recreation on every render
   const handleSortChange = useCallback((option: SortOption) => setSortBy(option), [])
   const handleFilterChange = useCallback((option: FilterOption) => setFilterBy(option), [])
+
+  const handleMergeToggle = useCallback(() => {
+    setMergeMode(m => !m)
+    setSelectedForMerge([])
+  }, [])
+
+  const handleMergeSelect = useCallback((instanceId: string) => {
+    setSelectedForMerge(prev => {
+      if (prev.includes(instanceId)) {
+        return prev.filter(id => id !== instanceId)
+      }
+      if (prev.length >= 3) return prev
+      return [...prev, instanceId]
+    })
+  }, [])
+
+  const handleMergeConfirm = useCallback(() => {
+    if (selectedForMerge.length !== 3) return
+    const result = mergeCats(selectedForMerge as [string, string, string])
+    if (result) {
+      setMergeResultCat(result)
+      setShowMergeConfirm(false)
+      setShowMergeCelebration(true)
+      setSelectedForMerge([])
+      setMergeMode(false)
+    }
+  }, [selectedForMerge, mergeCats])
 
   const rarityColors: Record<Rarity, string> = {
     Common: 'text-gray-400 border-gray-500',
@@ -119,11 +168,23 @@ export default function Collection() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50"
+        className={`p-4 rounded-xl ${mergeMode
+          ? 'bg-gradient-to-r from-cyan-500/30 to-teal-500/30 border border-cyan-500/50'
+          : 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50'
+        }`}
       >
         <p className="text-white text-center font-semibold">
-          <span className="text-lg mr-2">⚔️</span>
-          Select up to 3 of your cats for battle by clicking the circles. Heal injured cats before sending them into combat!
+          {mergeMode ? (
+            <>
+              <span className="text-lg mr-2">&#x2726;</span>
+              Select 3 of the same cat to merge into an Elite! {selectedForMerge.length}/3 selected
+            </>
+          ) : (
+            <>
+              <span className="text-lg mr-2">⚔️</span>
+              Select up to 3 of your cats for battle by clicking the circles. Heal injured cats before sending them into combat!
+            </>
+          )}
         </p>
       </motion.div>
 
@@ -228,6 +289,20 @@ export default function Collection() {
             )}
             <span className="relative z-10">💊 Heal All (25💰)</span>
           </motion.button>
+
+          {/* Merge Mode Toggle */}
+          <motion.button
+            onClick={handleMergeToggle}
+            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+              mergeMode
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg'
+                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-cyan-500/50 hover:text-cyan-300'
+            }`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            &#x2726; Merge
+          </motion.button>
         </div>
 
         {/* Row 2: Sort & Filter */}
@@ -307,10 +382,13 @@ export default function Collection() {
           {filteredAndSortedCats.map(cat => {
             const isSelected = selectedSet.has(cat.instanceId)
             const isFavorite = favoritesSet.has(cat.instanceId)
-            const battlePosition = isSelected ? selected.indexOf(cat.instanceId) + 1 : 0 // Only compute if selected
-            const hpPercent = (cat.currentHp / cat.maxHp) * 100
-            const xpForNext = calculateXpForNextLevel(cat.level)
-            const xpPercent = cat.level >= 10 ? 100 : (cat.xp / xpForNext) * 100
+            const battlePosition = isSelected ? selected.indexOf(cat.instanceId) + 1 : 0
+            const isMergeSelected = mergeSelectedSet.has(cat.instanceId)
+            const mergePosition = isMergeSelected ? selectedForMerge.indexOf(cat.instanceId) + 1 : 0
+            // In merge mode, dim ineligible cats (wrong type or wrong tier)
+            const isMergeIneligible = mergeMode && mergeEligibleSet !== null && !mergeEligibleSet.has(cat.instanceId)
+            // Cannot merge Tier 2 cats
+            const isMaxTier = mergeMode && (cat.eliteTier || 0) >= 2
 
             return (
               <motion.div
@@ -319,50 +397,86 @@ export default function Collection() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="relative group"
               >
-                <div className="relative scale-[0.8] sm:scale-100 origin-top-left" style={{ willChange: 'transform' }}>
+                <div className={`relative scale-[0.8] sm:scale-100 origin-top-left transition-opacity ${
+                  isMergeIneligible || isMaxTier ? 'opacity-40' : ''
+                }`} style={{ willChange: 'transform' }}>
 
                   {/* Glow Effect */}
-                  {isSelected && (
+                  {(isSelected && !mergeMode) && (
                     <div className="absolute -inset-4 bg-gradient-to-r from-gold-500/30 to-purple-500/30 rounded-2xl blur-xl" />
+                  )}
+                  {isMergeSelected && (
+                    <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/30 to-teal-500/30 rounded-2xl blur-xl" />
                   )}
 
                   <GameCard
                     character={cat}
-                    selected={isSelected}
+                    selected={mergeMode ? isMergeSelected : isSelected}
                     onClick={() => setZoomedCat(cat)}
                     holographicMode="subtle"
                     disabled={false}
                   />
 
-                  {/* Battle Selection Checkbox - Top Left */}
-                  <motion.button
-                    onTouchEnd={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (isSelected || selected.length < 3) {
-                        toggle(cat.instanceId)
-                      }
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (isSelected || selected.length < 3) {
-                        toggle(cat.instanceId)
-                      }
-                    }}
-                    disabled={!isSelected && selected.length >= 3}
-                    className={`absolute top-2 left-2 z-20 w-12 h-12 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
-                      isSelected
-                        ? 'bg-gold-500 text-slate-900 shadow-glow-gold border-2 border-gold-300'
-                        : selected.length >= 3
-                        ? 'bg-slate-700/50 text-slate-500 border-2 border-slate-600 cursor-not-allowed'
-                        : 'bg-slate-800/80 text-slate-300 border-2 border-slate-600 hover:border-gold-500 hover:bg-slate-700'
-                    }`}
-                    whileHover={isSelected || selected.length < 3 ? { scale: 1.1 } : {}}
-                    whileTap={isSelected || selected.length < 3 ? { scale: 0.9 } : {}}
-                  >
-                    {isSelected ? battlePosition : ''}
-                  </motion.button>
+                  {/* Selection Circle - Top Left */}
+                  {mergeMode ? (
+                    /* Merge Selection Circle */
+                    <motion.button
+                      onTouchEnd={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (isMergeIneligible || isMaxTier) return
+                        handleMergeSelect(cat.instanceId)
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (isMergeIneligible || isMaxTier) return
+                        handleMergeSelect(cat.instanceId)
+                      }}
+                      disabled={isMergeIneligible || isMaxTier || (!isMergeSelected && selectedForMerge.length >= 3)}
+                      className={`absolute top-2 left-2 z-20 w-12 h-12 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
+                        isMergeSelected
+                          ? 'bg-cyan-500 text-slate-900 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-300'
+                          : isMergeIneligible || isMaxTier || selectedForMerge.length >= 3
+                          ? 'bg-slate-700/50 text-slate-500 border-2 border-slate-600 cursor-not-allowed'
+                          : 'bg-slate-800/80 text-slate-300 border-2 border-cyan-600/50 hover:border-cyan-500 hover:bg-slate-700'
+                      }`}
+                      whileHover={!isMergeIneligible && !isMaxTier ? { scale: 1.1 } : {}}
+                      whileTap={!isMergeIneligible && !isMaxTier ? { scale: 0.9 } : {}}
+                    >
+                      {isMergeSelected ? mergePosition : ''}
+                    </motion.button>
+                  ) : (
+                    /* Battle Selection Checkbox */
+                    <motion.button
+                      onTouchEnd={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (isSelected || selected.length < 3) {
+                          toggle(cat.instanceId)
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (isSelected || selected.length < 3) {
+                          toggle(cat.instanceId)
+                        }
+                      }}
+                      disabled={!isSelected && selected.length >= 3}
+                      className={`absolute top-2 left-2 z-20 w-12 h-12 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
+                        isSelected
+                          ? 'bg-gold-500 text-slate-900 shadow-glow-gold border-2 border-gold-300'
+                          : selected.length >= 3
+                          ? 'bg-slate-700/50 text-slate-500 border-2 border-slate-600 cursor-not-allowed'
+                          : 'bg-slate-800/80 text-slate-300 border-2 border-slate-600 hover:border-gold-500 hover:bg-slate-700'
+                      }`}
+                      whileHover={isSelected || selected.length < 3 ? { scale: 1.1 } : {}}
+                      whileTap={isSelected || selected.length < 3 ? { scale: 0.9 } : {}}
+                    >
+                      {isSelected ? battlePosition : ''}
+                    </motion.button>
+                  )}
 
                   {/* Favorite Star - Top Right (below delete when hovered) */}
                   <motion.button
@@ -406,11 +520,159 @@ export default function Collection() {
         </AnimatePresence>
       </motion.div>
 
+      {/* Merge Button - Fixed at Bottom */}
+      <AnimatePresence>
+        {mergeMode && selectedForMerge.length === 3 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+          >
+            <motion.button
+              onClick={() => setShowMergeConfirm(true)}
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 text-white font-black text-lg tracking-wider uppercase shadow-2xl border-2 border-white/30"
+              style={{ animation: 'merge-pulse 2s ease-in-out infinite' }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              &#x2726; {(() => {
+                const firstCat = cats.find(c => c.instanceId === selectedForMerge[0])
+                return (firstCat?.eliteTier || 0) >= 1 ? 'MERGE INTO PRISMATIC' : 'MERGE INTO ELITE'
+              })()}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Merge Confirmation Modal */}
+      <AnimatePresence>
+        {showMergeConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+            onClick={() => setShowMergeConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-slate-900 border-2 border-cyan-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-2xl font-black text-center text-cyan-400 mb-4 tracking-wider uppercase">
+                Confirm Merge
+              </h3>
+
+              {/* Selected Cards Preview */}
+              <div className="flex justify-center gap-2 mb-4">
+                {selectedForMerge.map((id, i) => {
+                  const cat = cats.find(c => c.instanceId === id)
+                  if (!cat) return null
+                  return (
+                    <div key={id} className="text-center">
+                      <div className="w-20 h-32 rounded-lg overflow-hidden border border-slate-600">
+                        <GameCard character={cat} showStats={false} animate={false} holographicMode="none" />
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 block">Lv.{cat.level}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Arrow */}
+              <div className="text-center text-3xl text-cyan-400 mb-4">&#x2193;</div>
+
+              {/* Result Preview */}
+              {(() => {
+                const firstCat = cats.find(c => c.instanceId === selectedForMerge[0])
+                if (!firstCat) return null
+                const currentTier = firstCat.eliteTier || 0
+                const newTier = currentTier + 1
+                const isPrismatic = newTier >= 2
+                const multiplier = isPrismatic ? 1.35 : 1.20
+                const highestLevel = Math.max(...selectedForMerge.map(id => cats.find(c => c.instanceId === id)?.level || 1))
+                const baseCat = CATS.find(c => c.id === firstCat.id)
+                const baseHp = baseCat?.health || firstCat.health
+                const baseAtk = baseCat?.attack || firstCat.attack
+                const boostHp = Math.floor((baseHp + (highestLevel - 1) * (baseHp * 0.15)) * multiplier)
+                const boostAtk = Math.floor((baseAtk + (highestLevel - 1) * (baseAtk * 0.15)) * multiplier)
+
+                return (
+                  <div className="text-center mb-4">
+                    <div className={`inline-block px-3 py-1 rounded-lg ${isPrismatic
+                      ? 'bg-gradient-to-r from-yellow-500 via-cyan-500 to-purple-500'
+                      : 'bg-gradient-to-r from-yellow-500 to-amber-400'
+                    } mb-2`}>
+                      <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        {isPrismatic ? 'PRISMATIC' : 'ELITE'} {firstCat.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-center gap-4 mt-2">
+                      <div className="text-center">
+                        <span className="text-amber-400 font-black text-lg">{boostAtk}</span>
+                        <span className="text-[10px] text-amber-300 block">ATK</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-emerald-400 font-black text-lg">{boostHp}</span>
+                        <span className="text-[10px] text-emerald-300 block">HP</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-purple-400 font-black text-lg">{highestLevel}</span>
+                        <span className="text-[10px] text-purple-300 block">LVL</span>
+                      </div>
+                    </div>
+                    <p className="text-cyan-300 text-xs mt-2">+{isPrismatic ? '35' : '20'}% stats boost</p>
+                  </div>
+                )
+              })()}
+
+              {/* Warning */}
+              <p className="text-red-400 text-center text-sm mb-4 font-semibold">
+                This will permanently consume these 3 cats!
+              </p>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <motion.button
+                  onClick={() => setShowMergeConfirm(false)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-slate-700 text-slate-300 font-bold text-sm hover:bg-slate-600 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  onClick={handleMergeConfirm}
+                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-black text-sm shadow-lg"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  &#x2726; Merge!
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Card Zoom Modal */}
       <CardZoomModal
         cat={zoomedCat}
         isOpen={zoomedCat !== null}
         onClose={() => setZoomedCat(null)}
+      />
+
+      {/* Merge Celebration Modal */}
+      <MergeCelebrationModal
+        eliteCat={mergeResultCat}
+        isOpen={showMergeCelebration}
+        onClose={() => {
+          setShowMergeCelebration(false)
+          setMergeResultCat(null)
+        }}
       />
     </div>
   )

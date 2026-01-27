@@ -48,12 +48,14 @@ export default React.memo(function GameCard({
 
     const isCat = !isEnemy
     const rarity = (character as Cat).rarity || 'Common'
+    const isElite = (character as any).isElite === true
+    const eliteTier = (character as any).eliteTier || 0
 
-    // Holographic effect
+    // Holographic effect - elite cats get max shine intensity
     const holographic = useHolographicCard({
         mode: holographicMode === 'none' ? 'subtle' : holographicMode,
         maxRotation: holographicMode === 'full' ? 15 : 8,
-        shineIntensity: rarity === 'Mythical' ? 0.8 : rarity === 'Legendary' ? 0.7 : 0.6,
+        shineIntensity: isElite ? 0.9 : rarity === 'Mythical' ? 0.8 : rarity === 'Legendary' ? 0.7 : 0.6,
         enableMobile: !disabled && animate && holographicMode !== 'none',
         enableWeb: !disabled && animate && holographicMode !== 'none'
     })
@@ -62,8 +64,10 @@ export default React.memo(function GameCard({
     const rarityGlow = RARITY_GLOWS[rarity] || RARITY_GLOWS['Common']
 
     // Determine if card should have special animations
-    const hasSpecialGlow = rarity === 'Mythical' || rarity === 'Legendary'
-    const rarityAnimationClass = rarity === 'Mythical' ? 'mythical-glow' : rarity === 'Legendary' ? 'legendary-glow' : ''
+    const hasSpecialGlow = rarity === 'Mythical' || rarity === 'Legendary' || isElite
+    const rarityAnimationClass = isElite
+        ? (eliteTier >= 2 ? 'prismatic-glow' : 'elite-glow')
+        : rarity === 'Mythical' ? 'mythical-glow' : rarity === 'Legendary' ? 'legendary-glow' : ''
 
     return (
         <motion.div
@@ -97,13 +101,39 @@ export default React.memo(function GameCard({
             )}
 
             {/* Mythical Particles */}
-            {rarity === 'Mythical' && (
+            {rarity === 'Mythical' && !isElite && (
                 <>
                     <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s' }} />
                     <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s' }} />
                     <div className="absolute bottom-12 left-8 w-2 h-2 bg-rose-500 rounded-full mythical-particle" style={{ animationDelay: '1s' }} />
                     <div className="absolute bottom-6 right-4 w-2 h-2 bg-red-600 rounded-full mythical-particle" style={{ animationDelay: '1.5s' }} />
                 </>
+            )}
+
+            {/* Elite Particles */}
+            {isElite && (
+                <>
+                    <div className="absolute top-6 left-6 w-2 h-2 bg-yellow-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0s' }} />
+                    <div className="absolute top-10 right-8 w-2 h-2 bg-cyan-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.4s' }} />
+                    <div className="absolute bottom-14 left-10 w-2 h-2 bg-yellow-300 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.8s' }} />
+                    <div className="absolute bottom-8 right-6 w-2 h-2 bg-cyan-300 rounded-full elite-particle z-[4]" style={{ animationDelay: '1.2s' }} />
+                    {eliteTier >= 2 && (
+                        <>
+                            <div className="absolute top-16 left-4 w-2 h-2 bg-pink-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.2s' }} />
+                            <div className="absolute bottom-20 right-10 w-2 h-2 bg-purple-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.6s' }} />
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* Elite Badge */}
+            {isElite && (
+                <div className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-md bg-gradient-to-r from-yellow-500 to-amber-400 border border-white/50 shadow-lg">
+                    <span className="text-xs text-slate-900">&#x2726;</span>
+                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-wider">
+                        {eliteTier >= 2 ? 'PRISMATIC' : 'ELITE'}
+                    </span>
+                </div>
             )}
 
             {/* Card Container with Rarity Glow */}

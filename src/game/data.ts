@@ -118,6 +118,14 @@ export const DOGS: Dog[] = [
   { id:'eternal-overlord', name:'Eternal Overlord', health: 400, attack: 18, ability:{name:'Apocalypse Aura', description:'Damages all cats + reflects 20% damage'}, imageUrl:'/images/dogs/Eternal Overlord.png' },
 ]
 
+export const TRAINING_DOG: Dog = {
+  id: 'training-dog',
+  name: 'Training Dummy',
+  health: 25,
+  attack: 0,
+  imageUrl: '/images/dogs/Training Dog.png',
+}
+
 export const rarityByTier = (tier:number): Rarity[] => {
   switch (tier) {
     case 1: return ['Common','Uncommon']

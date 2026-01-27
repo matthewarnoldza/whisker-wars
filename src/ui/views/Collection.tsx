@@ -295,8 +295,8 @@ export default function Collection() {
             onClick={handleMergeToggle}
             className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
               mergeMode
-                ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg'
-                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-cyan-500/50 hover:text-cyan-300'
+                ? 'bg-gradient-to-r from-yellow-500 to-amber-400 text-slate-900 shadow-lg'
+                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-yellow-500/50 hover:text-yellow-300'
             }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

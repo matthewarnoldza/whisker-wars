@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
 
-export type View = 'bait' | 'collection' | 'battle' | 'stats' | 'privacy' | 'terms'
+export type View = 'bait' | 'collection' | 'battle' | 'training' | 'stats' | 'privacy' | 'terms'
 
 export interface OwnedCat extends Cat {
   instanceId: string // Unique identifier for this specific cat instance
@@ -66,6 +66,7 @@ interface GameState {
   stats: GameStats
   lastDailyReward: number
   tutorialCompleted: boolean
+  trainingCooldowns: Record<string, number[]>
   setView: (v:View)=>void
   addCoins: (n:number)=>void
   buyBait: (baitId:string)=>void
@@ -86,6 +87,8 @@ interface GameState {
   claimAchievement: (id:string)=>void
   mergeCats: (instanceIds:[string,string,string])=>OwnedCat|null
   completeTutorial: ()=>void
+  recordTrainingComplete: (instanceId:string)=>void
+  getTrainingSessions: (instanceId:string)=>{ remaining:number, nextAvailable:number|null }
   save: ()=>void
   load: ()=>void
   setTheme: (t:'light'|'dark')=>void
@@ -200,6 +203,7 @@ const getInitialGameState = () => ({
   lastDailyReward: 0,
   difficultyLevel: 0, // For multi-dog battles after beating all dogs
   tutorialCompleted: false,
+  trainingCooldowns: {} as Record<string, number[]>,
 })
 
 export const useGame = create<GameState>((set, get) => ({
@@ -532,6 +536,33 @@ export const useGame = create<GameState>((set, get) => ({
 
   completeTutorial: ()=> set({ tutorialCompleted: true }),
 
+  recordTrainingComplete: (instanceId)=> set(s => {
+    const now = Date.now()
+    const oneDayMs = 24 * 60 * 60 * 1000
+    const existing = (s.trainingCooldowns[instanceId] || []).filter(t => now - t < oneDayMs)
+    if (existing.length >= 3) return s
+    return {
+      trainingCooldowns: {
+        ...s.trainingCooldowns,
+        [instanceId]: [...existing, now],
+      }
+    }
+  }),
+
+  getTrainingSessions: (instanceId)=> {
+    const s = get()
+    const now = Date.now()
+    const oneDayMs = 24 * 60 * 60 * 1000
+    const sessions = (s.trainingCooldowns[instanceId] || []).filter(t => now - t < oneDayMs)
+    const remaining = Math.max(0, 3 - sessions.length)
+    let nextAvailable: number | null = null
+    if (remaining === 0 && sessions.length > 0) {
+      const earliest = Math.min(...sessions)
+      nextAvailable = earliest + oneDayMs
+    }
+    return { remaining, nextAvailable }
+  },
+
   save: ()=> {
     const profilesData = getProfilesData()
     if (!profilesData.activeProfileId) return
@@ -549,6 +580,7 @@ export const useGame = create<GameState>((set, get) => ({
       stats: s.stats,
       lastDailyReward: s.lastDailyReward,
       tutorialCompleted: s.tutorialCompleted,
+      trainingCooldowns: s.trainingCooldowns,
     })
     localStorage.setItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`, payload)
 
@@ -597,6 +629,7 @@ export const useGame = create<GameState>((set, get) => ({
         },
         lastDailyReward: d.lastDailyReward || 0,
         tutorialCompleted: d.tutorialCompleted || false,
+        trainingCooldowns: d.trainingCooldowns || {},
       })
     } catch {}
   },

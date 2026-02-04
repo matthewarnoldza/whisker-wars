@@ -3,6 +3,7 @@ import { useGame } from '../../game/store'
 import type { ProfileMeta } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { trackProfileSwitched } from '../../utils/analytics'
+import SaveCodeModal from './SaveCodeModal'
 
 interface ProfileSelectorProps {
   onProfileSelected: () => void
@@ -20,6 +21,7 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
   const [editName, setEditName] = useState('')
   const [creatingNew, setCreatingNew] = useState(false)
   const [newProfileName, setNewProfileName] = useState('')
+  const [saveCodeModal, setSaveCodeModal] = useState<{ open: boolean; mode: 'generate' | 'restore'; profileId?: string }>({ open: false, mode: 'generate' })
 
   const handleSelectProfile = (profileId: string) => {
     trackProfileSwitched(profileId)
@@ -64,6 +66,22 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
     }
     setEditingId(null)
     setEditName('')
+  }
+
+  const handleGetCode = (profileId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    // First load the profile so we can export its data
+    loadProfile(profileId)
+    setSaveCodeModal({ open: true, mode: 'generate', profileId })
+  }
+
+  const handleRestoreCode = () => {
+    setSaveCodeModal({ open: true, mode: 'restore' })
+  }
+
+  const handleRestoreComplete = () => {
+    setProfiles(getProfiles())
+    onProfileSelected()
   }
 
   const formatDate = (timestamp: number) => {
@@ -130,10 +148,16 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
 
                     <div className="flex gap-2">
                       <button
-                        onClick={(e) => handleRename(profile.id, e)}
-                        className="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded font-bold text-sm transition-all"
+                        onClick={(e) => handleGetCode(profile.id, e)}
+                        className="flex-1 px-3 py-2 bg-blue-900/50 hover:bg-blue-800 text-blue-200 rounded font-bold text-sm transition-all"
                       >
-                        ✏️ Rename
+                        📋 Code
+                      </button>
+                      <button
+                        onClick={(e) => handleRename(profile.id, e)}
+                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded font-bold text-sm transition-all"
+                      >
+                        ✏️
                       </button>
                       <button
                         onClick={(e) => handleDeleteProfile(profile.id, e)}
@@ -221,8 +245,29 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
               </button>
             </div>
           )}
+
+          {/* Restore from Save Code Section */}
+          <div className="border-t border-slate-700 pt-6 mt-6">
+            <div className="text-center">
+              <p className="text-slate-400 text-sm mb-3">Have a save code from another device?</p>
+              <button
+                onClick={handleRestoreCode}
+                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all inline-flex items-center gap-2"
+              >
+                📋 Enter Save Code
+              </button>
+            </div>
+          </div>
         </div>
       </motion.div>
+
+      {/* Save Code Modal */}
+      <SaveCodeModal
+        isOpen={saveCodeModal.open}
+        onClose={() => setSaveCodeModal({ ...saveCodeModal, open: false })}
+        mode={saveCodeModal.mode}
+        onRestoreComplete={handleRestoreComplete}
+      />
     </div>
   )
 }

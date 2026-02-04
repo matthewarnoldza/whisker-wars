@@ -15,9 +15,12 @@ import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
 import WelcomeTutorialModal from './components/WelcomeTutorialModal'
 import SplashScreen from './components/SplashScreen'
+import StorageWarning from './components/StorageWarning'
+import SaveCodeModal from './components/SaveCodeModal'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 import { isWeb } from '../utils/platform'
+import { getStorageHealth } from '../utils/storage'
 import {
   trackPageView,
   trackTabNavigation,
@@ -157,6 +160,8 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(isWeb())
   const [splashCompleted, setSplashCompleted] = useState(!isWeb())
   const [isPublicPage, setIsPublicPage] = useState(false)
+  const [showStorageWarning, setShowStorageWarning] = useState(false)
+  const [showSaveCodeModal, setShowSaveCodeModal] = useState(false)
 
   // Sync view with URL hash
   useEffect(() => {
@@ -230,6 +235,14 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.add('dark')
   }, [])
+
+  // Check storage health on mount
+  useEffect(() => {
+    const health = getStorageHealth()
+    if (!health.healthy && profileLoaded) {
+      setShowStorageWarning(true)
+    }
+  }, [profileLoaded])
 
   return (
     <>
@@ -316,13 +329,20 @@ export default function App() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
                         {/* Simple user profile icon */}
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                       </svg>
-                      <span className="text-xs font-bold text-purple-300 hidden sm:inline">
-                        {getCurrentProfile()?.name}
+                      <span className="hidden sm:flex items-center gap-2">
+                        <span className="text-sm font-bold text-purple-300">
+                          {getCurrentProfile()?.name}
+                        </span>
+                        {getCurrentProfile()?.cloudCode && (
+                          <span className="text-sm font-black text-gold-400 font-mono">
+                            {getCurrentProfile()?.cloudCode}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </motion.button>
@@ -473,9 +493,27 @@ export default function App() {
             if (isNewProfile && !tutorialCompleted) {
               setTimeout(() => setShowWelcomeTutorial(true), 800)
             }
+
+            // Check storage health after profile loads
+            const health = getStorageHealth()
+            if (!health.healthy) {
+              setTimeout(() => setShowStorageWarning(true), 1500)
+            }
           }}
         />
       )}
+
+      {/* Storage Warning Banner */}
+      {showStorageWarning && profileLoaded && !isPublicPage && (
+        <StorageWarning onGetCode={() => setShowSaveCodeModal(true)} />
+      )}
+
+      {/* Save Code Modal (opened from storage warning) */}
+      <SaveCodeModal
+        isOpen={showSaveCodeModal}
+        onClose={() => setShowSaveCodeModal(false)}
+        mode="generate"
+      />
     </>
   )
 }

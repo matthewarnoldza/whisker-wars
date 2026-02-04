@@ -55,6 +55,7 @@ export interface ProfileMeta {
   name: string
   created: number
   lastPlayed: number
+  cloudCode?: string // Persistent save code for cloud backup
 }
 
 export interface ProfilesData {
@@ -111,6 +112,7 @@ interface GameState {
   loadProfile: (profileId:string)=>void
   deleteProfile: (profileId:string)=>void
   renameProfile: (profileId:string, name:string)=>void
+  setProfileCloudCode: (code:string)=>void
 }
 
 const rand = (min:number, max:number)=> Math.floor(Math.random()*(max-min+1))+min
@@ -712,6 +714,15 @@ export const useGame = create<GameState>((set, get) => ({
     const data = getProfilesData()
     data.profiles = data.profiles.map(p =>
       p.id === profileId ? { ...p, name } : p
+    )
+    saveProfilesData(data)
+  },
+
+  setProfileCloudCode: (code)=> {
+    const data = getProfilesData()
+    if (!data.activeProfileId) return
+    data.profiles = data.profiles.map(p =>
+      p.id === data.activeProfileId ? { ...p, cloudCode: code } : p
     )
     saveProfilesData(data)
   },

@@ -4,6 +4,7 @@ import type { ProfileMeta } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { trackProfileSwitched } from '../../utils/analytics'
 import SaveCodeModal from './SaveCodeModal'
+import { uploadSave, CloudSaveData } from '../../utils/cloudSave'
 
 interface ProfileSelectorProps {
   onProfileSelected: () => void
@@ -29,13 +30,39 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
     onProfileSelected()
   }
 
-  const handleCreateProfile = () => {
+  const handleCreateProfile = async () => {
     if (!newProfileName.trim()) return
     const profileId = createProfile(newProfileName.trim())
+    loadProfile(profileId)
+
+    // Auto-generate cloud code for new profile
+    const state = useGame.getState()
+    const profile = state.getCurrentProfile()
+    if (profile) {
+      const saveData: CloudSaveData = {
+        coins: state.coins,
+        baits: state.baits,
+        owned: state.owned,
+        dogIndex: state.dogIndex,
+        difficultyLevel: state.difficultyLevel,
+        favorites: state.favorites,
+        theme: state.theme,
+        achievements: state.achievements,
+        stats: state.stats,
+        lastDailyReward: state.lastDailyReward,
+        tutorialCompleted: state.tutorialCompleted,
+        trainingCooldowns: state.trainingCooldowns
+      }
+      const result = await uploadSave(saveData, profile)
+      if (result.success && result.code && result.isNew) {
+        state.setProfileCloudCode(result.code)
+      }
+    }
+
     setProfiles(getProfiles())
     setCreatingNew(false)
     setNewProfileName('')
-    handleSelectProfile(profileId)
+    onProfileSelected()
   }
 
   const handleDeleteProfile = (profileId: string, e: React.MouseEvent) => {

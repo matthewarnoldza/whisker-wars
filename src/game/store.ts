@@ -598,10 +598,12 @@ export const useGame = create<GameState>((set, get) => ({
       coins: s.coins,
       baits: s.baits,
       owned: s.owned,
+      selectedForBattle: s.selectedForBattle,
       dogIndex: s.dogIndex,
       difficultyLevel: s.difficultyLevel,
       favorites: s.favorites,
       theme: s.theme,
+      soundEnabled: s.soundEnabled,
       achievements: s.achievements,
       stats: s.stats,
       lastDailyReward: s.lastDailyReward,
@@ -627,37 +629,51 @@ export const useGame = create<GameState>((set, get) => ({
       const d = JSON.parse(raw)
 
       // Merge saved achievements with INITIAL_ACHIEVEMENTS to pick up new ones
-      const savedAchievements: Achievement[] = d.achievements || []
+      const savedAchievements: Achievement[] = d.achievements ?? []
       const savedIds = new Set(savedAchievements.map((a: Achievement) => a.id))
       const mergedAchievements = [
         ...savedAchievements,
         ...INITIAL_ACHIEVEMENTS.filter(a => !savedIds.has(a.id)),
       ]
 
-      const savedStats = d.stats || {}
+      // Normalize owned cat data to ensure all optional fields have defaults
+      const normalizedOwned: OwnedCat[] = (d.owned ?? []).map((cat: OwnedCat) => ({
+        ...cat,
+        totalBattles: cat.totalBattles ?? 0,
+        totalWins: cat.totalWins ?? 0,
+        isElite: cat.isElite ?? false,
+        eliteTier: cat.eliteTier ?? 0,
+        mergedFromIds: cat.mergedFromIds ?? [],
+      }))
+
+      const savedStats = d.stats ?? {}
       set({
-        coins: d.coins || 120,
-        baits: d.baits || { 'toy-mouse': 1, 'silver-sardine': 1 },
-        owned: d.owned || [],
-        dogIndex: d.dogIndex || 0,
-        difficultyLevel: d.difficultyLevel || 0,
-        favorites: d.favorites || [],
-        theme: d.theme || 'dark',
+        coins: d.coins ?? 120,
+        baits: d.baits ?? { 'toy-mouse': 1, 'silver-sardine': 1 },
+        owned: normalizedOwned,
+        selectedForBattle: d.selectedForBattle ?? [],
+        dogIndex: d.dogIndex ?? 0,
+        difficultyLevel: d.difficultyLevel ?? 0,
+        favorites: d.favorites ?? [],
+        theme: d.theme ?? 'dark',
+        soundEnabled: d.soundEnabled ?? true,
         achievements: mergedAchievements,
         stats: {
-          totalBattles: savedStats.totalBattles || 0,
-          totalWins: savedStats.totalWins || 0,
-          totalLosses: savedStats.totalLosses || 0,
-          totalCatsCollected: savedStats.totalCatsCollected || 0,
-          totalCoinsEarned: savedStats.totalCoinsEarned || 0,
+          totalBattles: savedStats.totalBattles ?? 0,
+          totalWins: savedStats.totalWins ?? 0,
+          totalLosses: savedStats.totalLosses ?? 0,
+          totalCatsCollected: savedStats.totalCatsCollected ?? 0,
+          totalCoinsEarned: savedStats.totalCoinsEarned ?? 0,
           highestDogDefeated: savedStats.highestDogDefeated ?? -1,
-          totalMerges: savedStats.totalMerges || 0,
+          totalMerges: savedStats.totalMerges ?? 0,
         },
-        lastDailyReward: d.lastDailyReward || 0,
-        tutorialCompleted: d.tutorialCompleted || false,
-        trainingCooldowns: d.trainingCooldowns || {},
+        lastDailyReward: d.lastDailyReward ?? 0,
+        tutorialCompleted: d.tutorialCompleted ?? false,
+        trainingCooldowns: d.trainingCooldowns ?? {},
       })
-    } catch {}
+    } catch (error) {
+      console.error('Failed to load save data:', error)
+    }
   },
   setTheme: (t)=> set({ theme: t }),
   toggleSound: ()=> set(s=> ({ soundEnabled: !s.soundEnabled })),
@@ -674,15 +690,21 @@ export const useGame = create<GameState>((set, get) => ({
 
   createProfile: (name)=> {
     const data = getProfilesData()
-    const profileNumber = data.profiles.length + 1
+    const profileId = crypto.randomUUID()
     const newProfile: ProfileMeta = {
-      id: `profile-${profileNumber}`,
-      name: name || `Player ${profileNumber}`,
+      id: profileId,
+      name: name || `Player ${data.profiles.length + 1}`,
       created: Date.now(),
       lastPlayed: Date.now()
     }
     data.profiles.push(newProfile)
+    data.activeProfileId = profileId
     saveProfilesData(data)
+
+    // Immediately save initial game state so it's not lost if browser closes
+    set(getInitialGameState())
+    get().save()
+
     trackProfileCreated(newProfile.id)
     return newProfile.id
   },

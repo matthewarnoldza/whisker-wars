@@ -478,7 +478,7 @@ export default function App() {
           onProfileSelected={() => {
             setShowProfileSelector(false)
             setProfileLoaded(true)
-            load()
+            // load() is already called by loadProfile() in ProfileSelector - no double load
             trackProfileSwitched(getCurrentProfile()?.id || 'unknown')
 
             const currentProfile = getCurrentProfile()

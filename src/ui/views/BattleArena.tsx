@@ -87,6 +87,14 @@ export default function BattleArena() {
   const [dogArmor, setDogArmor] = useState(0) // Crystal Guardian ability
   const [dotEffects, setDotEffects] = useState<{ catId: string; turnsLeft: number; dmgPerTurn: number; type: string }[]>([]) // poison/burn
   const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({}) // catInstanceId -> turns remaining
+  // Read fresh HP from the Zustand store (avoids stale closure values)
+  const isAllPartyDead = () => {
+    const fresh = useGame.getState().owned
+    return fresh
+      .filter(o => selectedForBattle.includes(o.instanceId))
+      .every(c => c.currentHp <= 0)
+  }
+
   const ABILITY_COOLDOWN = 3 // Turns between active ability uses
   // Stone activation state
   const [stoneActivated, setStoneActivated] = useState<Record<string, boolean>>({})
@@ -178,6 +186,10 @@ export default function BattleArena() {
         .map(d => ({ ...d, turnsLeft: d.turnsLeft - 1 }))
         .filter(d => d.turnsLeft > 0)
       )
+      // Check if DOT killed all cats
+      if (isAllPartyDead()) {
+        handleDefeat()
+      }
     }
   }, [turn])
 
@@ -616,8 +628,7 @@ export default function BattleArena() {
         updateCatHp(cat.instanceId, newHp)
       })
       setAttackingId(null)
-      const allDead = targets.every(c => c.currentHp <= 0)
-      if (allDead) { handleDefeat() } else { setTurn('player') }
+      if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
       return
     }
 
@@ -634,8 +645,7 @@ export default function BattleArena() {
       setDogArmor(a => a + 3)
       addLog(`🛡️ ${dog.name} gains 3 armor!`, 'info')
       setAttackingId(null)
-      const allDead = targets.every(c => c.currentHp <= 0)
-      if (allDead) { handleDefeat() } else { setTurn('player') }
+      if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
       return
     }
 
@@ -643,7 +653,9 @@ export default function BattleArena() {
     if (dog.id === 'infernal-cerberus') {
       addLog(`🔥🔥🔥 Triple Hellfire! 3 attacks!`, 'crit')
       for (let strike = 0; strike < 3; strike++) {
-        const alive = party.filter(c => c.currentHp > 0)
+        // Read fresh HP from store each strike (previous strikes update store)
+        const freshOwned = useGame.getState().owned
+        const alive = freshOwned.filter(o => selectedForBattle.includes(o.instanceId) && o.currentHp > 0)
         if (!alive.length) break
         const target = alive[Math.floor(Math.random() * alive.length)]
         const strikeDmg = Math.floor(dmg * 0.6)
@@ -654,8 +666,7 @@ export default function BattleArena() {
         addLog(`🔥 Strike ${strike + 1} hits ${target.name} for ${defense.actualDamage}!`, 'damage')
       }
       setAttackingId(null)
-      const allDead = party.every(c => c.currentHp <= 0)
-      if (allDead) { handleDefeat() } else { setTurn('player') }
+      if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
       return
     }
 
@@ -834,13 +845,8 @@ export default function BattleArena() {
 
     setAttackingId(null)
 
-    // Check Defeat (re-check all cats after all damage)
-    const allDead = party.every(c => {
-      if (c.instanceId === t.instanceId) return newHp <= 0
-      return c.currentHp <= 0
-    })
-
-    if (allDead) {
+    // Check defeat using fresh store state (avoids stale closure HP values)
+    if (isAllPartyDead()) {
       handleDefeat()
     } else {
       setTurn('player')

@@ -98,7 +98,7 @@ function AchievementsButton() {
     <>
       <motion.button
         onClick={() => { trackAchievementsModalOpened(); setShowAchievements(true) }}
-        className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group"
+        className="px-3 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group flex items-center"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -185,7 +185,7 @@ function SoundToggle() {
   return (
     <motion.button
       onClick={toggleSound}
-      className="px-2.5 py-1.5 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all"
+      className="px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all flex items-center justify-center"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
@@ -229,7 +229,7 @@ function MusicToggle() {
   return (
     <motion.button
       onClick={handleToggle}
-      className="relative px-2.5 py-1.5 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all"
+      className="relative px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all flex items-center justify-center"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label={musicEnabled ? 'Stop music' : 'Play music'}
@@ -427,10 +427,26 @@ export default function App() {
 
               {/* Right: User Controls */}
               <div className="flex items-center gap-2 sm:gap-3">
+                <motion.div
+                  className="px-3 sm:px-4 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative overflow-hidden group flex items-center"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
+                  <div className="relative flex items-center gap-1.5">
+                    <span className="text-lg drop-shadow-md">🪙</span>
+                    <span className="text-base sm:text-lg font-black text-gold-100 drop-shadow-md tracking-wide">
+                      {coins}
+                    </span>
+                  </div>
+                </motion.div>
+                <AchievementsButton />
+                <SoundToggle />
+                <MusicToggle />
                 {profileLoaded && (
                   <motion.button
                     onClick={() => setShowProfileSelector(true)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-purple-500/50 transition-all"
+                    className="px-3 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-purple-500/50 transition-all flex items-center"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -452,25 +468,9 @@ export default function App() {
                     </div>
                   </motion.button>
                 )}
-                <motion.div
-                  className="px-3 sm:px-4 py-1.5 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative overflow-hidden group"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
-                  <div className="relative flex items-center gap-1.5">
-                    <span className="text-lg drop-shadow-md">🪙</span>
-                    <span className="text-base sm:text-lg font-black text-gold-100 drop-shadow-md tracking-wide">
-                      {coins}
-                    </span>
-                  </div>
-                </motion.div>
-                <AchievementsButton />
-                <SoundToggle />
-                <MusicToggle />
                 <motion.button
                   onClick={() => { if (soundEnabled) playSound('buttonClick'); setView('guide') }}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800/70 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm font-bold"
+                  className="w-10 h-10 rounded-full bg-slate-800/70 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm font-bold"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   title="Guide & FAQ"

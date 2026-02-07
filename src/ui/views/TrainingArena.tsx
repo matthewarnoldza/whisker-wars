@@ -207,7 +207,7 @@ export default function TrainingArena() {
   // ========= SELECT PHASE =========
   if (phase === 'select') {
     return (
-      <div className="relative min-h-[80vh] flex flex-col space-y-4">
+      <div className="relative min-h-[80vh] flex flex-col space-y-4 premium-card rounded-2xl p-4 sm:p-6">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -248,7 +248,7 @@ export default function GuidePage() {
   const collapseAll = () => setOpenSections(new Set())
 
   return (
-    <div className="space-y-4">
+    <div className="premium-card rounded-2xl p-4 sm:p-6 space-y-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

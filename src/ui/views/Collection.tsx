@@ -433,7 +433,7 @@ export default function Collection() {
           className="space-y-4"
         >
           {/* Catadex Header */}
-          <div className="bg-gradient-to-r from-indigo-500/40 to-violet-500/40 border border-indigo-500/40 rounded-xl p-4 text-center">
+          <div className="bg-gradient-to-r from-indigo-500/60 to-violet-500/60 border border-indigo-500/50 rounded-xl p-4 text-center">
             <h3 className="text-lg font-black text-indigo-300 tracking-wider uppercase mb-1">Catadex</h3>
             <p className="text-sm text-slate-400">
               Discovered <span className="text-indigo-400 font-bold">{uniqueCatsCollected}</span> of <span className="text-indigo-400 font-bold">{totalUniqueCats}</span> cats
@@ -567,7 +567,7 @@ export default function Collection() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 gap-x-3 gap-y-1 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-x-1 gap-y-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
       >
         <AnimatePresence mode="popLayout">
           {filteredAndSortedCats.map(cat => {
@@ -588,7 +588,7 @@ export default function Collection() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="relative group"
               >
-                <div className={`relative scale-[0.8] sm:scale-100 origin-top-left transition-opacity ${
+                <div className={`relative scale-[0.8] sm:scale-100 origin-top -mb-16 sm:mb-0 transition-opacity ${
                   isMergeIneligible || isMaxTier ? 'opacity-40' : ''
                 }`} style={{ willChange: 'transform' }}>
 

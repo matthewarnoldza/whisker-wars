@@ -75,24 +75,15 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
         >
           <motion.div
-            ref={holographic.cardRef}
             initial={{ scale: 0.8, opacity: 0, y: 50 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 50 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px] my-auto holographic-card"
-            style={holographic.style}
-            {...(holographic.isSupported ? (isWeb() ? {
-              onMouseMove: holographic.handlers.onMouseMove,
-              onMouseLeave: holographic.handlers.onMouseLeave
-            } : {
-              onTouchMove: holographic.handlers.onTouchMove,
-              onTouchEnd: holographic.handlers.onTouchEnd
-            }) : {})}
+            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[700px] my-auto"
           >
             {/* Close Button */}
             <button
@@ -103,6 +94,21 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+
+            <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
+              {/* Left: Card Art with Holographic Effect */}
+              <div
+                ref={holographic.cardRef}
+                className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px] mx-auto lg:mx-0 lg:flex-shrink-0 holographic-card"
+                style={holographic.style}
+                {...(holographic.isSupported ? (isWeb() ? {
+                  onMouseMove: holographic.handlers.onMouseMove,
+                  onMouseLeave: holographic.handlers.onMouseLeave
+                } : {
+                  onTouchMove: holographic.handlers.onTouchMove,
+                  onTouchEnd: holographic.handlers.onTouchEnd
+                }) : {})}
+              >
 
             {/* Card Container */}
             <div className={`relative w-full rounded-2xl overflow-hidden shadow-2xl ${rarityGlow}`}>
@@ -210,9 +216,13 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 </span>
               </div>
             </div>
+              </div>
 
-            {/* Stats Below Breed/Rarity */}
-            <div className="mt-2 sm:mt-3 grid grid-cols-4 gap-2 sm:gap-3">
+              {/* Right: Stats & Equipment Panel */}
+              <div className="w-full lg:flex-1 mt-2 lg:mt-0">
+                <div className="lg:bg-slate-800/60 lg:backdrop-blur-sm lg:rounded-2xl lg:p-4 lg:border lg:border-slate-700/50">
+            {/* Stats */}
+            <div className="mt-2 sm:mt-3 lg:mt-0 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-lg border border-amber-700/50 shadow-xl">
                 <span className="font-black text-amber-200 text-lg sm:text-xl drop-shadow-lg">{cat.currentAttack}</span>
@@ -423,8 +433,11 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               </div>
             )}
 
+                </div>
+              </div>
+            </div>
             {/* Hint Text */}
-            <div className="mt-2 sm:mt-3 text-center">
+            <div className="mt-3 text-center">
               <p className="text-slate-400 text-xs sm:text-sm">Click anywhere to close</p>
             </div>
           </motion.div>

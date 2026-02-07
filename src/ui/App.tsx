@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 import { isWeb } from '../utils/platform'
 import { getStorageHealth } from '../utils/storage'
-import { startMusic, stopMusic } from '../utils/sound'
+import { startMusic, stopMusic, playSound } from '../utils/sound'
 import {
   trackPageView,
   trackTabNavigation,
@@ -245,6 +245,7 @@ function MusicToggle() {
 export default function App() {
   const view = useGame(s => s.view)
   const setView = useGame(s => s.setView)
+  const soundEnabled = useGame(s => s.soundEnabled)
   const coins = useGame(s => s.coins)
   const load = useGame(s => s.load)
   const claimDailyReward = useGame(s => s.claimDailyReward)
@@ -397,7 +398,7 @@ export default function App() {
                   ].map(tab => (
                     <motion.button
                       key={tab.id}
-                      onClick={() => { trackTabNavigation(tab.id); setView(tab.id as any) }}
+                      onClick={() => { if (soundEnabled) playSound('buttonClick'); trackTabNavigation(tab.id); setView(tab.id as any) }}
                       className={`relative px-4 py-2 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
                         ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
                         : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200'
@@ -478,7 +479,7 @@ export default function App() {
               ].map(tab => (
                 <motion.button
                   key={tab.id}
-                  onClick={() => { trackTabNavigation(tab.id); setView(tab.id as any) }}
+                  onClick={() => { if (soundEnabled) playSound('buttonClick'); trackTabNavigation(tab.id); setView(tab.id as any) }}
                   className={`relative flex-1 px-3 py-3 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
                     ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
                     : 'bg-slate-800/50 text-slate-400 border border-slate-700'

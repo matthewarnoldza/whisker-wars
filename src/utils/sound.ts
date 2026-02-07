@@ -14,12 +14,11 @@ const SFX_FILES: Record<string, string> = {
   catCaught: '/sounds/catch.mp3',
 }
 
-// Preload SFX audio elements for instant playback
-const sfxCache: Record<string, HTMLAudioElement> = {}
-for (const [name, src] of Object.entries(SFX_FILES)) {
+// Preload all SFX by fetching them once (warms the browser HTTP cache)
+for (const src of Object.values(SFX_FILES)) {
   const audio = new Audio(src)
   audio.preload = 'auto'
-  sfxCache[name] = audio
+  audio.load()
 }
 
 // Background music
@@ -28,17 +27,19 @@ let _isMusicPlaying = false
 
 export type SoundName = keyof typeof SFX_FILES
 
-/** Play a sound effect (clones the audio element to support overlapping playback) */
+/** Play a sound effect using a fresh Audio element (reliable across all browsers) */
 export function playSound(name: SoundName) {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
 
-  const cached = sfxCache[name]
-  if (!cached) return
+  const src = SFX_FILES[name]
+  if (!src) return
 
-  // Clone so overlapping plays work (e.g. rapid attacks)
-  const clone = cached.cloneNode() as HTMLAudioElement
-  clone.volume = 0.5
-  clone.play().catch(() => {/* autoplay policy — ignore */})
+  // Create a new Audio element each time — avoids cloneNode() issues in Chrome
+  // where cloned elements don't have buffered data and silently fail to play.
+  // The browser serves the file from its HTTP cache so there's no re-download.
+  const audio = new Audio(src)
+  audio.volume = 0.5
+  audio.play().catch(() => {/* autoplay policy — ignore */})
 }
 
 /** Start looping background music */

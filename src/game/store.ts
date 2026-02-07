@@ -78,7 +78,8 @@ interface GameState {
   dogIndex: number
   difficultyLevel: number // Difficulty multiplier for multi-dog battles
   theme: 'light' | 'dark'
-  soundEnabled: boolean // Toggle for dice roll sounds
+  soundEnabled: boolean // Toggle for sound effects
+  musicEnabled: boolean // Toggle for background music
   achievements: Achievement[]
   stats: GameStats
   lastDailyReward: number
@@ -122,6 +123,7 @@ interface GameState {
   load: ()=>void
   setTheme: (t:'light'|'dark')=>void
   toggleSound: ()=>void
+  toggleMusic: ()=>void
   // Profile management
   getCurrentProfile: ()=>ProfileMeta | null
   getProfiles: ()=>ProfileMeta[]
@@ -235,6 +237,7 @@ const getInitialGameState = () => ({
   dogIndex: 0,
   theme: 'dark' as 'light' | 'dark',
   soundEnabled: true,
+  musicEnabled: true,
   achievements: INITIAL_ACHIEVEMENTS,
   stats: {
     totalBattles: 0,
@@ -845,6 +848,7 @@ export const useGame = create<GameState>((set, get) => ({
       favorites: s.favorites,
       theme: s.theme,
       soundEnabled: s.soundEnabled,
+      musicEnabled: s.musicEnabled,
       achievements: s.achievements,
       stats: s.stats,
       lastDailyReward: s.lastDailyReward,
@@ -923,6 +927,7 @@ export const useGame = create<GameState>((set, get) => ({
         favorites: d.favorites ?? [],
         theme: d.theme ?? 'dark',
         soundEnabled: d.soundEnabled ?? true,
+        musicEnabled: d.musicEnabled ?? true,
         achievements: mergedAchievements,
         stats: {
           totalBattles: savedStats.totalBattles ?? 0,
@@ -946,6 +951,7 @@ export const useGame = create<GameState>((set, get) => ({
   },
   setTheme: (t)=> set({ theme: t }),
   toggleSound: ()=> set(s=> ({ soundEnabled: !s.soundEnabled })),
+  toggleMusic: ()=> set(s=> ({ musicEnabled: !s.musicEnabled })),
 
   // Profile management implementations
   getCurrentProfile: ()=> {

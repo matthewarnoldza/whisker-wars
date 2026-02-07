@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 import { isWeb } from '../utils/platform'
 import { getStorageHealth } from '../utils/storage'
+import { startMusic, stopMusic } from '../utils/sound'
 import {
   trackPageView,
   trackTabNavigation,
@@ -188,6 +189,55 @@ function SoundToggle() {
       aria-label={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
     >
       <span className="text-lg">{soundEnabled ? '🔊' : '🔇'}</span>
+    </motion.button>
+  )
+}
+
+function MusicToggle() {
+  const musicEnabled = useGame(s => s.musicEnabled)
+  const toggleMusic = useGame(s => s.toggleMusic)
+
+  // Auto-start music on first user interaction if enabled
+  useEffect(() => {
+    if (!musicEnabled) return
+
+    const handleInteraction = () => {
+      startMusic()
+      window.removeEventListener('click', handleInteraction)
+      window.removeEventListener('touchstart', handleInteraction)
+    }
+    window.addEventListener('click', handleInteraction)
+    window.addEventListener('touchstart', handleInteraction)
+    return () => {
+      window.removeEventListener('click', handleInteraction)
+      window.removeEventListener('touchstart', handleInteraction)
+    }
+  }, [musicEnabled])
+
+  const handleToggle = () => {
+    const newState = !musicEnabled
+    toggleMusic()
+    if (newState) {
+      startMusic()
+    } else {
+      stopMusic()
+    }
+  }
+
+  return (
+    <motion.button
+      onClick={handleToggle}
+      className="relative px-2.5 py-1.5 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      aria-label={musicEnabled ? 'Stop music' : 'Play music'}
+    >
+      <span className={`text-lg ${musicEnabled ? '' : 'opacity-50'}`}>🎵</span>
+      {!musicEnabled && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="block w-5 h-0.5 bg-red-500 rotate-45 rounded" />
+        </span>
+      )}
     </motion.button>
   )
 }
@@ -413,6 +463,7 @@ export default function App() {
                 </motion.div>
                 <AchievementsButton />
                 <SoundToggle />
+                <MusicToggle />
               </div>
             </div>
 

@@ -88,7 +88,34 @@ const slides = [
     ),
   },
   {
-    title: 'Step 3: Battle & Conquer',
+    title: 'Step 3: Power Up Your Cats',
+    description: 'Equip gear, merge duplicates, and ascend to elite status',
+    icon: '🔮',
+    content: (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-xl border border-amber-500/30">
+          <div className="text-5xl">⚔️</div>
+          <div className="flex-1">
+            <h4 className="font-bold text-white mb-1">Equipment & Inventory</h4>
+            <p className="text-sm text-slate-400">
+              Win battles to earn weapons, accessories, and elemental stones. Check your Inventory to equip them!
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-xl border border-purple-500/30">
+          <div className="text-5xl">🔮</div>
+          <div className="flex-1">
+            <h4 className="font-bold text-white mb-1">Merge & Ascend</h4>
+            <p className="text-sm text-slate-400">
+              Combine 3 identical cats to create a stronger version. Max-level cats can ascend for even more power!
+            </p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    title: 'Step 4: Battle & Conquer',
     description: 'Face a range of challenging enemy dogs and bosses to earn legendary rewards',
     icon: '⚔️',
     content: (

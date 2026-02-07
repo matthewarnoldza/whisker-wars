@@ -7,32 +7,33 @@ export interface Equipment {
   hpBonus: number
   description: string
   cost: number // Shop price (0 = drop only)
+  iconUrl: string
 }
 
 export const EQUIPMENT: Equipment[] = [
   // Common Weapons
-  { id: 'wooden-claws', name: 'Wooden Claws', slot: 'weapon', rarity: 'Common', atkBonus: 1, hpBonus: 0, description: '+1 ATK', cost: 50 },
-  { id: 'iron-claws', name: 'Iron Claws', slot: 'weapon', rarity: 'Common', atkBonus: 2, hpBonus: 0, description: '+2 ATK', cost: 100 },
+  { id: 'wooden-claws', name: 'Wooden Claws', slot: 'weapon', rarity: 'Common', atkBonus: 1, hpBonus: 0, description: '+1 ATK', cost: 50, iconUrl: '/images/equipment/Wooden claws.png' },
+  { id: 'iron-claws', name: 'Iron Claws', slot: 'weapon', rarity: 'Common', atkBonus: 2, hpBonus: 0, description: '+2 ATK', cost: 100, iconUrl: '/images/equipment/Iron claws.png' },
 
   // Common Accessories
-  { id: 'leather-collar', name: 'Leather Collar', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 3, description: '+3 HP', cost: 50 },
-  { id: 'bell-charm', name: 'Bell Charm', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 5, description: '+5 HP', cost: 100 },
+  { id: 'leather-collar', name: 'Leather Collar', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 3, description: '+3 HP', cost: 50, iconUrl: '/images/equipment/Leather collar.png' },
+  { id: 'bell-charm', name: 'Bell Charm', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 5, description: '+5 HP', cost: 100, iconUrl: '/images/equipment/Bell charm.png' },
 
   // Uncommon
-  { id: 'steel-claws', name: 'Steel Claws', slot: 'weapon', rarity: 'Uncommon', atkBonus: 3, hpBonus: 0, description: '+3 ATK', cost: 200 },
-  { id: 'silver-pendant', name: 'Silver Pendant', slot: 'accessory', rarity: 'Uncommon', atkBonus: 1, hpBonus: 5, description: '+1 ATK, +5 HP', cost: 200 },
+  { id: 'steel-claws', name: 'Steel Claws', slot: 'weapon', rarity: 'Uncommon', atkBonus: 3, hpBonus: 0, description: '+3 ATK', cost: 200, iconUrl: '/images/equipment/Steel claws.png' },
+  { id: 'silver-pendant', name: 'Silver Pendant', slot: 'accessory', rarity: 'Uncommon', atkBonus: 1, hpBonus: 5, description: '+1 ATK, +5 HP', cost: 200, iconUrl: '/images/equipment/Silver pendant.png' },
 
   // Rare
-  { id: 'crystal-claws', name: 'Crystal Claws', slot: 'weapon', rarity: 'Rare', atkBonus: 4, hpBonus: 2, description: '+4 ATK, +2 HP', cost: 400 },
-  { id: 'mystic-amulet', name: 'Mystic Amulet', slot: 'accessory', rarity: 'Rare', atkBonus: 2, hpBonus: 8, description: '+2 ATK, +8 HP', cost: 400 },
+  { id: 'crystal-claws', name: 'Crystal Claws', slot: 'weapon', rarity: 'Rare', atkBonus: 4, hpBonus: 2, description: '+4 ATK, +2 HP', cost: 400, iconUrl: '/images/equipment/Crystal claws.png' },
+  { id: 'mystic-amulet', name: 'Mystic Amulet', slot: 'accessory', rarity: 'Rare', atkBonus: 2, hpBonus: 8, description: '+2 ATK, +8 HP', cost: 400, iconUrl: '/images/equipment/Mystical amulet.png' },
 
   // Epic
-  { id: 'void-talons', name: 'Void Talons', slot: 'weapon', rarity: 'Epic', atkBonus: 6, hpBonus: 3, description: '+6 ATK, +3 HP', cost: 800 },
-  { id: 'stardust-collar', name: 'Stardust Collar', slot: 'accessory', rarity: 'Epic', atkBonus: 3, hpBonus: 12, description: '+3 ATK, +12 HP', cost: 800 },
+  { id: 'void-talons', name: 'Void Talons', slot: 'weapon', rarity: 'Epic', atkBonus: 6, hpBonus: 3, description: '+6 ATK, +3 HP', cost: 800, iconUrl: '/images/equipment/Void talons.png' },
+  { id: 'stardust-collar', name: 'Stardust Collar', slot: 'accessory', rarity: 'Epic', atkBonus: 3, hpBonus: 12, description: '+3 ATK, +12 HP', cost: 800, iconUrl: '/images/equipment/Stardust collar.png' },
 
   // Legendary (drop only from high-tier dogs)
-  { id: 'infernal-fangs', name: 'Infernal Fangs', slot: 'weapon', rarity: 'Legendary', atkBonus: 8, hpBonus: 5, description: '+8 ATK, +5 HP', cost: 0 },
-  { id: 'celestial-crown', name: 'Celestial Crown', slot: 'accessory', rarity: 'Legendary', atkBonus: 5, hpBonus: 15, description: '+5 ATK, +15 HP', cost: 0 },
+  { id: 'infernal-fangs', name: 'Infernal Fangs', slot: 'weapon', rarity: 'Legendary', atkBonus: 8, hpBonus: 5, description: '+8 ATK, +5 HP', cost: 0, iconUrl: '/images/equipment/Infernal fangs.png' },
+  { id: 'celestial-crown', name: 'Celestial Crown', slot: 'accessory', rarity: 'Legendary', atkBonus: 5, hpBonus: 15, description: '+5 ATK, +15 HP', cost: 0, iconUrl: '/images/equipment/Celestial crown.png' },
 ]
 
 // ===== Elemental Stones (Feline Frenzy Friday drops) =====

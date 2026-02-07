@@ -259,7 +259,15 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                         {slot === 'weapon' ? '⚔️ Weapon' : '💎 Accessory'}
                       </div>
                       {equippedItem ? (
-                        <div className="text-[11px] font-bold text-purple-300 truncate">{equippedItem.name}</div>
+                        <div className="flex items-center gap-1.5 justify-center">
+                          <img
+                            src={equippedItem.iconUrl}
+                            alt=""
+                            className="w-5 h-5 object-contain"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                          <span className="text-[11px] font-bold text-purple-300 truncate">{equippedItem.name}</span>
+                        </div>
                       ) : (
                         <div className="text-[11px] text-slate-600">Empty</div>
                       )}

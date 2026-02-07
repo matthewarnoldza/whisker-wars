@@ -17,7 +17,7 @@ import {
   trackProfileCreated,
 } from '../utils/analytics'
 
-export type View = 'bait' | 'collection' | 'battle' | 'training' | 'stats' | 'privacy' | 'terms'
+export type View = 'bait' | 'collection' | 'inventory' | 'battle' | 'training' | 'stats' | 'guide' | 'privacy' | 'terms'
 
 export interface OwnedCat extends Cat {
   instanceId: string // Unique identifier for this specific cat instance

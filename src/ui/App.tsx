@@ -8,6 +8,8 @@ import Collection from './views/Collection'
 import BattleArena from './views/BattleArena'
 import StatsView from './views/StatsView'
 import TrainingArena from './views/TrainingArena'
+import Inventory from './views/Inventory'
+import GuidePage from './views/GuidePage'
 import PrivacyPolicy from './views/PrivacyPolicy'
 import TermsOfService from './views/TermsOfService'
 import AnimatedBackground from './components/AnimatedBackground'
@@ -269,7 +271,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) // Remove the #
-      if (hash === 'privacy' || hash === 'terms' || hash === 'bait' || hash === 'collection' || hash === 'battle' || hash === 'training' || hash === 'stats') {
+      if (hash === 'privacy' || hash === 'terms' || hash === 'bait' || hash === 'collection' || hash === 'inventory' || hash === 'battle' || hash === 'training' || hash === 'stats' || hash === 'guide') {
         setView(hash as View)
         // Check if viewing public pages (privacy/terms)
         setIsPublicPage(hash === 'privacy' || hash === 'terms')
@@ -392,6 +394,7 @@ export default function App() {
                   {[
                     { id: 'bait', label: 'Bait', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
                     { id: 'collection', label: 'Collection', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
+                    { id: 'inventory', label: 'Inventory', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>, gradient: 'from-amber-500 to-orange-500' },
                     { id: 'battle', label: 'Battle', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z"/></svg>, gradient: 'from-red-500 to-orange-500' },
                     { id: 'training', label: 'Train', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/></svg>, gradient: 'from-amber-500 to-yellow-500' },
                     { id: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>, gradient: 'from-emerald-500 to-teal-500' },
@@ -465,6 +468,15 @@ export default function App() {
                 <AchievementsButton />
                 <SoundToggle />
                 <MusicToggle />
+                <motion.button
+                  onClick={() => { if (soundEnabled) playSound('buttonClick'); setView('guide') }}
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800/70 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm font-bold"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  title="Guide & FAQ"
+                >
+                  ?
+                </motion.button>
               </div>
             </div>
 
@@ -473,6 +485,7 @@ export default function App() {
               {[
                 { id: 'bait', label: 'Bait', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
                 { id: 'collection', label: 'Collection', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
+                { id: 'inventory', label: 'Items', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>, gradient: 'from-amber-500 to-orange-500' },
                 { id: 'battle', label: 'Battle', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z"/></svg>, gradient: 'from-red-500 to-orange-500' },
                 { id: 'training', label: 'Train', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/></svg>, gradient: 'from-amber-500 to-yellow-500' },
                 { id: 'stats', label: 'Stats', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>, gradient: 'from-emerald-500 to-teal-500' },
@@ -510,9 +523,11 @@ export default function App() {
             <ErrorBoundary>
               {view === 'bait' && <BaitingArea baits={BAITS} />}
               {view === 'collection' && <Collection />}
+              {view === 'inventory' && <Inventory />}
               {view === 'battle' && <BattleArena />}
               {view === 'training' && <TrainingArena />}
               {view === 'stats' && <StatsView />}
+              {view === 'guide' && <GuidePage />}
               {view === 'privacy' && <PrivacyPolicy />}
               {view === 'terms' && <TermsOfService />}
             </ErrorBoundary>

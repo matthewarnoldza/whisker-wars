@@ -209,6 +209,7 @@ const saveProfilesData = (data: ProfilesData) => {
 }
 
 let lastLeaderboardSync = 0
+let stateLoaded = false
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
   { id:'first-cat', name:'First Friend', description:'Befriend your first cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
@@ -871,9 +872,9 @@ export const useGame = create<GameState>((set, get) => ({
     )
     saveProfilesData(profilesData)
 
-    // Throttled leaderboard sync (at most once per 5 minutes)
+    // Throttled leaderboard sync (at most once per 5 minutes, only after state is loaded)
     const profile = profilesData.profiles.find(p => p.id === profilesData.activeProfileId)
-    if (profile?.cloudCode) {
+    if (stateLoaded && profile?.cloudCode) {
       const now = Date.now()
       if (now - lastLeaderboardSync > 300_000) {
         lastLeaderboardSync = now
@@ -945,6 +946,7 @@ export const useGame = create<GameState>((set, get) => ({
         inventory: d.inventory ?? {},
         completedEventRewards: d.completedEventRewards ?? [],
       })
+      stateLoaded = true
     } catch (error) {
       console.error('Failed to load save data:', error)
     }
@@ -991,6 +993,10 @@ export const useGame = create<GameState>((set, get) => ({
 
     data.activeProfileId = profileId
     saveProfilesData(data)
+
+    // Reset flags so new profile's stats get uploaded fresh
+    stateLoaded = false
+    lastLeaderboardSync = 0
 
     // Reset to initial state first, then load saved data if it exists
     set(getInitialGameState())

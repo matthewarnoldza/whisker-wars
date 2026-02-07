@@ -48,7 +48,7 @@ export function startMusic() {
   if (!musicElement) {
     musicElement = new Audio('/sounds/theme.mp3')
     musicElement.loop = true
-    musicElement.volume = 0.3
+    musicElement.volume = 0.2
   }
 
   musicElement.play().catch(() => {/* autoplay policy — ignore */})

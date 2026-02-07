@@ -285,12 +285,14 @@ export default function BattleArena() {
     // Track ability analytics
     if (abilityTriggered) {
       trackAbilityTriggered(cat.name, abilityTriggered.abilityName, abilityTriggered.effectType, 'battle')
+      if (soundEnabled) playSound('abilityTrigger')
     }
 
     // Apply healing if any
     if (healAmount > 0 && healTargetId) {
       const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
       updateCatHp(healTargetId, newHp)
+      if (soundEnabled) playSound('heal')
     }
 
     // Shadow Stalker dodge check
@@ -859,6 +861,7 @@ export default function BattleArena() {
     party.forEach(cat => addXpToCat(cat.instanceId, xpEarned))
     addCoins(coinsEarned)
     recordBattleResult(true, xpEarned)
+    if (soundEnabled) playSound('coinEarned')
 
     trackBattleWon(dog.name, coinsEarned, xpEarned, difficultyLevel)
     trackCoinsEarned('battle', coinsEarned)

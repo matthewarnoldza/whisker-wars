@@ -24,6 +24,15 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   const [showEquipMenu, setShowEquipMenu] = useState<'weapon' | 'accessory' | null>(null)
   const [showStoneMenu, setShowStoneMenu] = useState(false)
 
+  // Hook must be called before any conditional returns (Rules of Hooks)
+  const isElite = cat?.isElite === true
+  const eliteTier = cat?.eliteTier || 0
+  const holographic = useHolographicCard({
+    mode: 'full',
+    maxRotation: 20,
+    shineIntensity: isElite ? 0.9 : cat?.rarity === 'Mythical' ? 0.9 : cat?.rarity === 'Legendary' ? 0.8 : 0.7
+  })
+
   if (!cat) return null
 
   const ascension = cat.ascension || 0
@@ -57,16 +66,6 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
 
   const rarityGradient = getRarityGradient(cat.rarity)
   const rarityGlow = getRarityGlow(cat.rarity)
-
-  const isElite = cat.isElite === true
-  const eliteTier = cat.eliteTier || 0
-
-  // Enhanced holographic effect for zoomed view - elite cats get max shine
-  const holographic = useHolographicCard({
-    mode: 'full',
-    maxRotation: 20,
-    shineIntensity: isElite ? 0.9 : cat.rarity === 'Mythical' ? 0.9 : cat.rarity === 'Legendary' ? 0.8 : 0.7
-  })
 
   return (
     <AnimatePresence>

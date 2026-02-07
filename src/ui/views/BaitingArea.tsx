@@ -74,8 +74,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
 
   const handleCelebrationClose = () => {
     setShowCelebration(false)
-    // Cat was already added to collection in handleUseBait, just navigate
-    setView('collection')
+    // Cat was already added to collection in handleUseBait, stay on bait screen to keep hunting
     setTimeout(() => {
       setCaughtCat(null)
       setResult(null)

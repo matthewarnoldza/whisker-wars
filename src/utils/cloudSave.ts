@@ -15,6 +15,12 @@ export interface CloudSaveData {
   lastDailyReward: number
   tutorialCompleted: boolean
   trainingCooldowns: Record<string, number[]>
+  selectedForBattle?: string[]
+  dailyStreak?: number
+  soundEnabled?: boolean
+  musicEnabled?: boolean
+  inventory?: Record<string, number>
+  completedEventRewards?: string[]
 }
 
 export interface CloudSavePayload {

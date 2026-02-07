@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Modal from './Modal'
 import { uploadSave, previewSave, downloadSave, CloudSaveData } from '../../utils/cloudSave'
-import { useGame, ProfileMeta } from '../../game/store'
+import { useGame } from '../../game/store'
 
 interface SaveCodeModalProps {
   isOpen: boolean
@@ -32,8 +32,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
 
   // Get store functions
   const getCurrentProfile = useGame(s => s.getCurrentProfile)
-  const createProfile = useGame(s => s.createProfile)
-  const loadProfile = useGame(s => s.loadProfile)
+  const restoreProfile = useGame(s => s.restoreProfile)
   const setProfileCloudCode = useGame(s => s.setProfileCloudCode)
 
   // Reset state when modal opens/closes
@@ -98,7 +97,13 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
       stats: state.stats,
       lastDailyReward: state.lastDailyReward,
       tutorialCompleted: state.tutorialCompleted,
-      trainingCooldowns: state.trainingCooldowns
+      trainingCooldowns: state.trainingCooldowns,
+      selectedForBattle: state.selectedForBattle,
+      dailyStreak: state.dailyStreak,
+      soundEnabled: state.soundEnabled,
+      musicEnabled: state.musicEnabled,
+      inventory: state.inventory,
+      completedEventRewards: state.completedEventRewards,
     }
 
     // Use existing code if profile has one, otherwise generate new
@@ -149,31 +154,8 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
     const result = await downloadSave(normalizedCode)
 
     if (result.success && result.data && result.meta) {
-      // Create a new profile with the restored data
-      const profileId = createProfile(result.meta.name)
-      loadProfile(profileId)
-
-      // Now update the state with the restored data
-      useGame.setState({
-        coins: result.data.coins,
-        baits: result.data.baits,
-        owned: result.data.owned,
-        dogIndex: result.data.dogIndex,
-        difficultyLevel: result.data.difficultyLevel,
-        favorites: result.data.favorites,
-        theme: result.data.theme,
-        achievements: result.data.achievements,
-        stats: result.data.stats,
-        lastDailyReward: result.data.lastDailyReward,
-        tutorialCompleted: result.data.tutorialCompleted,
-        trainingCooldowns: result.data.trainingCooldowns
-      })
-
-      // Save the cloud code to the restored profile so they keep using the same code
-      setProfileCloudCode(normalizedCode)
-
-      // Save immediately
-      useGame.getState().save()
+      // Atomic restore: writes cloud data directly to localStorage, then loads
+      restoreProfile(result.meta.name, normalizedCode, result.data as unknown as Record<string, unknown>)
 
       setRestoreSuccess(true)
     } else {

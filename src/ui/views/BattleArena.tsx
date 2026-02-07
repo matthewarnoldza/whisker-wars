@@ -1508,10 +1508,10 @@ export default function BattleArena() {
         onNextBattle={() => {
           setShowVictoryModal(false)
           if (droppedStone) {
-            setPendingVictoryAction(() => () => { nextDog(); setBattleDogIndex(storeDogIndex + 1) })
+            setPendingVictoryAction(() => () => { nextDog(); setBattleDogIndex(useGame.getState().dogIndex) })
             setTimeout(() => setShowStoneCelebration(true), 350)
           } else {
-            setTimeout(() => { nextDog(); setBattleDogIndex(storeDogIndex + 1) }, 350)
+            setTimeout(() => { nextDog(); setBattleDogIndex(useGame.getState().dogIndex) }, 350)
           }
         }}
         onChooseBattle={() => {

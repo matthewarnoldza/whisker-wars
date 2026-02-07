@@ -256,6 +256,8 @@ export default function App() {
   const getProfiles = useGame(s => s.getProfiles)
   const tutorialCompleted = useGame(s => s.tutorialCompleted)
   const completeTutorial = useGame(s => s.completeTutorial)
+  const saveError = useGame(s => s.saveError)
+  const clearSaveError = useGame(s => s.clearSaveError)
 
   const [showDailyReward, setShowDailyReward] = useState(false)
   const [showProfileSelector, setShowProfileSelector] = useState(false)
@@ -625,6 +627,26 @@ export default function App() {
             }
           }}
         />
+      )}
+
+      {/* Save Error Banner */}
+      {saveError && profileLoaded && !isPublicPage && (
+        <div className="fixed top-0 left-0 right-0 z-[200] bg-red-900/95 backdrop-blur-sm border-b border-red-500/50 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-red-100 text-sm font-medium flex-1">{saveError}</p>
+          <button
+            onClick={() => setShowSaveCodeModal(true)}
+            className="px-4 py-2 bg-gold-500 text-slate-900 font-bold rounded-lg text-sm whitespace-nowrap hover:bg-gold-400 transition-colors"
+          >
+            Get Save Code
+          </button>
+          <button
+            onClick={clearSaveError}
+            className="text-red-300 hover:text-white p-1"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* Storage Warning Banner */}

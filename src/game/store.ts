@@ -4,6 +4,7 @@ import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
 import { EQUIPMENT } from './items'
 import { uploadLeaderboardStats } from '../utils/leaderboard'
+import { uploadSave, type CloudSaveData } from '../utils/cloudSave'
 import { getEventPeriodKey, type GameEvent } from './events'
 import {
   trackBaitPurchased,
@@ -88,6 +89,7 @@ interface GameState {
   trainingCooldowns: Record<string, number[]>
   inventory: Record<string, number> // equipmentId -> qty
   completedEventRewards: string[] // event period keys like "halloween-2025"
+  saveError: string | null
   setView: (v:View)=>void
   addCoins: (n:number)=>void
   buyBait: (baitId:string)=>void
@@ -132,6 +134,8 @@ interface GameState {
   deleteProfile: (profileId:string)=>void
   renameProfile: (profileId:string, name:string)=>void
   setProfileCloudCode: (code:string)=>void
+  restoreProfile: (name:string, cloudCode:string, data:Record<string, unknown>)=>string
+  clearSaveError: ()=>void
 }
 
 const rand = (min:number, max:number)=> Math.floor(Math.random()*(max-min+1))+min
@@ -209,6 +213,7 @@ const saveProfilesData = (data: ProfilesData) => {
 }
 
 let lastLeaderboardSync = 0
+let lastCloudSync = 0
 let stateLoaded = false
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -256,6 +261,7 @@ const getInitialGameState = () => ({
   trainingCooldowns: {} as Record<string, number[]>,
   inventory: {} as Record<string, number>,
   completedEventRewards: [] as string[],
+  saveError: null as string | null,
 })
 
 export const useGame = create<GameState>((set, get) => ({
@@ -859,10 +865,21 @@ export const useGame = create<GameState>((set, get) => ({
       inventory: s.inventory,
       completedEventRewards: s.completedEventRewards,
     })
+    const storageKey = `${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`
     try {
-      localStorage.setItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`, payload)
+      localStorage.setItem(storageKey, payload)
+      // Verify write succeeded
+      const readBack = localStorage.getItem(storageKey)
+      if (readBack !== payload) {
+        console.error('Save verification failed: data mismatch after write')
+        set({ saveError: 'Save verification failed. Please get a save code to back up your data.' })
+        return
+      }
+      // Clear any previous save error on successful save
+      if (s.saveError) set({ saveError: null })
     } catch (error) {
       console.error('Failed to save game data (storage quota may be exceeded):', error)
+      set({ saveError: 'Save failed — storage may be full. Get a save code to back up your data!' })
       return
     }
 
@@ -885,6 +902,32 @@ export const useGame = create<GameState>((set, get) => ({
           collectionCompletion: uniqueCats,
           totalMerges: s.stats.totalMerges,
         })
+      }
+
+      // Throttled cloud save sync (at most once per 5 minutes)
+      if (now - lastCloudSync > 300_000) {
+        lastCloudSync = now
+        const cloudData: CloudSaveData = {
+          coins: s.coins,
+          baits: s.baits,
+          owned: s.owned,
+          dogIndex: s.dogIndex,
+          difficultyLevel: s.difficultyLevel,
+          favorites: s.favorites,
+          theme: s.theme,
+          achievements: s.achievements,
+          stats: s.stats,
+          lastDailyReward: s.lastDailyReward,
+          tutorialCompleted: s.tutorialCompleted,
+          trainingCooldowns: s.trainingCooldowns,
+          selectedForBattle: s.selectedForBattle,
+          dailyStreak: s.dailyStreak,
+          soundEnabled: s.soundEnabled,
+          musicEnabled: s.musicEnabled,
+          inventory: s.inventory,
+          completedEventRewards: s.completedEventRewards,
+        }
+        uploadSave(cloudData, profile, profile.cloudCode).catch(() => {})
       }
     }
   },
@@ -1029,6 +1072,61 @@ export const useGame = create<GameState>((set, get) => ({
     )
     saveProfilesData(data)
   },
+
+  restoreProfile: (name, cloudCode, cloudData)=> {
+    const d = cloudData as Record<string, any>
+    const data = getProfilesData()
+    const profileId = crypto.randomUUID()
+    const now = Date.now()
+    const newProfile: ProfileMeta = {
+      id: profileId,
+      name: name || 'Restored Profile',
+      created: now,
+      lastPlayed: now,
+      cloudCode,
+    }
+    data.profiles.push(newProfile)
+    data.activeProfileId = profileId
+    saveProfilesData(data)
+
+    // Write cloud data directly to localStorage for this profile (skip initial state)
+    const payload = JSON.stringify({
+      coins: d.coins ?? INITIAL_COINS,
+      baits: d.baits ?? { ...DEFAULT_BAITS },
+      owned: d.owned ?? [],
+      selectedForBattle: d.selectedForBattle ?? [],
+      dogIndex: d.dogIndex ?? 0,
+      difficultyLevel: d.difficultyLevel ?? 0,
+      favorites: d.favorites ?? [],
+      theme: d.theme ?? 'dark',
+      soundEnabled: d.soundEnabled ?? true,
+      musicEnabled: d.musicEnabled ?? true,
+      achievements: d.achievements ?? INITIAL_ACHIEVEMENTS,
+      stats: d.stats ?? { totalBattles: 0, totalWins: 0, totalLosses: 0, totalCatsCollected: 0, totalCoinsEarned: 0, highestDogDefeated: -1, totalMerges: 0 },
+      lastDailyReward: d.lastDailyReward ?? 0,
+      dailyStreak: d.dailyStreak ?? 0,
+      tutorialCompleted: d.tutorialCompleted ?? false,
+      trainingCooldowns: d.trainingCooldowns ?? {},
+      inventory: d.inventory ?? {},
+      completedEventRewards: d.completedEventRewards ?? [],
+    })
+    try {
+      localStorage.setItem(`${PROFILE_KEY_PREFIX}${profileId}`, payload)
+    } catch (error) {
+      console.error('Failed to save restored profile:', error)
+    }
+
+    // Now load the profile (reads the data we just wrote)
+    stateLoaded = false
+    lastLeaderboardSync = 0
+    lastCloudSync = 0
+    set(getInitialGameState())
+    get().load()
+
+    return profileId
+  },
+
+  clearSaveError: ()=> set({ saveError: null }),
 }))
 
 // Debounced auto-save: only saves when state actually changes
@@ -1051,5 +1149,10 @@ document.addEventListener('visibilitychange', () => {
 
 // Save when page is being unloaded (browser close, navigation)
 window.addEventListener('pagehide', () => {
+  useGame.getState().save()
+})
+
+// Redundant save on beforeunload (some browsers, especially older Firefox, don't fire pagehide reliably)
+window.addEventListener('beforeunload', () => {
   useGame.getState().save()
 })

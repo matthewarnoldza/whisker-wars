@@ -22,6 +22,7 @@ import {
   trackFilterUsed,
   trackCoinsSpent,
 } from '../../utils/analytics'
+import { playSound } from '../../utils/sound'
 
 type SortOption = 'name' | 'level' | 'rarity' | 'hp' | 'attack'
 type FilterOption = 'all' | Rarity
@@ -36,6 +37,7 @@ export default function Collection() {
   const releaseCat = useGame(s => s.releaseCat)
   const mergeCats = useGame(s => s.mergeCats)
   const coins = useGame(s => s.coins)
+  const soundEnabled = useGame(s => s.soundEnabled)
 
   const [sortBy, setSortBy] = useState<SortOption>('level')
   const [filterBy, setFilterBy] = useState<FilterOption>('all')
@@ -43,6 +45,7 @@ export default function Collection() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [zoomedCat, setZoomedCat] = useState<OwnedCat | null>(null)
   const [healFlash, setHealFlash] = useState(false)
+  const [healMessage, setHealMessage] = useState<string | null>(null)
   const [showCatadex, setShowCatadex] = useState(false)
 
   // Merge mode state
@@ -309,14 +312,13 @@ export default function Collection() {
               const catsNeedingHeal = cats.filter(c => c.currentHp < c.maxHp).length
               const success = healAllCats()
               if (!success) {
-                if (coins < 25) {
-                  alert('Not enough coins! Need 25 coins to heal all cats.')
-                } else {
-                  alert('All cats are already at full health!')
-                }
+                const msg = coins < 25 ? 'Not enough coins! Need 25💰' : 'All cats are already at full health!'
+                setHealMessage(msg)
+                setTimeout(() => setHealMessage(null), 2500)
               } else {
                 trackHealAll(25, catsNeedingHeal)
                 trackCoinsSpent('heal_all', 25)
+                if (soundEnabled) playSound('heal')
                 // Trigger green flash animation
                 setHealFlash(true)
                 setTimeout(() => setHealFlash(false), 500)
@@ -349,6 +351,20 @@ export default function Collection() {
             )}
             <span className="relative z-10">💊 Heal All (25💰)</span>
           </motion.button>
+
+          {/* Heal Message Toast */}
+          <AnimatePresence>
+            {healMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 whitespace-nowrap"
+              >
+                <span className="text-sm font-medium text-slate-200">{healMessage}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Merge Mode Toggle */}
           <motion.button

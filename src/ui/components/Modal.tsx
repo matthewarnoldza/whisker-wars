@@ -64,10 +64,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-modal-backdrop"
+            className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[110]"
             aria-hidden="true"
           />
-          <div className="fixed inset-0 z-modal pointer-events-none overflow-y-auto">
+          <div className="fixed inset-0 z-[120] pointer-events-none overflow-y-auto">
             <div className="min-h-screen flex items-start justify-center p-4 pt-24">
               <motion.div
                 ref={modalRef}

@@ -51,7 +51,13 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
         stats: state.stats,
         lastDailyReward: state.lastDailyReward,
         tutorialCompleted: state.tutorialCompleted,
-        trainingCooldowns: state.trainingCooldowns
+        trainingCooldowns: state.trainingCooldowns,
+        selectedForBattle: state.selectedForBattle,
+        dailyStreak: state.dailyStreak,
+        soundEnabled: state.soundEnabled,
+        musicEnabled: state.musicEnabled,
+        inventory: state.inventory,
+        completedEventRewards: state.completedEventRewards,
       }
       uploadSave(saveData, profile).then(result => {
         if (result.success && result.code && result.isNew) {

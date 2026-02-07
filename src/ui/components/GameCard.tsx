@@ -6,6 +6,17 @@ import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
 
+// Stable style references to prevent Firefox animation restarts on re-render
+const DELAY_0 = { animationDelay: '0s' } as const
+const DELAY_02 = { animationDelay: '0.2s' } as const
+const DELAY_04 = { animationDelay: '0.4s' } as const
+const DELAY_05 = { animationDelay: '0.5s' } as const
+const DELAY_06 = { animationDelay: '0.6s' } as const
+const DELAY_08 = { animationDelay: '0.8s' } as const
+const DELAY_1 = { animationDelay: '1s' } as const
+const DELAY_12 = { animationDelay: '1.2s' } as const
+const DELAY_15 = { animationDelay: '1.5s' } as const
+
 interface GameCardProps {
     character: Cat | Dog
     isEnemy?: boolean
@@ -86,24 +97,24 @@ export default React.memo(function GameCard({
             {/* Mythical Particles */}
             {rarity === 'Mythical' && !isElite && (
                 <>
-                    <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s' }} />
-                    <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s' }} />
-                    <div className="absolute bottom-12 left-8 w-2 h-2 bg-rose-500 rounded-full mythical-particle" style={{ animationDelay: '1s' }} />
-                    <div className="absolute bottom-6 right-4 w-2 h-2 bg-red-600 rounded-full mythical-particle" style={{ animationDelay: '1.5s' }} />
+                    <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={DELAY_0} />
+                    <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={DELAY_05} />
+                    <div className="absolute bottom-12 left-8 w-2 h-2 bg-rose-500 rounded-full mythical-particle" style={DELAY_1} />
+                    <div className="absolute bottom-6 right-4 w-2 h-2 bg-red-600 rounded-full mythical-particle" style={DELAY_15} />
                 </>
             )}
 
             {/* Elite Particles */}
             {isElite && (
                 <>
-                    <div className="absolute top-6 left-6 w-2 h-2 bg-yellow-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0s' }} />
-                    <div className="absolute top-10 right-8 w-2 h-2 bg-cyan-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.4s' }} />
-                    <div className="absolute bottom-14 left-10 w-2 h-2 bg-yellow-300 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.8s' }} />
-                    <div className="absolute bottom-8 right-6 w-2 h-2 bg-cyan-300 rounded-full elite-particle z-[4]" style={{ animationDelay: '1.2s' }} />
+                    <div className="absolute top-6 left-6 w-2 h-2 bg-yellow-400 rounded-full elite-particle z-[4]" style={DELAY_0} />
+                    <div className="absolute top-10 right-8 w-2 h-2 bg-cyan-400 rounded-full elite-particle z-[4]" style={DELAY_04} />
+                    <div className="absolute bottom-14 left-10 w-2 h-2 bg-yellow-300 rounded-full elite-particle z-[4]" style={DELAY_08} />
+                    <div className="absolute bottom-8 right-6 w-2 h-2 bg-cyan-300 rounded-full elite-particle z-[4]" style={DELAY_12} />
                     {eliteTier >= 2 && (
                         <>
-                            <div className="absolute top-16 left-4 w-2 h-2 bg-pink-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.2s' }} />
-                            <div className="absolute bottom-20 right-10 w-2 h-2 bg-purple-400 rounded-full elite-particle z-[4]" style={{ animationDelay: '0.6s' }} />
+                            <div className="absolute top-16 left-4 w-2 h-2 bg-pink-400 rounded-full elite-particle z-[4]" style={DELAY_02} />
+                            <div className="absolute bottom-20 right-10 w-2 h-2 bg-purple-400 rounded-full elite-particle z-[4]" style={DELAY_06} />
                         </>
                     )}
                 </>
@@ -130,11 +141,10 @@ export default React.memo(function GameCard({
 
             {/* Card Container with Rarity Glow */}
             <div className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ring-1 ring-white/10 ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
-                style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite`, willChange: 'transform, opacity' } : { willChange: 'transform' }}
             >
 
                 {/* Full-Bleed Character Art - No Border */}
-                <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ willChange: 'transform' }}>
+                <div className="absolute inset-0 rounded-2xl overflow-hidden">
                     {character.imageUrl ? (
                         <img
                             src={character.imageUrl}
@@ -159,13 +169,13 @@ export default React.memo(function GameCard({
 
                     {/* Top: Enhanced Name Badge */}
                     <div className="flex flex-col items-center gap-1">
-                        <div className={`px-4 py-2 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-xl border-2 border-white/50 backdrop-blur-sm`}>
+                        <div className={`px-4 py-2 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-xl border-2 border-white/50`}>
                             <h3 className="font-black text-sm tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
                                 {character.name}
                             </h3>
                         </div>
                         {isCat && (
-                            <div className="px-3 py-1 rounded-md bg-black/70 backdrop-blur-md border border-white/20 shadow-md">
+                            <div className="px-3 py-1 rounded-md bg-black/80 border border-white/20 shadow-md">
                                 <span className="text-[9px] text-slate-200 uppercase tracking-widest font-bold">
                                     {(character as Cat).breed}
                                 </span>

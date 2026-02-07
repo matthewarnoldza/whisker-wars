@@ -256,6 +256,9 @@ body {
 /* Holographic Card Effects */
 .holographic-card {
     position: relative;
+}
+
+.holographic-card:hover {
     transform-style: preserve-3d;
     will-change: transform;
 }
@@ -268,6 +271,9 @@ body {
     pointer-events: none;
     z-index: 2;
     transition: opacity 0.3s ease;
+}
+
+.holographic-overlay.active {
     will-change: opacity;
 }
 
@@ -386,6 +392,16 @@ body {
     }
 }
 
+/* Firefox performance: downgrade costly blend modes */
+@-moz-document url-prefix() {
+    .holographic-overlay.subtle {
+        mix-blend-mode: overlay;
+    }
+    .holographic-overlay.full {
+        mix-blend-mode: screen;
+    }
+}
+
 /* Mobile Utilities */
 
 /* Safe area padding for notches */
@@ -467,6 +483,12 @@ body {
 .elite-particle {
     animation: elite-particle-float 2.5s ease-in-out infinite;
 }
+
+/* Rarity glow animation classes */
+.mythical-glow { animation: mythical-glow 2s ease-in-out infinite; }
+.legendary-glow { animation: legendary-glow 2s ease-in-out infinite; }
+.elite-glow { animation: elite-glow 2s ease-in-out infinite; }
+.prismatic-glow { animation: prismatic-glow 2s ease-in-out infinite; }
 
 /* Merge Button Pulse */
 @keyframes merge-pulse {

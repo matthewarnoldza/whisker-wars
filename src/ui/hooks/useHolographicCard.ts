@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, CSSProperties } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo, CSSProperties } from 'react'
 import { isWeb } from '../../utils/platform'
 
 interface HolographicConfig {
@@ -165,12 +165,15 @@ export function useHolographicCard(config: HolographicConfig = {}): HolographicR
   const rotateX = ((pointerPos.y - 50) / 50) * maxRotation
   const rotateY = ((pointerPos.x - 50) / 50) * -maxRotation
 
-  const style: CSSProperties = isSupported ? {
-    '--pointer-x': `${pointerPos.x}%`,
-    '--pointer-y': `${pointerPos.y}%`,
-    transform: isActive ? `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)` : 'none',
-    transition: isActive ? 'transform 0.1s ease-out' : 'transform 0.3s ease-out',
-  } as CSSProperties : {}
+  const style: CSSProperties = useMemo(() => {
+    if (!isSupported) return {}
+    return {
+      '--pointer-x': `${pointerPos.x}%`,
+      '--pointer-y': `${pointerPos.y}%`,
+      transform: isActive ? `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)` : 'none',
+      transition: isActive ? 'transform 0.1s ease-out' : 'transform 0.3s ease-out',
+    } as CSSProperties
+  }, [isSupported, pointerPos.x, pointerPos.y, isActive, rotateX, rotateY])
 
   const handlers = isSupported ? (platformIsWeb ? {
     onMouseMove: handleMouseMove,

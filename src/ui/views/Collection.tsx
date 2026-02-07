@@ -591,7 +591,7 @@ export default function Collection() {
               >
                 <div className={`relative scale-[0.85] sm:scale-100 origin-top -mb-12 sm:mb-0 transition-opacity ${
                   isMergeIneligible || isMaxTier ? 'opacity-40' : ''
-                }`} style={{ willChange: 'transform' }}>
+                }`}>
 
                   {/* Glow Effect */}
                   {(isSelected && !mergeMode) && (

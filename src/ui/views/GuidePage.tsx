@@ -10,10 +10,10 @@ interface Section {
 
 function Accordion({ section, isOpen, onToggle }: { section: Section; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-800/30">
+    <div className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-800/80">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-800/50 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-800/90 transition-colors"
       >
         <span className="text-2xl">{section.icon}</span>
         <span className="flex-1 font-bold text-white text-sm sm:text-base">{section.title}</span>
@@ -46,7 +46,7 @@ function Accordion({ section, isOpen, onToggle }: { section: Section; isOpen: bo
 
 function Tip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-200">
+    <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/20 border border-amber-500/40 rounded-lg text-xs text-amber-200">
       <span className="mt-0.5">💡</span>
       <span>{children}</span>
     </div>
@@ -258,7 +258,7 @@ export default function GuidePage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setView('bait')}
-            className="px-3 py-2 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-white transition-all text-sm font-bold"
+            className="px-3 py-2 rounded-lg bg-slate-800/90 border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-white transition-all text-sm font-bold"
           >
             ← Back
           </button>

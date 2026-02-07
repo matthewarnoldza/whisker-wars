@@ -64,7 +64,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[999999]"
+            className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[999999]"
             aria-hidden="true"
           />
           <div className="fixed inset-0 z-[1000000] pointer-events-none overflow-y-auto">

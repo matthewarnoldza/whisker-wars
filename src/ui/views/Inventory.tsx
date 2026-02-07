@@ -195,7 +195,7 @@ export default function Inventory() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50"
+        className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-500/50"
       >
         <p className="text-white font-semibold text-center">
           <span className="text-lg mr-2">🎒</span>
@@ -227,7 +227,7 @@ export default function Inventory() {
             className={`flex-1 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
               tab === t
                 ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
-                : 'bg-slate-800/50 text-slate-400 hover:text-white border border-slate-700'
+                : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700'
             }`}
           >
             {t === 'items' ? '🎒 My Items' : '🛒 Shop'}
@@ -246,8 +246,8 @@ export default function Inventory() {
                 onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
                   filter === f
-                    ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                    : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:text-white'
+                    ? 'bg-amber-500/50 text-amber-300 border border-amber-500/50'
+                    : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:text-white'
                 }`}
               >
                 {f === 'all' ? 'All' : f === 'weapon' ? '⚔️ Weapons' : f === 'accessory' ? '💎 Accessories' : '🔮 Stones'}
@@ -306,8 +306,8 @@ export default function Inventory() {
                     }}
                     className={`relative p-3 rounded-xl border text-left transition-all ${
                       isSelected
-                        ? 'border-amber-400 bg-amber-500/10 ring-1 ring-amber-400/50'
-                        : `${RARITY_BORDER[rarity]} bg-slate-800/60 hover:bg-slate-800/80`
+                        ? 'border-amber-400 bg-amber-500/20 ring-1 ring-amber-400/50'
+                        : `${RARITY_BORDER[rarity]} bg-slate-800/80 hover:bg-slate-800/90`
                     } ${RARITY_GLOW[rarity]}`}
                   >
                     {/* Quantity badge */}
@@ -388,7 +388,7 @@ export default function Inventory() {
                     <div className="text-xs text-slate-400 font-bold uppercase mb-2">Equipped on</div>
                     <div className="flex flex-wrap gap-2">
                       {catsWithItem.map(cat => (
-                        <div key={cat.instanceId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/50 rounded-lg text-xs">
+                        <div key={cat.instanceId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/80 rounded-lg text-xs">
                           <span className="text-white font-bold">{cat.name}</span>
                           <span className="text-slate-500">Lv.{cat.level}</span>
                           <button
@@ -499,7 +499,7 @@ export default function Inventory() {
                   <motion.div
                     key={item.id}
                     variants={cardVariants}
-                    className={`relative p-3 rounded-xl border ${RARITY_BORDER[item.rarity]} bg-slate-800/60 ${RARITY_GLOW[item.rarity]}`}
+                    className={`relative p-3 rounded-xl border ${RARITY_BORDER[item.rarity]} bg-slate-800/80 ${RARITY_GLOW[item.rarity]}`}
                   >
                     {qty > 0 && (
                       <div className="absolute top-2 right-2 bg-slate-700 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
@@ -542,7 +542,7 @@ export default function Inventory() {
                 return (
                   <div
                     key={item.id}
-                    className={`relative p-3 rounded-xl border ${RARITY_BORDER[item.rarity]} bg-slate-800/40 opacity-80 ${RARITY_GLOW[item.rarity]}`}
+                    className={`relative p-3 rounded-xl border ${RARITY_BORDER[item.rarity]} bg-slate-800/70 opacity-80 ${RARITY_GLOW[item.rarity]}`}
                   >
                     {qty > 0 && (
                       <div className="absolute top-2 right-2 bg-slate-700 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
@@ -558,7 +558,7 @@ export default function Inventory() {
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">{item.description}</div>
                       </div>
-                      <div className="w-full py-2 rounded-lg bg-slate-700/50 text-slate-500 font-bold text-xs text-center">
+                      <div className="w-full py-2 rounded-lg bg-slate-700/80 text-slate-500 font-bold text-xs text-center">
                         🔒 Drop Only
                       </div>
                     </div>
@@ -577,7 +577,7 @@ export default function Inventory() {
                 return (
                   <div
                     key={stone.id}
-                    className="relative p-3 rounded-xl border border-purple-500/30 bg-slate-800/40 shadow-[0_0_16px_rgba(168,85,247,0.2)]"
+                    className="relative p-3 rounded-xl border border-purple-500/30 bg-slate-800/70 shadow-[0_0_16px_rgba(168,85,247,0.2)]"
                   >
                     {qty > 0 && (
                       <div className="absolute top-2 right-2 bg-slate-700 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
@@ -591,7 +591,7 @@ export default function Inventory() {
                         <div className="text-[10px] font-bold uppercase text-purple-400">{stone.element}</div>
                         <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">{stone.effect}</div>
                       </div>
-                      <div className="w-full py-2 rounded-lg bg-slate-700/50 text-slate-500 font-bold text-xs text-center">
+                      <div className="w-full py-2 rounded-lg bg-slate-700/80 text-slate-500 font-bold text-xs text-center">
                         🎪 Friday Event
                       </div>
                     </div>

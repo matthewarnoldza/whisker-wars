@@ -20,6 +20,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
   const inventory = useGame(s => s.baits)
   const useB = useGame(s => s.useBait)
   const befriend = useGame(s => s.befriendCat)
+  const setView = useGame(s => s.setView)
   const soundEnabled = useGame(s => s.soundEnabled)
 
   const getRarityColor = (tier: number) => {
@@ -52,7 +53,11 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
     if (cat) {
       trackCatchSuccess(cat.name, cat.rarity, bait.name, bait.tier)
       if (soundEnabled) playSound('catCaught')
-      // Show celebration modal instead of inline result
+      // Immediately add cat to collection so it's never lost
+      befriend(cat)
+      // befriendCat changes view to 'collection', override back to 'bait' for modal
+      setView('bait')
+      // Show celebration modal
       setCaughtCat(cat)
       // Use setTimeout to ensure state is set before showing modal
       setTimeout(() => {
@@ -69,14 +74,12 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
 
   const handleCelebrationClose = () => {
     setShowCelebration(false)
-    if (caughtCat) {
-      befriend(caughtCat)
-      // Clear after a brief delay
-      setTimeout(() => {
-        setCaughtCat(null)
-        setResult(null)
-      }, 300)
-    }
+    // Cat was already added to collection in handleUseBait, just navigate
+    setView('collection')
+    setTimeout(() => {
+      setCaughtCat(null)
+      setResult(null)
+    }, 300)
   }
 
   return (
@@ -85,7 +88,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-500/50"
+        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/60 to-purple-500/60 border border-blue-500/50"
       >
         <p className="text-white text-center font-semibold">
           <span className="text-lg mr-2">✨</span>
@@ -100,7 +103,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
         className="grid gap-8 lg:grid-cols-2"
       >
         {/* Use Bait Section - First (Left) */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
+        <div className="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
           <div className="mb-4">
             <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 font-heading">
               <span className="text-3xl">🐟</span> Use Bait
@@ -138,7 +141,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                       )}
                       <div className="flex flex-col items-start flex-1">
                         <div className="text-sm font-black tracking-wide">{bait.name}</div>
-                        <div className="text-xs bg-black/30 px-2 py-0.5 rounded-full font-bold">x{qty}</div>
+                        <div className="text-xs bg-black/60 px-2 py-0.5 rounded-full font-bold">x{qty}</div>
                       </div>
                     </div>
                     {/* Shine effect */}
@@ -174,7 +177,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8, y: -20 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                className="mt-4 p-6 rounded-xl border border-red-500/50 bg-red-500/10"
+                className="mt-4 p-6 rounded-xl border border-red-500/50 bg-red-500/20"
               >
                 <div className="text-center">
                   <div className="text-3xl mb-2">😿</div>
@@ -185,14 +188,14 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
             )}
           </AnimatePresence>
 
-          <div className="mt-4 flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-slate-700">
+          <div className="mt-4 flex items-center justify-between p-3 rounded-lg bg-slate-900/80 border border-slate-700">
             <span className="text-slate-400 text-sm">Your Coins:</span>
             <span className="text-gold-400 font-bold text-lg">🪙 {coins}</span>
           </div>
         </div>
 
         {/* Buy Bait Section - Second (Right) */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
+        <div className="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
           <div className="mb-4">
             <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 font-heading">
               <span className="text-3xl">🎣</span> Buy Bait
@@ -217,8 +220,8 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                   onClick={() => buyBait(b.id)}
                   disabled={!canAfford}
                   className={`p-4 rounded-lg border text-left transition-all ${canAfford
-                      ? 'border-slate-600 bg-slate-700/50 hover:border-gold-500 hover:shadow-gold-glow cursor-pointer'
-                      : 'border-slate-800 bg-slate-900/30 opacity-50 cursor-not-allowed'
+                      ? 'border-slate-600 bg-slate-700/80 hover:border-gold-500 hover:shadow-gold-glow cursor-pointer'
+                      : 'border-slate-800 bg-slate-900/60 opacity-50 cursor-not-allowed'
                     }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -248,7 +251,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
             })}
           </motion.div>
 
-          <div className="mt-4 p-3 rounded-lg bg-gold-500/10 border border-gold-500/30">
+          <div className="mt-4 p-3 rounded-lg bg-gold-500/20 border border-gold-500/50">
             <p className="text-sm text-gold-200">
               💡 <span className="font-semibold">Pro Tip:</span> Higher tier bait has better chances of attracting Epic, Legendary, and Mythical cats!
             </p>

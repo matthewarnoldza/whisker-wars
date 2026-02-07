@@ -168,7 +168,7 @@ export default function StatsView() {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/30 to-teal-500/30 border border-emerald-500/50 mb-6"
+                className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/60 to-teal-500/60 border border-emerald-500/50 mb-6"
               >
                 <p className="text-white text-center font-semibold">
                   <span className="text-lg mr-2">📊</span>
@@ -274,15 +274,15 @@ export default function StatsView() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                  <div className="text-center p-4 bg-slate-900/80 rounded-lg">
                     <p className="text-3xl font-black text-gold-400">{achievementsUnlocked}</p>
                     <p className="text-sm text-slate-400 mt-1">Unlocked</p>
                   </div>
-                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                  <div className="text-center p-4 bg-slate-900/80 rounded-lg">
                     <p className="text-3xl font-black text-emerald-400">{achievementsClaimed}</p>
                     <p className="text-sm text-slate-400 mt-1">Claimed</p>
                   </div>
-                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                  <div className="text-center p-4 bg-slate-900/80 rounded-lg">
                     <p className="text-3xl font-black text-purple-400">{achievements.length}</p>
                     <p className="text-sm text-slate-400 mt-1">Total Available</p>
                   </div>
@@ -298,7 +298,7 @@ export default function StatsView() {
             >
               {/* Cloud code requirement notice */}
               {!profile?.cloudCode && (
-                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50 mb-6">
+                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-500/50 mb-6">
                   <p className="text-white text-center font-semibold">
                     <span className="text-lg mr-2">☁️</span>
                     Enable Cloud Save in your profile to appear on the leaderboard!
@@ -338,7 +338,7 @@ export default function StatsView() {
 
               {/* Leaderboard Table */}
               <div className="premium-card rounded-xl overflow-hidden">
-                <div className="p-4 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border-b border-slate-700">
+                <div className="p-4 bg-gradient-to-r from-purple-900/80 to-indigo-900/80 border-b border-slate-700">
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <span className="text-2xl">{categoryMeta.icon}</span> {categoryMeta.label} Leaderboard
                   </h2>

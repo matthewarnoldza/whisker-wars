@@ -942,7 +942,7 @@ export default function BattleArena() {
           animate={{ opacity: 1 }}
           className="space-y-4"
         >
-          <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/30 to-orange-500/30 border border-red-500/50">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/60 to-orange-500/60 border border-red-500/50">
             <div className="flex items-center justify-between">
               <p className="text-white font-semibold flex-1 text-center">
                 <span className="text-lg mr-2">⚔️</span>
@@ -1143,7 +1143,7 @@ export default function BattleArena() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-500/50"
+        className="p-4 rounded-xl bg-gradient-to-r from-blue-500/60 to-purple-500/60 border border-blue-500/50"
       >
         <div className="flex items-center justify-between">
           <p className="text-white font-semibold flex-1 text-center">
@@ -1152,7 +1152,7 @@ export default function BattleArena() {
           </p>
           <motion.button
             onClick={() => { setEventBattle(null); setShowDogSelect(true) }}
-            className="ml-3 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-600 text-slate-300 text-xs font-bold hover:border-slate-400 transition-all whitespace-nowrap"
+            className="ml-3 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-600 text-slate-300 text-xs font-bold hover:border-slate-400 transition-all whitespace-nowrap"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -1254,7 +1254,7 @@ export default function BattleArena() {
           )}
           {turn === 'player' && !selectedCatId && !battleEnded && (
             <div className="flex justify-center">
-              <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
+              <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/70 rounded-lg">
                 Tap a cat below to select
               </div>
             </div>
@@ -1375,7 +1375,7 @@ export default function BattleArena() {
                 </>
               )}
               {turn === 'player' && !selectedCatId && !battleEnded && (
-                <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
+                <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/70 rounded-lg">
                   Select a cat to attack
                 </div>
               )}

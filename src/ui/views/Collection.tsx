@@ -218,10 +218,10 @@ export default function Collection() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`p-4 rounded-xl ${showCatadex
-          ? 'bg-gradient-to-r from-indigo-500/30 to-violet-500/30 border border-indigo-500/50'
+          ? 'bg-gradient-to-r from-indigo-500/60 to-violet-500/60 border border-indigo-500/50'
           : mergeMode
-          ? 'bg-gradient-to-r from-cyan-500/30 to-teal-500/30 border border-cyan-500/50'
-          : 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50'
+          ? 'bg-gradient-to-r from-cyan-500/60 to-teal-500/60 border border-cyan-500/50'
+          : 'bg-gradient-to-r from-purple-500/60 to-pink-500/60 border border-purple-500/50'
         }`}
       >
         <p className="text-white text-center font-semibold">
@@ -263,7 +263,7 @@ export default function Collection() {
           <div className="col-span-2 sm:col-span-1 flex items-center gap-2 mt-1 sm:mt-0">
             <span className="font-bold text-gold-400 text-xs sm:text-sm">{collectionProgress}%</span>
             {/* Progress Bar (Inline) */}
-            <div className="flex-1 sm:w-32 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
+            <div className="flex-1 sm:w-32 bg-slate-800/80 rounded-full h-2 overflow-hidden border border-slate-700/50">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${collectionProgress}%` }}
@@ -285,7 +285,7 @@ export default function Collection() {
             placeholder="🔍 Search cats..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
+            className="flex-1 px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-slate-200 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
           />
 
           {/* Favorites Toggle */}
@@ -294,7 +294,7 @@ export default function Collection() {
             className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
               showFavoritesOnly
                 ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
-                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-pink-500/50 hover:text-pink-300'
+                : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-pink-500/50 hover:text-pink-300'
             }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -355,7 +355,7 @@ export default function Collection() {
             className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
               mergeMode
                 ? 'bg-gradient-to-r from-yellow-500 to-amber-400 text-slate-900 shadow-lg'
-                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-yellow-500/50 hover:text-yellow-300'
+                : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-yellow-500/50 hover:text-yellow-300'
             }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -369,7 +369,7 @@ export default function Collection() {
             className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
               showCatadex
                 ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg'
-                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-indigo-500/50 hover:text-indigo-300'
+                : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-indigo-500/50 hover:text-indigo-300'
             }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -389,7 +389,7 @@ export default function Collection() {
                 onClick={() => handleSortChange(option)}
                 className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${sortBy === option
                   ? 'bg-gradient-to-r from-gold-400 to-gold-600 text-slate-900 shadow-md'
-                  : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-gold-500/50 hover:text-gold-300'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-gold-500/50 hover:text-gold-300'
                   }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -412,7 +412,7 @@ export default function Collection() {
                   onClick={() => handleFilterChange(option)}
                   className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${filterBy === option
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                    : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-purple-500/50 hover:text-purple-300'
+                    : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-purple-500/50 hover:text-purple-300'
                     }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -433,7 +433,7 @@ export default function Collection() {
           className="space-y-4"
         >
           {/* Catadex Header */}
-          <div className="bg-gradient-to-r from-indigo-500/20 to-violet-500/20 border border-indigo-500/40 rounded-xl p-4 text-center">
+          <div className="bg-gradient-to-r from-indigo-500/40 to-violet-500/40 border border-indigo-500/40 rounded-xl p-4 text-center">
             <h3 className="text-lg font-black text-indigo-300 tracking-wider uppercase mb-1">Catadex</h3>
             <p className="text-sm text-slate-400">
               Discovered <span className="text-indigo-400 font-bold">{uniqueCatsCollected}</span> of <span className="text-indigo-400 font-bold">{totalUniqueCats}</span> cats
@@ -457,8 +457,8 @@ export default function Collection() {
                   animate={{ opacity: 1, y: 0 }}
                   className={`relative rounded-xl overflow-hidden border-2 transition-all ${
                     discovered
-                      ? `${rarityColors[cat.rarity]} bg-slate-900/80`
-                      : 'border-slate-700 bg-slate-900/50'
+                      ? `${rarityColors[cat.rarity]} bg-slate-900/90`
+                      : 'border-slate-700 bg-slate-900/80'
                   }`}
                 >
                   {/* Cat Image */}
@@ -514,7 +514,7 @@ export default function Collection() {
 
                     {/* Ability (only if discovered) */}
                     {discovered && (
-                      <div className="px-2 py-1 bg-black/50 rounded-md border border-gold-500/30">
+                      <div className="px-2 py-1 bg-black/70 rounded-md border border-gold-500/30">
                         <span className="text-[9px] font-bold text-gold-400 uppercase">{cat.ability.name}</span>
                       </div>
                     )}

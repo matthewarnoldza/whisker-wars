@@ -211,7 +211,7 @@ export default function TrainingArena() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-gradient-to-r from-amber-500/30 to-yellow-500/30 border border-amber-500/50"
+          className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-yellow-500/60 border border-amber-500/50"
         >
           <p className="text-white text-center font-semibold">
             <span className="text-lg mr-2">🎯</span>
@@ -295,7 +295,7 @@ export default function TrainingArena() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-amber-500/30 to-yellow-500/30 border border-amber-500/50"
+        className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-yellow-500/60 border border-amber-500/50"
       >
         <p className="text-white text-center font-semibold">
           <span className="text-lg mr-2">🎯</span>
@@ -543,7 +543,7 @@ export default function TrainingArena() {
             {selectedCat?.name} has finished training! HP fully restored.
           </p>
 
-          <div className="bg-slate-800/50 rounded-lg p-6 mb-6 border border-amber-500/30">
+          <div className="bg-slate-800/80 rounded-lg p-6 mb-6 border border-amber-500/30">
             <div className="text-sm text-slate-400 mb-4 uppercase tracking-wider">Training Reward</div>
             <div className="flex items-center justify-center gap-3">
               <span className="text-4xl">⭐</span>

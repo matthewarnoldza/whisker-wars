@@ -62,7 +62,7 @@ export default function SplashScreen({ onClose }: SplashScreenProps) {
           {/* Click to Play Button */}
           <motion.button
             onClick={onClose}
-            className="px-12 py-4 bg-gradient-to-br from-matrix-400 to-matrix-600 text-cyber-black-500 font-black text-xl rounded-xl shadow-neon-intense hover:shadow-neon-mega transition-all duration-300 border-2 border-matrix-300"
+            className="px-12 py-4 bg-white text-slate-900 font-black text-xl rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.4),0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6),0_0_60px_rgba(255,255,255,0.3)] transition-all duration-300 border-2 border-white/80"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.9, duration: 0.5 }}

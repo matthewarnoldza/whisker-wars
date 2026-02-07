@@ -896,6 +896,9 @@ export default function BattleArena() {
     }
     setDroppedStone(stoneDropRef)
 
+    // Ensure all battle rewards (XP, coins, equipment, stones) are persisted
+    useGame.getState().save()
+
     setVictoryRewards({ coins: coinsEarned, xp: xpEarned, equipDrop: equipDrop?.name, stoneDrop: stoneDropName })
 
     // Boss Rush: auto-advance to next dog

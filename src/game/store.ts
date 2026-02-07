@@ -302,34 +302,37 @@ export const useGame = create<GameState>((set, get) => ({
     return cat
   },
 
-  befriendCat: (cat)=> set(s=>{
-    const ownedCat: OwnedCat = {
-      ...cat,
-      instanceId: crypto.randomUUID(), // Generate unique ID for this cat instance
-      level: 1,
-      xp: 0,
-      currentHp: cat.health,
-      maxHp: cat.health,
-      currentAttack: cat.attack,
-      totalBattles: 0,
-      totalWins: 0,
-    }
-    const newOwned = [...s.owned, ownedCat]
-    const newStats = { ...s.stats, totalCatsCollected: s.stats.totalCatsCollected + 1 }
-
-    // Check achievements
-    setTimeout(() => {
-      const g = get()
-      if (newOwned.length === 1) g.unlockAchievement('first-cat')
-      if (newOwned.length >= 10) g.unlockAchievement('cat-collector')
-      if (newOwned.length >= 25) g.unlockAchievement('cat-master')
-      if (cat.rarity === 'Legendary' || cat.rarity === 'Mythical') {
-        g.unlockAchievement('legendary-catch')
+  befriendCat: (cat)=> {
+    set(s=>{
+      const ownedCat: OwnedCat = {
+        ...cat,
+        instanceId: crypto.randomUUID(), // Generate unique ID for this cat instance
+        level: 1,
+        xp: 0,
+        currentHp: cat.health,
+        maxHp: cat.health,
+        currentAttack: cat.attack,
+        totalBattles: 0,
+        totalWins: 0,
       }
-    }, 100)
+      const newOwned = [...s.owned, ownedCat]
+      const newStats = { ...s.stats, totalCatsCollected: s.stats.totalCatsCollected + 1 }
 
-    return { owned: newOwned, view: 'collection', stats: newStats }
-  }),
+      // Check achievements
+      setTimeout(() => {
+        const g = get()
+        if (newOwned.length === 1) g.unlockAchievement('first-cat')
+        if (newOwned.length >= 10) g.unlockAchievement('cat-collector')
+        if (newOwned.length >= 25) g.unlockAchievement('cat-master')
+        if (cat.rarity === 'Legendary' || cat.rarity === 'Mythical') {
+          g.unlockAchievement('legendary-catch')
+        }
+      }, 100)
+
+      return { owned: newOwned, view: 'collection', stats: newStats }
+    })
+    get().save() // Persist immediately — don't rely on 3s debounce (Chromebooks freeze tabs)
+  },
 
   releaseCat: (instanceId)=> set(s=> {
     const newOwned = s.owned.filter(cat => cat.instanceId !== instanceId)
@@ -351,32 +354,35 @@ export const useGame = create<GameState>((set, get) => ({
     return { favorites: [...fav] }
   }),
 
-  nextDog: ()=> set(s=> {
-    trackDogDefeated(DOGS[s.dogIndex].name, s.dogIndex, s.difficultyLevel)
+  nextDog: ()=> {
+    set(s=> {
+      trackDogDefeated(DOGS[s.dogIndex].name, s.dogIndex, s.difficultyLevel)
 
-    let newIndex = s.dogIndex + 1
-    let newDifficultyLevel = s.difficultyLevel
+      let newIndex = s.dogIndex + 1
+      let newDifficultyLevel = s.difficultyLevel
 
-    // If we've beaten all dogs, increase difficulty and loop back
-    if (newIndex >= DOGS.length) {
-      newDifficultyLevel += 1
-      newIndex = 0 // Start from first dog again with higher difficulty
-    }
-
-    const newStats = {
-      ...s.stats,
-      highestDogDefeated: Math.max(s.stats.highestDogDefeated, s.dogIndex)
-    }
-
-    setTimeout(() => {
-      // Unlock achievement on first completion of all dogs
-      if (s.dogIndex >= DOGS.length - 1 && s.difficultyLevel === 0) {
-        get().unlockAchievement('dog-slayer')
+      // If we've beaten all dogs, increase difficulty and loop back
+      if (newIndex >= DOGS.length) {
+        newDifficultyLevel += 1
+        newIndex = 0 // Start from first dog again with higher difficulty
       }
-    }, 100)
 
-    return { dogIndex: newIndex, difficultyLevel: newDifficultyLevel, stats: newStats }
-  }),
+      const newStats = {
+        ...s.stats,
+        highestDogDefeated: Math.max(s.stats.highestDogDefeated, s.dogIndex)
+      }
+
+      setTimeout(() => {
+        // Unlock achievement on first completion of all dogs
+        if (s.dogIndex >= DOGS.length - 1 && s.difficultyLevel === 0) {
+          get().unlockAchievement('dog-slayer')
+        }
+      }, 100)
+
+      return { dogIndex: newIndex, difficultyLevel: newDifficultyLevel, stats: newStats }
+    })
+    get().save() // Persist dog progression immediately
+  },
 
   addXpToCat: (instanceId, amount)=> set(s=> {
     const owned = s.owned.map(cat => {
@@ -449,36 +455,39 @@ export const useGame = create<GameState>((set, get) => ({
     )
   })),
 
-  recordBattleResult: (won, xpEarned)=> set(s=> {
-    const newStats = {
-      ...s.stats,
-      totalBattles: s.stats.totalBattles + 1,
-      totalWins: won ? s.stats.totalWins + 1 : s.stats.totalWins,
-      totalLosses: won ? s.stats.totalLosses : s.stats.totalLosses + 1,
-    }
-
-    // Update selected cats using instanceId
-    const owned = s.owned.map(cat => {
-      if (!s.selectedForBattle.includes(cat.instanceId)) return cat
-      return {
-        ...cat,
-        totalBattles: (cat.totalBattles || 0) + 1,
-        totalWins: won ? (cat.totalWins || 0) + 1 : (cat.totalWins || 0),
+  recordBattleResult: (won, xpEarned)=> {
+    set(s=> {
+      const newStats = {
+        ...s.stats,
+        totalBattles: s.stats.totalBattles + 1,
+        totalWins: won ? s.stats.totalWins + 1 : s.stats.totalWins,
+        totalLosses: won ? s.stats.totalLosses : s.stats.totalLosses + 1,
       }
+
+      // Update selected cats using instanceId
+      const owned = s.owned.map(cat => {
+        if (!s.selectedForBattle.includes(cat.instanceId)) return cat
+        return {
+          ...cat,
+          totalBattles: (cat.totalBattles || 0) + 1,
+          totalWins: won ? (cat.totalWins || 0) + 1 : (cat.totalWins || 0),
+        }
+      })
+
+      // Check achievements
+      setTimeout(() => {
+        const g = get()
+        if (won) {
+          if (newStats.totalWins === 1) g.unlockAchievement('first-victory')
+          if (newStats.totalWins >= 25) g.unlockAchievement('veteran')
+          if (newStats.totalWins >= 100) g.unlockAchievement('champion')
+        }
+      }, 100)
+
+      return { stats: newStats, owned }
     })
-
-    // Check achievements
-    setTimeout(() => {
-      const g = get()
-      if (won) {
-        if (newStats.totalWins === 1) g.unlockAchievement('first-victory')
-        if (newStats.totalWins >= 25) g.unlockAchievement('veteran')
-        if (newStats.totalWins >= 100) g.unlockAchievement('champion')
-      }
-    }, 100)
-
-    return { stats: newStats, owned }
-  }),
+    get().save() // Persist battle results immediately
+  },
 
   claimDailyReward: ()=> {
     const now = Date.now()
@@ -607,6 +616,7 @@ export const useGame = create<GameState>((set, get) => ({
       if (newTier === 2) g.unlockAchievement('prismatic-power')
     }, 100)
 
+    get().save() // Persist merge immediately — 3 cats consumed, elite created
     return eliteCat
   },
 
@@ -652,6 +662,7 @@ export const useGame = create<GameState>((set, get) => ({
     })
 
     set({ owned, coins: s.coins - cost })
+    get().save() // Persist ascension immediately — coins spent, cat reset
     return true
   },
 
@@ -841,6 +852,7 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   save: ()=> {
+    if (!stateLoaded) return // Never persist unloaded/initial state
     const profilesData = getProfilesData()
     if (!profilesData.activeProfileId) return
 
@@ -889,11 +901,11 @@ export const useGame = create<GameState>((set, get) => ({
     )
     saveProfilesData(profilesData)
 
-    // Throttled leaderboard sync (at most once per 5 minutes, only after state is loaded)
+    // Throttled leaderboard sync (at most once per 30 seconds, only after state is loaded)
     const profile = profilesData.profiles.find(p => p.id === profilesData.activeProfileId)
     if (stateLoaded && profile?.cloudCode) {
       const now = Date.now()
-      if (now - lastLeaderboardSync > 300_000) {
+      if (now - lastLeaderboardSync > 30_000) {
         lastLeaderboardSync = now
         const uniqueCats = new Set(s.owned.map(c => c.id)).size
         uploadLeaderboardStats(profile.cloudCode, profile.name, {
@@ -904,8 +916,8 @@ export const useGame = create<GameState>((set, get) => ({
         })
       }
 
-      // Throttled cloud save sync (at most once per 5 minutes)
-      if (now - lastCloudSync > 300_000) {
+      // Throttled cloud save sync (at most once per 2 minutes)
+      if (now - lastCloudSync > 120_000) {
         lastCloudSync = now
         const cloudData: CloudSaveData = {
           coins: s.coins,
@@ -1023,6 +1035,7 @@ export const useGame = create<GameState>((set, get) => ({
 
     // Immediately save initial game state so it's not lost if browser closes
     set(getInitialGameState())
+    stateLoaded = true // New profile: initial state IS the canonical state
     get().save()
 
     trackProfileCreated(newProfile.id)
@@ -1132,6 +1145,7 @@ export const useGame = create<GameState>((set, get) => ({
 // Debounced auto-save: only saves when state actually changes
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
 useGame.subscribe(() => {
+  if (!stateLoaded) return // Don't schedule saves during init/profile switching
   if (saveTimeout) clearTimeout(saveTimeout)
   saveTimeout = setTimeout(() => {
     useGame.getState().save()
@@ -1142,17 +1156,17 @@ useGame.subscribe(() => {
 // Save when page becomes hidden (tab switch, app switch, lid close)
 // Critical for Chromebooks which aggressively freeze tabs
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
+  if (document.visibilityState === 'hidden' && stateLoaded) {
     useGame.getState().save()
   }
 })
 
 // Save when page is being unloaded (browser close, navigation)
 window.addEventListener('pagehide', () => {
-  useGame.getState().save()
+  if (stateLoaded) useGame.getState().save()
 })
 
 // Redundant save on beforeunload (some browsers, especially older Firefox, don't fire pagehide reliably)
 window.addEventListener('beforeunload', () => {
-  useGame.getState().save()
+  if (stateLoaded) useGame.getState().save()
 })

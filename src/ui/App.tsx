@@ -17,6 +17,8 @@ import WelcomeTutorialModal from './components/WelcomeTutorialModal'
 import SplashScreen from './components/SplashScreen'
 import StorageWarning from './components/StorageWarning'
 import SaveCodeModal from './components/SaveCodeModal'
+import ErrorBoundary from './components/ErrorBoundary'
+import EventBanner from './components/EventBanner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 import { isWeb } from '../utils/platform'
@@ -30,17 +32,49 @@ import {
 } from '../utils/analytics'
 
 function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const dailyStreak = useGame(s => s.dailyStreak)
+  const streakDay = Math.max(0, dailyStreak - 1) // Show the day that was just claimed
+  const STREAK_REWARDS = [
+    { coins: 50 },
+    { coins: 75 },
+    { coins: 100, bait: 'Catnip Crunch' },
+    { coins: 125 },
+    { coins: 150, bait: 'Cosmic Tuna' },
+    { coins: 200 },
+    { coins: 300, bait: 'Mythic Mackerel' },
+  ]
+  const reward = STREAK_REWARDS[streakDay % STREAK_REWARDS.length]
+  const currentDay = (streakDay % STREAK_REWARDS.length) + 1
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Daily Reward" size="sm">
       <div className="text-center py-6">
         <div className="text-6xl mb-4 animate-bounce">🪙</div>
-        <h3 className="text-2xl font-bold text-matrix-400 mb-2">+50 Coins!</h3>
-        <p className="text-gray-300 mb-6">
-          Come back tomorrow for another reward!
+        <h3 className="text-2xl font-bold text-amber-400 mb-2">+{reward.coins} Coins!</h3>
+        {'bait' in reward && reward.bait && (
+          <p className="text-cyan-400 font-semibold mb-2">+ 1x {reward.bait}!</p>
+        )}
+        {/* Streak indicator */}
+        <div className="flex justify-center gap-1.5 my-4">
+          {STREAK_REWARDS.map((_, i) => (
+            <div
+              key={i}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                i < currentDay
+                  ? 'bg-amber-500 border-amber-400 text-slate-900'
+                  : 'bg-slate-700 border-slate-600 text-slate-400'
+              }`}
+            >
+              {i + 1}
+            </div>
+          ))}
+        </div>
+        <p className="text-slate-400 text-sm mb-6">
+          Day {currentDay} of 7 — Come back tomorrow to keep your streak!
         </p>
         <motion.button
           onClick={onClose}
-          className="px-6 py-3 bg-matrix-500 text-cyber-black-500 font-bold rounded-lg shadow-neon"
+          className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-900 font-bold rounded-xl shadow-lg"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -138,6 +172,23 @@ function AchievementsButton() {
         </div>
       </Modal>
     </>
+  )
+}
+
+function SoundToggle() {
+  const soundEnabled = useGame(s => s.soundEnabled)
+  const toggleSound = useGame(s => s.toggleSound)
+
+  return (
+    <motion.button
+      onClick={toggleSound}
+      className="px-2.5 py-1.5 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      aria-label={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
+    >
+      <span className="text-lg">{soundEnabled ? '🔊' : '🔇'}</span>
+    </motion.button>
   )
 }
 
@@ -361,6 +412,7 @@ export default function App() {
                   </div>
                 </motion.div>
                 <AchievementsButton />
+                <SoundToggle />
               </div>
             </div>
 
@@ -392,6 +444,9 @@ export default function App() {
           </div>
         </header>
 
+        {/* Event Banner */}
+        {profileLoaded && !isPublicPage && <EventBanner />}
+
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
           <motion.div
@@ -400,13 +455,15 @@ export default function App() {
             animate="animate"
             variants={pageVariants}
           >
-            {view === 'bait' && <BaitingArea baits={BAITS} />}
-            {view === 'collection' && <Collection />}
-            {view === 'battle' && <BattleArena />}
-            {view === 'training' && <TrainingArena />}
-            {view === 'stats' && <StatsView />}
-            {view === 'privacy' && <PrivacyPolicy />}
-            {view === 'terms' && <TermsOfService />}
+            <ErrorBoundary>
+              {view === 'bait' && <BaitingArea baits={BAITS} />}
+              {view === 'collection' && <Collection />}
+              {view === 'battle' && <BattleArena />}
+              {view === 'training' && <TrainingArena />}
+              {view === 'stats' && <StatsView />}
+              {view === 'privacy' && <PrivacyPolicy />}
+              {view === 'terms' && <TermsOfService />}
+            </ErrorBoundary>
           </motion.div>
         </main>
 

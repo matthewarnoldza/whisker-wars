@@ -2,6 +2,9 @@
 import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
+import { EQUIPMENT } from './items'
+import { uploadLeaderboardStats } from '../utils/leaderboard'
+import { getEventPeriodKey, type GameEvent } from './events'
 import {
   trackBaitPurchased,
   trackCoinsSpent,
@@ -28,6 +31,8 @@ export interface OwnedCat extends Cat {
   isElite?: boolean       // true if created via merge
   eliteTier?: number      // 1 = Elite, 2 = Prismatic
   mergedFromIds?: string[] // instanceIds of 3 consumed cats
+  ascension?: number      // 0-3, number of ascensions (prestige resets)
+  equipment?: { weapon?: string; accessory?: string } // equipped item IDs
 }
 
 export interface Achievement {
@@ -77,8 +82,11 @@ interface GameState {
   achievements: Achievement[]
   stats: GameStats
   lastDailyReward: number
+  dailyStreak: number
   tutorialCompleted: boolean
   trainingCooldowns: Record<string, number[]>
+  inventory: Record<string, number> // equipmentId -> qty
+  completedEventRewards: string[] // event period keys like "halloween-2025"
   setView: (v:View)=>void
   addCoins: (n:number)=>void
   buyBait: (baitId:string)=>void
@@ -98,6 +106,12 @@ interface GameState {
   updateAchievementProgress: (id:string, progress:number)=>void
   claimAchievement: (id:string)=>void
   mergeCats: (instanceIds:[string,string,string])=>OwnedCat|null
+  ascendCat: (instanceId:string)=>boolean
+  addEquipment: (equipmentId:string)=>void
+  equipItem: (catInstanceId:string, equipmentId:string)=>boolean
+  unequipItem: (catInstanceId:string, slot:'weapon'|'accessory')=>void
+  buyEquipment: (equipmentId:string)=>boolean
+  claimEventReward: (event:GameEvent)=>boolean
   completeTutorial: ()=>void
   recordTrainingComplete: (instanceId:string)=>void
   getTrainingSessions: (instanceId:string)=>{ remaining:number, nextAvailable:number|null }
@@ -130,13 +144,26 @@ const getRandomCatByBait = (bait:Bait): Cat | null => {
   return pool[rand(0, pool.length-1)]
 }
 
-const calculateXpForLevel = (level:number): number => {
-  return Math.floor(50 * Math.pow(1.5, level - 1))
-}
-
-const calculateStatBoost = (baseValue:number, level:number): number => {
-  return Math.floor(baseValue + (level - 1) * (baseValue * 0.15))
-}
+// Re-export from constants for backward compatibility within this file
+import {
+  calculateXpForLevel,
+  calculateStatBoost,
+  INITIAL_COINS,
+  HEAL_COST,
+  DAILY_REWARD_COINS,
+  ACHIEVEMENT_REWARD_COINS,
+  MAX_CAT_LEVEL,
+  ELITE_TIER_1_MULTIPLIER,
+  ELITE_TIER_2_MULTIPLIER,
+  MAX_DAILY_TRAINING_SESSIONS,
+  DEFAULT_BAITS,
+  DAILY_STREAK_REWARDS,
+  DAILY_STREAK_LENGTH,
+  TWO_DAYS_MS,
+  MAX_ASCENSION,
+  ASCENSION_COSTS,
+  getAscendedBaseStat,
+} from './constants'
 
 // Profile management helpers
 const PROFILES_META_KEY = 'whiskerwars-profiles'
@@ -176,6 +203,8 @@ const saveProfilesData = (data: ProfilesData) => {
   localStorage.setItem(PROFILES_META_KEY, JSON.stringify(data))
 }
 
+let lastLeaderboardSync = 0
+
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
   { id:'first-cat', name:'First Friend', description:'Befriend your first cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
   { id:'cat-collector', name:'Cat Collector', description:'Befriend 10 cats', unlocked:false, claimed:false, progress:0, maxProgress:10 },
@@ -195,8 +224,8 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
 
 const getInitialGameState = () => ({
   view: 'bait' as View,
-  coins: 120,
-  baits: { 'toy-mouse': 1, 'silver-sardine': 1 },
+  coins: INITIAL_COINS,
+  baits: { ...DEFAULT_BAITS },
   owned: [],
   selectedForBattle: [],
   favorites: [],
@@ -214,9 +243,12 @@ const getInitialGameState = () => ({
     totalMerges: 0,
   },
   lastDailyReward: 0,
+  dailyStreak: 0,
   difficultyLevel: 0, // For multi-dog battles after beating all dogs
   tutorialCompleted: false,
   trainingCooldowns: {} as Record<string, number[]>,
+  inventory: {} as Record<string, number>,
+  completedEventRewards: [] as string[],
 })
 
 export const useGame = create<GameState>((set, get) => ({
@@ -250,7 +282,8 @@ export const useGame = create<GameState>((set, get) => ({
     const s = get()
     const qty = s.baits[baitId]||0
     if (!qty) return null
-    const bait = BAITS.find(b=> b.id===baitId)!
+    const bait = BAITS.find(b=> b.id===baitId)
+    if (!bait) return null
     const cat = getRandomCatByBait(bait)
     set({ baits: { ...s.baits, [baitId]: qty-1 } })
     return cat
@@ -340,13 +373,16 @@ export const useGame = create<GameState>((set, get) => ({
       let newLevel = cat.level
       let newMaxHp = cat.maxHp
       let newCurrentAttack = cat.currentAttack
+      const ascension = cat.ascension || 0
+      const baseHp = getAscendedBaseStat(cat.health, ascension)
+      const baseAtk = getAscendedBaseStat(cat.attack, ascension)
 
       // Level up logic
-      while (newXp >= calculateXpForLevel(newLevel) && newLevel < 10) {
+      while (newXp >= calculateXpForLevel(newLevel) && newLevel < MAX_CAT_LEVEL) {
         newXp -= calculateXpForLevel(newLevel)
         newLevel++
-        newMaxHp = calculateStatBoost(cat.health, newLevel)
-        newCurrentAttack = calculateStatBoost(cat.attack, newLevel)
+        newMaxHp = calculateStatBoost(baseHp, newLevel)
+        newCurrentAttack = calculateStatBoost(baseAtk, newLevel)
         trackLevelUp(cat.name, newLevel, cat.rarity)
 
         // Check level 10 achievement
@@ -377,7 +413,6 @@ export const useGame = create<GameState>((set, get) => ({
 
   healAllCats: ()=> {
     const state = get()
-    const HEAL_COST = 25
     if (state.coins < HEAL_COST) return false
 
     // Check if any cats need healing
@@ -434,15 +469,29 @@ export const useGame = create<GameState>((set, get) => ({
 
   claimDailyReward: ()=> {
     const now = Date.now()
-    const lastReward = get().lastDailyReward
+    const s = get()
+    const lastReward = s.lastDailyReward
     const oneDayMs = 24 * 60 * 60 * 1000
 
     if (now - lastReward >= oneDayMs) {
-      const rewardCoins = 50
-      get().addCoins(rewardCoins)
-      set({ lastDailyReward: now })
-      trackDailyRewardClaimed(rewardCoins)
-      trackCoinsEarned('daily_reward', rewardCoins)
+      // Check if streak continues or resets (missed more than 48 hours)
+      const streakBroken = lastReward > 0 && (now - lastReward >= TWO_DAYS_MS)
+      const newStreak = streakBroken ? 0 : s.dailyStreak
+      const streakDay = newStreak % DAILY_STREAK_LENGTH
+      const reward = DAILY_STREAK_REWARDS[streakDay]
+
+      get().addCoins(reward.coins)
+
+      // Give bonus bait if applicable
+      if ('bait' in reward && reward.bait) {
+        set(prev => ({
+          baits: { ...prev.baits, [reward.bait!]: (prev.baits[reward.bait!] || 0) + 1 }
+        }))
+      }
+
+      set({ lastDailyReward: now, dailyStreak: newStreak + 1 })
+      trackDailyRewardClaimed(reward.coins)
+      trackCoinsEarned('daily_reward', reward.coins)
       return true
     }
     return false
@@ -493,11 +542,15 @@ export const useGame = create<GameState>((set, get) => ({
 
     const newTier = tier + 1
     const highestLevel = Math.max(...cats.map(c => c.level))
-    const statMultiplier = newTier === 1 ? 1.20 : 1.35
+    const statMultiplier = newTier === 1 ? ELITE_TIER_1_MULTIPLIER : ELITE_TIER_2_MULTIPLIER
     const baseCat = CATS.find(c => c.id === templateId)!
 
-    const newMaxHp = Math.floor(calculateStatBoost(baseCat.health, highestLevel) * statMultiplier)
-    const newAttack = Math.floor(calculateStatBoost(baseCat.attack, highestLevel) * statMultiplier)
+    // Preserve highest ascension from merged cats
+    const highestAscension = Math.max(...cats.map(c => c.ascension || 0))
+    const mergeBaseHp = getAscendedBaseStat(baseCat.health, highestAscension)
+    const mergeBaseAtk = getAscendedBaseStat(baseCat.attack, highestAscension)
+    const newMaxHp = Math.floor(calculateStatBoost(mergeBaseHp, highestLevel) * statMultiplier)
+    const newAttack = Math.floor(calculateStatBoost(mergeBaseAtk, highestLevel) * statMultiplier)
 
     const eliteCat: OwnedCat = {
       ...baseCat,
@@ -512,6 +565,7 @@ export const useGame = create<GameState>((set, get) => ({
       isElite: true,
       eliteTier: newTier,
       mergedFromIds: instanceIds,
+      ascension: highestAscension,
     }
 
     // Remove consumed cats, clean up battle selection and favorites
@@ -543,12 +597,140 @@ export const useGame = create<GameState>((set, get) => ({
     return eliteCat
   },
 
+  ascendCat: (instanceId)=> {
+    const s = get()
+    const cat = s.owned.find(c => c.instanceId === instanceId)
+    if (!cat) return false
+
+    const currentAscension = cat.ascension || 0
+    if (currentAscension >= MAX_ASCENSION) return false
+    if (cat.level < MAX_CAT_LEVEL) return false
+
+    const cost = ASCENSION_COSTS[currentAscension]
+    if (s.coins < cost) return false
+
+    const newAscension = currentAscension + 1
+    const baseCat = CATS.find(c => c.id === cat.id)
+    if (!baseCat) return false
+
+    // Calculate new stats at level 1 with ascension bonus
+    const ascendedBaseHp = getAscendedBaseStat(baseCat.health, newAscension)
+    const ascendedBaseAtk = getAscendedBaseStat(baseCat.attack, newAscension)
+
+    // Apply elite multiplier if applicable
+    const eliteMultiplier = cat.isElite
+      ? ((cat.eliteTier || 0) >= 2 ? ELITE_TIER_2_MULTIPLIER : ELITE_TIER_1_MULTIPLIER)
+      : 1
+
+    const newMaxHp = Math.floor(ascendedBaseHp * eliteMultiplier)
+    const newAttack = Math.floor(ascendedBaseAtk * eliteMultiplier)
+
+    const owned = s.owned.map(c => {
+      if (c.instanceId !== instanceId) return c
+      return {
+        ...c,
+        level: 1,
+        xp: 0,
+        ascension: newAscension,
+        currentHp: newMaxHp,
+        maxHp: newMaxHp,
+        currentAttack: newAttack,
+      }
+    })
+
+    set({ owned, coins: s.coins - cost })
+    return true
+  },
+
+  addEquipment: (equipmentId)=> set(s => ({
+    inventory: { ...s.inventory, [equipmentId]: (s.inventory[equipmentId] || 0) + 1 },
+  })),
+
+  equipItem: (catInstanceId, equipmentId)=> {
+    const s = get()
+    const item = EQUIPMENT.find(e => e.id === equipmentId)
+    if (!item) return false
+    if ((s.inventory[equipmentId] || 0) <= 0) return false
+
+    const cat = s.owned.find(c => c.instanceId === catInstanceId)
+    if (!cat) return false
+
+    const currentEquip = cat.equipment || {}
+    // Unequip existing item in the same slot (return to inventory)
+    const existingId = currentEquip[item.slot]
+    const newInventory = { ...s.inventory }
+    if (existingId) {
+      newInventory[existingId] = (newInventory[existingId] || 0) + 1
+    }
+    newInventory[equipmentId] = Math.max(0, (newInventory[equipmentId] || 0) - 1)
+
+    const owned = s.owned.map(c => {
+      if (c.instanceId !== catInstanceId) return c
+      return { ...c, equipment: { ...currentEquip, [item.slot]: equipmentId } }
+    })
+
+    set({ owned, inventory: newInventory })
+    return true
+  },
+
+  unequipItem: (catInstanceId, slot)=> {
+    const s = get()
+    const cat = s.owned.find(c => c.instanceId === catInstanceId)
+    if (!cat) return
+    const currentEquip = cat.equipment || {}
+    const itemId = currentEquip[slot]
+    if (!itemId) return
+
+    const newInventory = { ...s.inventory, [itemId]: (s.inventory[itemId] || 0) + 1 }
+    const owned = s.owned.map(c => {
+      if (c.instanceId !== catInstanceId) return c
+      const newEquip = { ...currentEquip }
+      delete newEquip[slot]
+      return { ...c, equipment: newEquip }
+    })
+
+    set({ owned, inventory: newInventory })
+  },
+
+  buyEquipment: (equipmentId)=> {
+    const s = get()
+    const item = EQUIPMENT.find(e => e.id === equipmentId)
+    if (!item || item.cost <= 0) return false
+    if (s.coins < item.cost) return false
+
+    set({
+      coins: s.coins - item.cost,
+      inventory: { ...s.inventory, [equipmentId]: (s.inventory[equipmentId] || 0) + 1 },
+    })
+    return true
+  },
+
+  claimEventReward: (event)=> {
+    const s = get()
+    const periodKey = getEventPeriodKey(event)
+    if (s.completedEventRewards.includes(periodKey)) return false
+
+    const newRewards = [...s.completedEventRewards, periodKey]
+    const updates: Partial<GameState> = { completedEventRewards: newRewards }
+
+    // Add coin reward
+    get().addCoins(event.coinReward)
+
+    // Add bait reward if applicable
+    if (event.baitReward) {
+      updates.baits = { ...s.baits, [event.baitReward]: (s.baits[event.baitReward] || 0) + 1 }
+    }
+
+    set(updates)
+    return true
+  },
+
   claimAchievement: (id)=> set(s=> {
     const ach = s.achievements.find(a => a.id === id)
     if (!ach || !ach.unlocked || ach.claimed) return {}
 
-    trackAchievementClaimed(id, ach.name, 100)
-    trackCoinsEarned('achievement', 100)
+    trackAchievementClaimed(id, ach.name, ACHIEVEMENT_REWARD_COINS)
+    trackCoinsEarned('achievement', ACHIEVEMENT_REWARD_COINS)
 
     const achievements = s.achievements.map(a =>
       a.id === id ? { ...a, claimed: true } : a
@@ -556,7 +738,7 @@ export const useGame = create<GameState>((set, get) => ({
 
     return {
       achievements,
-      coins: s.coins + 100
+      coins: s.coins + ACHIEVEMENT_REWARD_COINS
     }
   }),
 
@@ -566,7 +748,7 @@ export const useGame = create<GameState>((set, get) => ({
     const now = Date.now()
     const oneDayMs = 24 * 60 * 60 * 1000
     const existing = (s.trainingCooldowns[instanceId] || []).filter(t => now - t < oneDayMs)
-    if (existing.length >= 3) return s
+    if (existing.length >= MAX_DAILY_TRAINING_SESSIONS) return s
     return {
       trainingCooldowns: {
         ...s.trainingCooldowns,
@@ -607,16 +789,40 @@ export const useGame = create<GameState>((set, get) => ({
       achievements: s.achievements,
       stats: s.stats,
       lastDailyReward: s.lastDailyReward,
+      dailyStreak: s.dailyStreak,
       tutorialCompleted: s.tutorialCompleted,
       trainingCooldowns: s.trainingCooldowns,
+      inventory: s.inventory,
+      completedEventRewards: s.completedEventRewards,
     })
-    localStorage.setItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`, payload)
+    try {
+      localStorage.setItem(`${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`, payload)
+    } catch (error) {
+      console.error('Failed to save game data (storage quota may be exceeded):', error)
+      return
+    }
 
     // Update lastPlayed timestamp
     profilesData.profiles = profilesData.profiles.map(p =>
       p.id === profilesData.activeProfileId ? { ...p, lastPlayed: Date.now() } : p
     )
     saveProfilesData(profilesData)
+
+    // Throttled leaderboard sync (at most once per 5 minutes)
+    const profile = profilesData.profiles.find(p => p.id === profilesData.activeProfileId)
+    if (profile?.cloudCode) {
+      const now = Date.now()
+      if (now - lastLeaderboardSync > 300_000) {
+        lastLeaderboardSync = now
+        const uniqueCats = new Set(s.owned.map(c => c.id)).size
+        uploadLeaderboardStats(profile.cloudCode, profile.name, {
+          totalWins: s.stats.totalWins,
+          highestDogDefeated: s.stats.highestDogDefeated,
+          collectionCompletion: uniqueCats,
+          totalMerges: s.stats.totalMerges,
+        })
+      }
+    }
   },
 
   load: ()=> {
@@ -644,12 +850,13 @@ export const useGame = create<GameState>((set, get) => ({
         isElite: cat.isElite ?? false,
         eliteTier: cat.eliteTier ?? 0,
         mergedFromIds: cat.mergedFromIds ?? [],
+        ascension: cat.ascension ?? 0,
       }))
 
       const savedStats = d.stats ?? {}
       set({
-        coins: d.coins ?? 120,
-        baits: d.baits ?? { 'toy-mouse': 1, 'silver-sardine': 1 },
+        coins: d.coins ?? INITIAL_COINS,
+        baits: d.baits ?? { ...DEFAULT_BAITS },
         owned: normalizedOwned,
         selectedForBattle: d.selectedForBattle ?? [],
         dogIndex: d.dogIndex ?? 0,
@@ -668,8 +875,11 @@ export const useGame = create<GameState>((set, get) => ({
           totalMerges: savedStats.totalMerges ?? 0,
         },
         lastDailyReward: d.lastDailyReward ?? 0,
+        dailyStreak: d.dailyStreak ?? 0,
         tutorialCompleted: d.tutorialCompleted ?? false,
         trainingCooldowns: d.trainingCooldowns ?? {},
+        inventory: d.inventory ?? {},
+        completedEventRewards: d.completedEventRewards ?? [],
       })
     } catch (error) {
       console.error('Failed to load save data:', error)
@@ -750,10 +960,15 @@ export const useGame = create<GameState>((set, get) => ({
   },
 }))
 
-// Auto-save every 5 seconds (reduced from 1.5s to reduce main thread blocking)
-setInterval(() => {
-  useGame.getState().save()
-}, 5000)
+// Debounced auto-save: only saves when state actually changes
+let saveTimeout: ReturnType<typeof setTimeout> | null = null
+useGame.subscribe(() => {
+  if (saveTimeout) clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => {
+    useGame.getState().save()
+    saveTimeout = null
+  }, 3000)
+})
 
 // Save when page becomes hidden (tab switch, app switch, lid close)
 // Critical for Chromebooks which aggressively freeze tabs

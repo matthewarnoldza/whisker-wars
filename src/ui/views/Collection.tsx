@@ -10,7 +10,7 @@ import { containerVariants, cardVariants } from '../animations'
 import { useState, useMemo, useCallback } from 'react'
 import type { OwnedCat } from '../../game/store'
 import type { Rarity } from '../../game/data'
-import { CATS } from '../../game/data'
+import { CATS, BAITS, rarityByTier } from '../../game/data'
 import {
   trackCardZoomed,
   trackCatReleased,
@@ -42,6 +42,7 @@ export default function Collection() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [zoomedCat, setZoomedCat] = useState<OwnedCat | null>(null)
   const [healFlash, setHealFlash] = useState(false)
+  const [showCatadex, setShowCatadex] = useState(false)
 
   // Merge mode state
   const [mergeMode, setMergeMode] = useState(false)
@@ -125,11 +126,46 @@ export default function Collection() {
     return uniqueIds.size
   }, [cats])
 
-  const totalUniqueCats = 40
+  const totalUniqueCats = CATS.length
 
   const collectionProgress = useMemo(() => {
     return Math.round((uniqueCatsCollected / totalUniqueCats) * 100)
   }, [uniqueCatsCollected, totalUniqueCats])
+
+  // Catadex: set of discovered cat base IDs
+  const discoveredCatIds = useMemo(() => new Set(cats.map(c => c.id)), [cats])
+
+  // Map rarity → minimum bait tier that can catch it
+  const baitTiersForRarity = useMemo(() => {
+    const map: Record<string, { minTier: number; baitNames: string[] }> = {}
+    const rarities: Rarity[] = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythical']
+    for (const r of rarities) {
+      const tiers: number[] = []
+      for (let t = 1; t <= 6; t++) {
+        if (rarityByTier(t).includes(r)) tiers.push(t)
+      }
+      const minTier = Math.min(...tiers)
+      const baitNames = BAITS.filter(b => tiers.includes(b.tier)).map(b => b.name)
+      map[r] = { minTier, baitNames }
+    }
+    return map
+  }, [])
+
+  // Catadex: filter CATS by rarity if a filter is active
+  const catadexCats = useMemo(() => {
+    let result = [...CATS]
+    if (filterBy !== 'all') {
+      result = result.filter(c => c.rarity === filterBy)
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(c => {
+        if (discoveredCatIds.has(c.id)) return c.name.toLowerCase().includes(query)
+        return false // Can't search for undiscovered cats
+      })
+    }
+    return result
+  }, [filterBy, searchQuery, discoveredCatIds])
 
   const filteredAndSortedCats = useMemo(() => {
     let result = [...cats]
@@ -181,13 +217,20 @@ export default function Collection() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`p-4 rounded-xl ${mergeMode
+        className={`p-4 rounded-xl ${showCatadex
+          ? 'bg-gradient-to-r from-indigo-500/30 to-violet-500/30 border border-indigo-500/50'
+          : mergeMode
           ? 'bg-gradient-to-r from-cyan-500/30 to-teal-500/30 border border-cyan-500/50'
           : 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50'
         }`}
       >
         <p className="text-white text-center font-semibold">
-          {mergeMode ? (
+          {showCatadex ? (
+            <>
+              <span className="text-lg mr-2">📖</span>
+              Browse all {totalUniqueCats} cats. Undiscovered cats appear as silhouettes — use the right bait to find them!
+            </>
+          ) : mergeMode ? (
             <>
               <span className="text-lg mr-2">&#x2726;</span>
               Select 3 of the same cat to merge into an Elite! {selectedForMerge.length}/3 selected
@@ -319,6 +362,20 @@ export default function Collection() {
           >
             &#x2726; Merge
           </motion.button>
+
+          {/* Catadex Toggle */}
+          <motion.button
+            onClick={() => { setShowCatadex(v => !v); if (mergeMode) handleMergeToggle() }}
+            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+              showCatadex
+                ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg'
+                : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-indigo-500/50 hover:text-indigo-300'
+            }`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Catadex
+          </motion.button>
         </div>
 
         {/* Row 2: Sort & Filter */}
@@ -368,8 +425,126 @@ export default function Collection() {
         </div>
       </div>
 
+      {/* Catadex View */}
+      {showCatadex && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-4"
+        >
+          {/* Catadex Header */}
+          <div className="bg-gradient-to-r from-indigo-500/20 to-violet-500/20 border border-indigo-500/40 rounded-xl p-4 text-center">
+            <h3 className="text-lg font-black text-indigo-300 tracking-wider uppercase mb-1">Catadex</h3>
+            <p className="text-sm text-slate-400">
+              Discovered <span className="text-indigo-400 font-bold">{uniqueCatsCollected}</span> of <span className="text-indigo-400 font-bold">{totalUniqueCats}</span> cats
+            </p>
+          </div>
+
+          {/* Catadex Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            {catadexCats.map(cat => {
+              const discovered = discoveredCatIds.has(cat.id)
+              const baitInfo = baitTiersForRarity[cat.rarity]
+              const ownedInstances = cats.filter(c => c.id === cat.id)
+              const bestInstance = ownedInstances.length > 0
+                ? ownedInstances.reduce((best, c) => c.level > best.level ? c : best, ownedInstances[0])
+                : null
+
+              return (
+                <motion.div
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all ${
+                    discovered
+                      ? `${rarityColors[cat.rarity]} bg-slate-900/80`
+                      : 'border-slate-700 bg-slate-900/50'
+                  }`}
+                >
+                  {/* Cat Image */}
+                  <div className="relative aspect-[3/4] overflow-hidden">
+                    {cat.imageUrl ? (
+                      <img
+                        src={cat.imageUrl}
+                        alt={discovered ? cat.name : 'Unknown cat'}
+                        loading="lazy"
+                        decoding="async"
+                        className={`w-full h-full object-cover ${!discovered ? 'brightness-0 opacity-40' : ''}`}
+                      />
+                    ) : (
+                      <div className={`w-full h-full bg-slate-800 ${!discovered ? 'opacity-40' : ''}`} />
+                    )}
+
+                    {/* Undiscovered Overlay */}
+                    {!discovered && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-5xl text-slate-600 font-black">?</span>
+                      </div>
+                    )}
+
+                    {/* Gradient overlay for text readability */}
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+
+                    {/* Owned count badge */}
+                    {discovered && ownedInstances.length > 0 && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 border border-slate-600">
+                        <span className="text-[10px] font-bold text-slate-300">x{ownedInstances.length}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info Section */}
+                  <div className="p-2.5 space-y-1.5">
+                    {/* Name */}
+                    <h4 className={`font-black text-sm truncate ${discovered ? 'text-white' : 'text-slate-500'}`}>
+                      {discovered ? cat.name : '???'}
+                    </h4>
+
+                    {/* Rarity */}
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        discovered ? rarityColors[cat.rarity].split(' ')[0] : 'text-slate-600'
+                      }`}>
+                        {cat.rarity}
+                      </span>
+                      {discovered && bestInstance && (
+                        <span className="text-[10px] font-bold text-slate-400">Lv.{bestInstance.level}</span>
+                      )}
+                    </div>
+
+                    {/* Ability (only if discovered) */}
+                    {discovered && (
+                      <div className="px-2 py-1 bg-black/50 rounded-md border border-gold-500/30">
+                        <span className="text-[9px] font-bold text-gold-400 uppercase">{cat.ability.name}</span>
+                      </div>
+                    )}
+
+                    {/* Bait hint */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-slate-500">
+                        {discovered ? 'Catch with:' : 'Requires:'}
+                      </span>
+                      <span className="text-[9px] font-bold text-cyan-400 truncate">
+                        Tier {baitInfo.minTier}+ bait
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          {catadexCats.length === 0 && (
+            <div className="text-center py-12">
+              <span className="text-4xl">🔍</span>
+              <p className="text-slate-400 mt-2">No cats match your filter.</p>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Empty State */}
-      {filteredAndSortedCats.length === 0 && (
+      {!showCatadex && filteredAndSortedCats.length === 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -388,7 +563,7 @@ export default function Collection() {
       )}
 
       {/* Cats Grid */}
-      <motion.div
+      {!showCatadex && <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -496,6 +671,7 @@ export default function Collection() {
 
                   {/* Favorite Star - Top Right (below delete when hovered) */}
                   <motion.button
+                    aria-label={isFavorite ? `Remove ${cat.name} from favorites` : `Add ${cat.name} to favorites`}
                     onClick={(e) => {
                       e.stopPropagation()
                       toggleFavorite(cat.instanceId)
@@ -515,6 +691,7 @@ export default function Collection() {
 
                   {/* Delete Icon - Top Right (Hover Only) */}
                   <motion.button
+                    aria-label={`Release ${cat.name}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       if (window.confirm(`Release ${cat.name}? This cannot be undone!`)) {
@@ -535,7 +712,7 @@ export default function Collection() {
             )
           })}
         </AnimatePresence>
-      </motion.div>
+      </motion.div>}
 
       {/* Merge Button - Fixed at Bottom */}
       <AnimatePresence>

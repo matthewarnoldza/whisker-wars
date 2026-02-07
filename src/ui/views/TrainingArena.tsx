@@ -6,13 +6,15 @@ import ParticleSystem from '../components/ParticleSystem'
 import Modal from '../components/Modal'
 import { useGame } from '../../game/store'
 import { TRAINING_DOG } from '../../game/data'
+import { TRAINING_XP as TRAINING_XP_CONST, MAX_DAILY_TRAINING_SESSIONS, BATTLE_LOG_MAX_ENTRIES } from '../../game/constants'
 import { rollD20 } from '../../game/dice'
+import { resolveAbility } from '../../game/abilityResolver'
 import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, damageVariants } from '../animations'
 import { trackTrainingStart, trackTrainingComplete, trackAbilityTriggered } from '../../utils/analytics'
 
-const TRAINING_XP = 15
-const MAX_DAILY_SESSIONS = 3
+const TRAINING_XP = TRAINING_XP_CONST
+const MAX_DAILY_SESSIONS = MAX_DAILY_TRAINING_SESSIONS
 
 interface BattleLog { text: string; type?: 'damage' | 'heal' | 'crit' | 'info' }
 
@@ -110,102 +112,60 @@ export default function TrainingArena() {
       return
     }
 
-    const isElite = selectedCat.isElite === true
-    const eliteTier = selectedCat.eliteTier || 0
-    let dmg = selectedCat.currentAttack + Math.floor(v / 5)
-    let isCrit = false
+    // Base damage (no elite aura in training)
+    const baseDmg = selectedCat.currentAttack + Math.floor(v / 5)
 
-    // Abilities
-    if (selectedCat.ability.effect === 'crit') {
-      const critThreshold = isElite ? 13 : 15
-      const critMultiplier = isElite ? (eliteTier >= 2 ? 2.0 : 1.75) : 1.5
-      if (v >= critThreshold) {
-        dmg = Math.floor(dmg * critMultiplier)
-        isCrit = true
-        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'crit', 'training')
-      }
+    // Resolve ability effects (training is never silenced)
+    const result = resolveAbility(selectedCat, v, baseDmg, false)
+    const { damage: dmg, isCrit, healAmount, healTargetId, isStun, isSpeed, logMessages, abilityTriggered } = result
+
+    // Apply log messages
+    logMessages.forEach(msg => addLog(msg.text, msg.type))
+
+    // Track ability analytics
+    if (abilityTriggered) {
+      trackAbilityTriggered(selectedCat.name, abilityTriggered.abilityName, abilityTriggered.effectType, 'training')
     }
-    if (selectedCat.ability.effect === 'bleed') {
-      const bleedThreshold = isElite ? 13 : 15
-      const bleedBonus = isElite ? (eliteTier >= 2 ? 7 : 5) : 3
-      if (v >= bleedThreshold) {
-        dmg += bleedBonus
-        addLog(`🔥 ${selectedCat.name}'s attack burns for +${bleedBonus} damage!`, 'crit')
-        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'bleed', 'training')
-      }
-    }
-    if (selectedCat.ability.effect === 'heal') {
-      const healThreshold = isElite ? 13 : 15
-      if (v >= healThreshold) {
-        const healByRarity: Record<string, number> = {
-          'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5, 'Mythical': 6
-        }
-        const healMultiplier = isElite ? (eliteTier >= 2 ? 1.75 : 1.5) : 1.0
-        const healAmount = Math.floor((healByRarity[selectedCat.rarity] || 3) * healMultiplier)
-        const newHp = Math.min(selectedCat.maxHp, selectedCat.currentHp + healAmount)
-        updateCatHp(selectedCat.instanceId, newHp)
-        addLog(`${selectedCat.name} heals ${healAmount} HP! ✨`, 'heal')
-        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'heal', 'training')
-      }
-    }
-    if (selectedCat.ability.effect === 'lifesteal') {
-      const lifestealPct = isElite ? (eliteTier >= 2 ? 0.75 : 0.65) : 0.50
-      const healAmount = Math.floor(dmg * lifestealPct)
+
+    // Apply healing if any
+    if (healAmount > 0 && healTargetId) {
       const newHp = Math.min(selectedCat.maxHp, selectedCat.currentHp + healAmount)
-      updateCatHp(selectedCat.instanceId, newHp)
-      addLog(`${selectedCat.name} steals ${healAmount} HP! 🩸`, 'heal')
-      trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'lifesteal', 'training')
+      updateCatHp(healTargetId, newHp)
     }
 
-    // Stun
-    if (selectedCat.ability.effect === 'stun') {
-      const stunThreshold = isElite ? (eliteTier >= 2 ? 13 : 15) : 17
-      if (v >= stunThreshold) {
-        addLog('💥 STUN! The dummy flinches!', 'crit')
-        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'stun', 'training')
-        setShaking(true)
-        setTimeout(() => setShaking(false), 400)
-        setDogHp(h => Math.max(0, h - dmg))
-        showDamage(dmg, window.innerWidth / 2, 100)
-        if (dogHp - dmg <= 0) { handleVictory(); return }
-        setAttackingId(null)
-        return
-      }
-    }
-
-    // Speed
-    if (selectedCat.ability.effect === 'speed') {
-      const speedThreshold = isElite ? (eliteTier >= 2 ? 10 : 12) : 14
-      if (v >= speedThreshold) {
-        addLog(`⚡ ${selectedCat.name} attacks with lightning speed!`, 'crit')
-        trackAbilityTriggered(selectedCat.name, selectedCat.ability.name, 'speed', 'training')
-        setDogHp(h => Math.max(0, h - dmg))
-        showDamage(dmg, window.innerWidth / 2, 100)
-        setShaking(true)
-        setTimeout(() => setShaking(false), 400)
-        setParticleActive(true)
-        setTimeout(() => setParticleActive(false), 100)
-        if (dogHp - dmg <= 0) { handleVictory(); return }
-        setAttackingId(null)
-        return
-      }
-    }
-
-    setDogHp(h => Math.max(0, h - dmg))
+    // Apply damage and check victory
+    const newDogHp = Math.max(0, dogHp - dmg)
+    setDogHp(newDogHp)
     showDamage(dmg, window.innerWidth / 2, 100)
-
-    if (isCrit) {
-      addLog(`💥 Critical Hit! ${dmg} damage!`, 'crit')
-    } else {
-      addLog(`Hit for ${dmg} damage.`, 'damage')
-    }
 
     setShaking(true)
     setTimeout(() => setShaking(false), 400)
     setParticleActive(true)
     setTimeout(() => setParticleActive(false), 100)
 
-    if (dogHp - dmg <= 0) { handleVictory(); return }
+    // Stun path
+    if (isStun) {
+      addLog('💥 STUN! The dummy flinches!', 'crit')
+      if (newDogHp <= 0) { handleVictory(); return }
+      setAttackingId(null)
+      return
+    }
+
+    // Speed path
+    if (isSpeed) {
+      if (newDogHp <= 0) { handleVictory(); return }
+      setAttackingId(null)
+      return
+    }
+
+    // Normal hit
+    if (isCrit) {
+      addLog(`💥 Critical Hit! ${dmg} damage!`, 'crit')
+    } else {
+      addLog(`Hit for ${dmg} damage.`, 'damage')
+    }
+
+    if (newDogHp <= 0) { handleVictory(); return }
 
     setAttackingId(null)
     setTurn('enemy')

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 interface Particle {
   id: number;
@@ -21,7 +21,7 @@ interface ParticleSystemProps {
   duration?: number;
 }
 
-export default function ParticleSystem({
+export default memo(function ParticleSystem({
   x,
   y,
   count = 20,
@@ -31,15 +31,19 @@ export default function ParticleSystem({
   duration = 1,
 }: ParticleSystemProps) {
   const [particles, setParticles] = useState<Particle[]>([]);
+  // Stabilize colors reference to prevent re-triggering on every render
+  const colorsRef = useRef(colors);
+  colorsRef.current = colors;
 
   useEffect(() => {
     if (active) {
+      const c = colorsRef.current;
       const newParticles: Particle[] = Array.from({ length: count }, (_, i) => ({
         id: Date.now() + i,
         x,
         y,
         size: Math.random() * 6 + 2,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: c[Math.floor(Math.random() * c.length)],
         angle: (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5,
         velocity: Math.random() * spread + spread / 2,
       }));
@@ -51,7 +55,7 @@ export default function ParticleSystem({
 
       return () => clearTimeout(timeout);
     }
-  }, [active, x, y, count, colors, spread, duration]);
+  }, [active, x, y, count, spread, duration]);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
@@ -92,4 +96,4 @@ export default function ParticleSystem({
       </AnimatePresence>
     </div>
   );
-}
+});

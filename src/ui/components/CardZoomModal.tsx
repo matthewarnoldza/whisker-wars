@@ -1,7 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { OwnedCat } from '../../game/store'
+import { useGame } from '../../game/store'
+import { MAX_ASCENSION, ASCENSION_COSTS, MAX_CAT_LEVEL } from '../../game/constants'
+import { EQUIPMENT } from '../../game/items'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
+import { useState } from 'react'
 
 interface CardZoomModalProps {
   cat: OwnedCat | null
@@ -10,7 +14,19 @@ interface CardZoomModalProps {
 }
 
 export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalProps) {
+  const ascendCat = useGame(s => s.ascendCat)
+  const coins = useGame(s => s.coins)
+  const inventory = useGame(s => s.inventory)
+  const equipItem = useGame(s => s.equipItem)
+  const unequipItem = useGame(s => s.unequipItem)
+  const [showEquipMenu, setShowEquipMenu] = useState<'weapon' | 'accessory' | null>(null)
+
   if (!cat) return null
+
+  const ascension = cat.ascension || 0
+  const canAscend = cat.level >= MAX_CAT_LEVEL && ascension < MAX_ASCENSION
+  const ascensionCost = ascension < MAX_ASCENSION ? ASCENSION_COSTS[ascension] : 0
+  const canAffordAscend = coins >= ascensionCost
 
   const getRarityGradient = (rarity: string) => {
     switch (rarity) {
@@ -219,6 +235,122 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-bold tracking-wide uppercase">W/L</span>
               </div>
             </div>
+
+            {/* Equipment Slots */}
+            <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-2">
+              {(['weapon', 'accessory'] as const).map(slot => {
+                const equippedId = cat.equipment?.[slot]
+                const equippedItem = equippedId ? EQUIPMENT.find(e => e.id === equippedId) : null
+
+                return (
+                  <div key={slot} className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setShowEquipMenu(showEquipMenu === slot ? null : slot) }}
+                      className={`w-full p-2 rounded-lg border text-center transition-all ${
+                        equippedItem
+                          ? 'bg-slate-800/80 border-purple-500/50 hover:border-purple-400'
+                          : 'bg-slate-900/50 border-slate-700 border-dashed hover:border-slate-500'
+                      }`}
+                    >
+                      <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">
+                        {slot === 'weapon' ? '⚔️ Weapon' : '💎 Accessory'}
+                      </div>
+                      {equippedItem ? (
+                        <div className="text-[11px] font-bold text-purple-300 truncate">{equippedItem.name}</div>
+                      ) : (
+                        <div className="text-[11px] text-slate-600">Empty</div>
+                      )}
+                      {equippedItem && (
+                        <div className="text-[9px] text-slate-400 mt-0.5">{equippedItem.description}</div>
+                      )}
+                    </button>
+
+                    {/* Equip dropdown */}
+                    {showEquipMenu === slot && (
+                      <div
+                        className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {equippedItem && (
+                          <button
+                            type="button"
+                            onClick={() => { unequipItem(cat.instanceId, slot); setShowEquipMenu(null) }}
+                            className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-slate-700 border-b border-slate-700"
+                          >
+                            Unequip {equippedItem.name}
+                          </button>
+                        )}
+                        {EQUIPMENT.filter(e => e.slot === slot && (inventory[e.id] || 0) > 0).map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => { equipItem(cat.instanceId, item.id); setShowEquipMenu(null) }}
+                            className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-700 flex justify-between items-center"
+                          >
+                            <span className="font-bold">{item.name}</span>
+                            <span className="text-slate-400">{item.description} (x{inventory[item.id]})</span>
+                          </button>
+                        ))}
+                        {EQUIPMENT.filter(e => e.slot === slot && (inventory[e.id] || 0) > 0).length === 0 && !equippedItem && (
+                          <div className="px-3 py-2 text-xs text-slate-500">No items available</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Ascension Stars */}
+            {ascension > 0 && (
+              <div className="mt-2 sm:mt-3 flex items-center justify-center gap-1">
+                {Array.from({ length: MAX_ASCENSION }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`text-lg ${i < ascension ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]' : 'text-slate-700'}`}
+                  >
+                    ★
+                  </span>
+                ))}
+                <span className="text-[10px] text-amber-300 font-bold ml-1 uppercase tracking-wider">
+                  Ascension {ascension}
+                </span>
+              </div>
+            )}
+
+            {/* Ascend Button */}
+            {canAscend && (
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!canAffordAscend) return
+                  if (window.confirm(`Ascend ${cat.name}? This resets to Level 1 but grants +10% permanent base stats.\n\nCost: ${ascensionCost} coins`)) {
+                    ascendCat(cat.instanceId)
+                    onClose()
+                  }
+                }}
+                disabled={!canAffordAscend}
+                className={`mt-2 sm:mt-3 w-full px-4 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all ${
+                  canAffordAscend
+                    ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-900 shadow-lg hover:shadow-xl'
+                    : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                }`}
+                whileHover={canAffordAscend ? { scale: 1.03 } : {}}
+                whileTap={canAffordAscend ? { scale: 0.97 } : {}}
+              >
+                ★ Ascend ({ascensionCost} coins)
+              </motion.button>
+            )}
+
+            {/* Max ascension badge */}
+            {ascension >= MAX_ASCENSION && (
+              <div className="mt-2 sm:mt-3 flex items-center justify-center">
+                <div className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 border border-white/40">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">Max Ascension</span>
+                </div>
+              </div>
+            )}
 
             {/* Hint Text */}
             <div className="mt-2 sm:mt-3 text-center">

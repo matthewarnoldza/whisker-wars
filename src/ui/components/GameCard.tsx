@@ -50,6 +50,7 @@ export default React.memo(function GameCard({
     const rarity = (character as Cat).rarity || 'Common'
     const isElite = (character as any).isElite === true
     const eliteTier = (character as any).eliteTier || 0
+    const ascension = (character as any).ascension || 0
 
     // Holographic effect - elite cats get max shine intensity
     const holographic = useHolographicCard({
@@ -136,6 +137,15 @@ export default React.memo(function GameCard({
                 </div>
             )}
 
+            {/* Ascension Stars */}
+            {ascension > 0 && (
+                <div className="absolute top-2 left-2 z-20 flex gap-0.5">
+                    {Array.from({ length: ascension }).map((_, i) => (
+                        <span key={i} className="text-amber-400 text-xs drop-shadow-[0_0_4px_rgba(251,191,36,0.8)]">★</span>
+                    ))}
+                </div>
+            )}
+
             {/* Card Container with Rarity Glow */}
             <div className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
                 style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite`, willChange: 'transform, opacity' } : { willChange: 'transform' }}
@@ -146,7 +156,7 @@ export default React.memo(function GameCard({
                     {character.imageUrl ? (
                         <img
                             src={character.imageUrl}
-                            alt={character.name}
+                            alt={isCat ? `${character.name}, ${rarity} cat` : `${character.name}, enemy dog`}
                             loading="lazy"
                             decoding="async"
                             className="w-full h-full object-cover"

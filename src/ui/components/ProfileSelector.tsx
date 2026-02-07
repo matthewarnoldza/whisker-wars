@@ -30,12 +30,12 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
     onProfileSelected()
   }
 
-  const handleCreateProfile = async () => {
+  const handleCreateProfile = () => {
     if (!newProfileName.trim()) return
     const profileId = createProfile(newProfileName.trim())
     loadProfile(profileId)
 
-    // Auto-generate cloud code for new profile
+    // Auto-generate cloud code for new profile (fire-and-forget to avoid UI freeze)
     const state = useGame.getState()
     const profile = state.getCurrentProfile()
     if (profile) {
@@ -53,10 +53,13 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
         tutorialCompleted: state.tutorialCompleted,
         trainingCooldowns: state.trainingCooldowns
       }
-      const result = await uploadSave(saveData, profile)
-      if (result.success && result.code && result.isNew) {
-        state.setProfileCloudCode(result.code)
-      }
+      uploadSave(saveData, profile).then(result => {
+        if (result.success && result.code && result.isNew) {
+          useGame.getState().setProfileCloudCode(result.code)
+        }
+      }).catch(err => {
+        console.error('Failed to auto-generate cloud code:', err)
+      })
     }
 
     setProfiles(getProfiles())

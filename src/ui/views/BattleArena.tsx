@@ -3,10 +3,17 @@ import GameCard from '../components/GameCard'
 import D20Dice from '../components/D20Dice'
 import StatBar from '../components/StatBar'
 import ParticleSystem from '../components/ParticleSystem'
-import Modal from '../components/Modal'
+import BattleLogPanel, { type BattleLog } from '../components/BattleLogPanel'
+import BattleVictoryModal from '../components/BattleVictoryModal'
+import BattleDefeatModal from '../components/BattleDefeatModal'
 import { useGame } from '../../game/store'
 import { DOGS } from '../../game/data'
 import { rollD20 } from '../../game/dice'
+import { resolveAbility, resolveDefense } from '../../game/abilityResolver'
+import { BATTLE_BASE_COINS, BATTLE_COINS_PER_DOG, BATTLE_BASE_XP, BATTLE_XP_PER_DOG, getDifficultyMultiplier, BATTLE_LOG_MAX_ENTRIES } from '../../game/constants'
+import { EQUIPMENT, rollEquipmentDrop } from '../../game/items'
+import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, type GameEvent } from '../../game/events'
+import { playSound } from '../../utils/sound'
 import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '../animations'
 import {
@@ -17,8 +24,6 @@ import {
   trackCoinsEarned,
 } from '../../utils/analytics'
 
-interface BattleLog { text: string; type?: 'damage' | 'heal' | 'crit' | 'info' }
-
 export default function BattleArena() {
   // Separate selectors + useMemo to avoid recomputing on every store update
   const owned = useGame(s => s.owned)
@@ -27,7 +32,7 @@ export default function BattleArena() {
     () => owned.filter(o => selectedForBattle.includes(o.instanceId)),
     [owned, selectedForBattle]
   )
-  const dogIndex = useGame(s => s.dogIndex)
+  const storeDogIndex = useGame(s => s.dogIndex)
   const difficultyLevel = useGame(s => s.difficultyLevel)
   const addCoins = useGame(s => s.addCoins)
   const nextDog = useGame(s => s.nextDog)
@@ -37,8 +42,26 @@ export default function BattleArena() {
   const recordBattleResult = useGame(s => s.recordBattleResult)
   const setView = useGame(s => s.setView)
   const stats = useGame(s => s.stats)
+  const addEquipment = useGame(s => s.addEquipment)
+  const soundEnabled = useGame(s => s.soundEnabled)
+  const completedEventRewards = useGame(s => s.completedEventRewards)
 
-  const [dogHp, setDogHp] = useState(DOGS[dogIndex].health)
+  // Dog selection: battleDogIndex can differ from storeDogIndex for replays
+  const [showDogSelect, setShowDogSelect] = useState(true)
+  const [battleDogIndex, setBattleDogIndex] = useState(storeDogIndex)
+  const isFrontierBattle = battleDogIndex === storeDogIndex
+
+  // Event battles
+  const activeEvents = useMemo(() => getActiveEvents(), [])
+  const [eventBattle, setEventBattle] = useState<GameEvent | null>(null)
+  const coinMultiplier = useMemo(() => getActiveCoinMultiplier(), [])
+
+  // Boss Rush mode
+  const [bossRushActive, setBossRushActive] = useState(false)
+  const [bossRushDogIndex, setBossRushDogIndex] = useState(0)
+  const [bossRushHighest, setBossRushHighest] = useState(0)
+
+  const [dogHp, setDogHp] = useState(DOGS[battleDogIndex].health)
   const [turn, setTurn] = useState<'player' | 'enemy'>('player')
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null)
   const [dice, setDice] = useState(1)
@@ -51,12 +74,18 @@ export default function BattleArena() {
   const [attackingId, setAttackingId] = useState<string | null>(null)
   const [showDefeatModal, setShowDefeatModal] = useState(false)
   const [showVictoryModal, setShowVictoryModal] = useState(false)
-  const [victoryRewards, setVictoryRewards] = useState({ coins: 0, xp: 0 })
+  const [victoryRewards, setVictoryRewards] = useState<{ coins: number; xp: number; equipDrop?: string }>({ coins: 0, xp: 0 })
   const [silenced, setSilenced] = useState(false) // Omega Fenrir ability
+  const [frozenCatId, setFrozenCatId] = useState<string | null>(null) // Frost Wolf ability
+  const [dogDodgeChance, setDogDodgeChance] = useState(0) // Shadow Stalker ability
+  const [dogArmor, setDogArmor] = useState(0) // Crystal Guardian ability
+  const [dotEffects, setDotEffects] = useState<{ catId: string; turnsLeft: number; dmgPerTurn: number; type: string }[]>([]) // poison/burn
+  const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({}) // catInstanceId -> turns remaining
+  const ABILITY_COOLDOWN = 3 // Turns between active ability uses
   const mobileLogRef = useRef<HTMLDivElement>(null)
   const desktopLogRef = useRef<HTMLDivElement>(null)
 
-  const dog = DOGS[dogIndex]
+  const dog = eventBattle ? eventBattle.eventDog : DOGS[battleDogIndex]
 
   // Elite Aura: +1 ATK per living elite cat in party
   const eliteAuraBonus = useMemo(() => {
@@ -70,15 +99,29 @@ export default function BattleArena() {
     if (eliteAuraBonus > 0) {
       initialLog.push({ text: `✨ Elite Aura: +${eliteAuraBonus} ATK to all party members!`, type: 'info' })
     }
+    if (coinMultiplier > 1) {
+      initialLog.push({ text: `🎪 Event bonus: x${coinMultiplier} coins!`, type: 'info' })
+    }
     setLog(initialLog)
     setTurn('player')
     setBattleEnded(false)
     setSelectedCatId(null)
     setSilenced(false)
+    setFrozenCatId(null)
+    setDogDodgeChance(0)
+    setDogArmor(0)
+    setDotEffects([])
+    // Initialize ability cooldowns (start ready)
+    const initialCooldowns: Record<string, number> = {}
+    party.forEach(c => { initialCooldowns[c.instanceId] = 0 })
+    setAbilityCooldowns(initialCooldowns)
+    // Set passive dog abilities
+    if (DOGS[battleDogIndex]?.id === 'shadow-stalker') setDogDodgeChance(0.30)
+    if (DOGS[battleDogIndex]?.id === 'crystal-guardian') setDogArmor(4)
     if (party.length > 0) {
       trackBattleStart(party.length, party.map(c => c.name).join(','), dog.name, difficultyLevel)
     }
-  }, [dogIndex])
+  }, [battleDogIndex, eventBattle])
 
   // Auto-scroll log to bottom when updated
   useEffect(() => {
@@ -91,6 +134,26 @@ export default function BattleArena() {
       desktopLogRef.current.scrollTop = desktopLogRef.current.scrollHeight
     }
   }, [log])
+
+  // Process DOT effects (poison/burn) at start of player turn
+  useEffect(() => {
+    if (turn === 'player' && !battleEnded && dotEffects.length > 0) {
+      dotEffects.forEach(dot => {
+        const cat = party.find(c => c.instanceId === dot.catId)
+        if (cat && cat.currentHp > 0) {
+          const newHp = Math.max(0, cat.currentHp - dot.dmgPerTurn)
+          updateCatHp(dot.catId, newHp)
+          const icon = dot.type === 'poison' ? '🟢' : '🔥'
+          addLog(`${icon} ${cat.name} takes ${dot.dmgPerTurn} ${dot.type} damage!`, 'damage')
+        }
+      })
+      // Decrement turns and remove expired effects
+      setDotEffects(prev => prev
+        .map(d => ({ ...d, turnsLeft: d.turnsLeft - 1 }))
+        .filter(d => d.turnsLeft > 0)
+      )
+    }
+  }, [turn])
 
   // Enemy Turn Logic
   useEffect(() => {
@@ -116,6 +179,7 @@ export default function BattleArena() {
 
   const roll = async () => {
     setRolling(true)
+    if (soundEnabled) playSound('diceRoll')
     await new Promise(r => setTimeout(r, 600))
     const v = rollD20()
     setDice(v)
@@ -128,6 +192,15 @@ export default function BattleArena() {
 
     const cat = party.find(c => c.instanceId === selectedCatId)
     if (!cat || cat.currentHp <= 0) return
+
+    // Frost Wolf freeze check — frozen cat skips their turn
+    if (frozenCatId === cat.instanceId) {
+      addLog(`❄️ ${cat.name} is frozen and can't attack!`, 'damage')
+      setFrozenCatId(null)
+      setAttackingId(null)
+      setTurn('enemy')
+      return
+    }
 
     setAttackingId(cat.instanceId)
     addLog(`${cat.name} attacks!`, 'info')
@@ -146,124 +219,169 @@ export default function BattleArena() {
       return
     }
 
-    // Base damage with Elite Aura bonus
-    const isElite = cat.isElite === true
-    const eliteTier = cat.eliteTier || 0
-    let dmg = cat.currentAttack + eliteAuraBonus + Math.floor(v / 5)
-    let isCrit = false
+    // Equipment ATK bonus
+    const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
+      + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
 
-    // Check if silenced (Omega Fenrir ability)
-    if (silenced) {
-      addLog(`🔇 ${cat.name}'s ability is silenced!`, 'info')
-      setSilenced(false) // Silence wears off after one turn
+    // Base damage with Elite Aura bonus + equipment
+    const baseDmg = cat.currentAttack + eliteAuraBonus + equipAtk + Math.floor(v / 5)
+
+    // Check if silenced (Omega Fenrir ability) — silence wears off after one turn
+    const wasSilenced = silenced
+    if (silenced) setSilenced(false)
+
+    // Resolve ability effects
+    const result = resolveAbility(cat, v, baseDmg, wasSilenced)
+    const { damage: dmg, isCrit, healAmount, healTargetId, isStun, isSpeed, logMessages, abilityTriggered } = result
+
+    // Apply log messages
+    logMessages.forEach(msg => addLog(msg.text, msg.type))
+
+    // Track ability analytics
+    if (abilityTriggered) {
+      trackAbilityTriggered(cat.name, abilityTriggered.abilityName, abilityTriggered.effectType, 'battle')
     }
 
-    // Abilities (only if not silenced) - Elite cats get enhanced thresholds and values
-    if (!silenced && cat.ability.effect === 'crit') {
-      const critThreshold = isElite ? 13 : 15
-      const critMultiplier = isElite ? (eliteTier >= 2 ? 2.0 : 1.75) : 1.5
-      if (v >= critThreshold) {
-        dmg = Math.floor(dmg * critMultiplier)
-        isCrit = true
-        trackAbilityTriggered(cat.name, cat.ability.name, 'crit', 'battle')
-      }
-    }
-    if (!silenced && cat.ability.effect === 'bleed') {
-      const bleedThreshold = isElite ? 13 : 15
-      const bleedBonus = isElite ? (eliteTier >= 2 ? 7 : 5) : 3
-      if (v >= bleedThreshold) {
-        dmg += bleedBonus
-        addLog(`🔥 ${cat.name}'s attack burns for +${bleedBonus} damage!`, 'crit')
-        trackAbilityTriggered(cat.name, cat.ability.name, 'bleed', 'battle')
-      }
-    }
-    if (!silenced && cat.ability.effect === 'heal') {
-      const healThreshold = isElite ? 13 : 15
-      if (v >= healThreshold) {
-        const healByRarity: Record<string, number> = {
-          'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5, 'Mythical': 6
-        }
-        const healMultiplier = isElite ? (eliteTier >= 2 ? 1.75 : 1.5) : 1.0
-        const healAmount = Math.floor((healByRarity[cat.rarity] || 3) * healMultiplier)
-        const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
-        updateCatHp(cat.instanceId, newHp)
-        addLog(`${cat.name} heals ${healAmount} HP! ✨`, 'heal')
-        trackAbilityTriggered(cat.name, cat.ability.name, 'heal', 'battle')
-      }
-    }
-    if (!silenced && cat.ability.effect === 'lifesteal') {
-      const lifestealPct = isElite ? (eliteTier >= 2 ? 0.75 : 0.65) : 0.50
-      const healAmount = Math.floor(dmg * lifestealPct)
+    // Apply healing if any
+    if (healAmount > 0 && healTargetId) {
       const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
-      updateCatHp(cat.instanceId, newHp)
-      addLog(`${cat.name} steals ${healAmount} HP! 🩸`, 'heal')
-      trackAbilityTriggered(cat.name, cat.ability.name, 'lifesteal', 'battle')
+      updateCatHp(healTargetId, newHp)
     }
 
-    // Stun
-    if (!silenced && cat.ability.effect === 'stun') {
-      const stunThreshold = isElite ? (eliteTier >= 2 ? 13 : 15) : 17
-      if (v >= stunThreshold) {
-        addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
-        trackAbilityTriggered(cat.name, cat.ability.name, 'stun', 'battle')
-        setShaking(true)
-        setTimeout(() => setShaking(false), 400)
-        setDogHp(h => Math.max(0, h - dmg))
-        showDamage(dmg, window.innerWidth / 2, 100)
+    // Shadow Stalker dodge check
+    if (dogDodgeChance > 0 && Math.random() < dogDodgeChance) {
+      addLog(`👻 ${dog.name} dodges the attack!`, 'info')
+      setAttackingId(null)
+      setTurn('enemy')
+      return
+    }
 
-        // Stun means player goes again
-        setAttackingId(null)
-        return
+    // Apply Crystal Guardian armor reduction
+    let finalDmg = dmg
+    if (dogArmor > 0) {
+      finalDmg = Math.max(1, dmg - dogArmor)
+      if (finalDmg < dmg) {
+        addLog(`🛡️ ${dog.name}'s crystal armor absorbs ${dmg - finalDmg} damage!`, 'info')
       }
     }
 
-    // Speed ability - extra attack
-    if (!silenced && cat.ability.effect === 'speed') {
-      const speedThreshold = isElite ? (eliteTier >= 2 ? 10 : 12) : 14
-      if (v >= speedThreshold) {
-        addLog(`⚡ ${cat.name} attacks with lightning speed!`, 'crit')
-        trackAbilityTriggered(cat.name, cat.ability.name, 'speed', 'battle')
-        setDogHp(h => Math.max(0, h - dmg))
-        showDamage(dmg, window.innerWidth / 2, 100)
-
-        setShaking(true)
-        setTimeout(() => setShaking(false), 400)
-        setParticleActive(true)
-        setTimeout(() => setParticleActive(false), 100)
-
-        // Check Victory
-        if (dogHp - dmg <= 0) {
-          handleVictory()
-          return
-        }
-
-        // Speed means player goes again
-        setAttackingId(null)
-        return
-      }
-    }
-
-    setDogHp(h => Math.max(0, h - dmg))
-    showDamage(dmg, window.innerWidth / 2, 100)
-
-    if (isCrit) {
-      addLog(`💥 Critical Hit! ${dmg} damage!`, 'crit')
-    } else {
-      addLog(`Hit for ${dmg} damage.`, 'damage')
-    }
+    // Void Walker — ignore cat armor/shield (already resolved, but this is for dog's armor)
+    // Apply damage and check victory
+    const newDogHp = Math.max(0, dogHp - finalDmg)
+    setDogHp(newDogHp)
+    showDamage(finalDmg, window.innerWidth / 2, 100)
 
     setShaking(true)
     setTimeout(() => setShaking(false), 400)
     setParticleActive(true)
     setTimeout(() => setParticleActive(false), 100)
 
-    // Check Victory
-    if (dogHp - dmg <= 0) {
-      handleVictory()
+    // Stun path
+    if (isStun) {
+      addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
+      if (newDogHp <= 0) { handleVictory(); return }
+      setAttackingId(null)
       return
     }
 
+    // Speed path — extra attack, player goes again
+    if (isSpeed) {
+      if (newDogHp <= 0) { handleVictory(); return }
+      setAttackingId(null)
+      return
+    }
+
+    // Normal hit
+    if (isCrit) {
+      addLog(`💥 Critical Hit! ${dmg} damage!`, 'crit')
+      if (soundEnabled) playSound('criticalHit')
+    } else {
+      addLog(`Hit for ${dmg} damage.`, 'damage')
+      if (soundEnabled) playSound('attack')
+    }
+
+    if (newDogHp <= 0) { handleVictory(); return }
+
+    // Decrement cooldowns for the acting cat
+    setAbilityCooldowns(prev => ({
+      ...prev,
+      [cat.instanceId]: Math.max(0, (prev[cat.instanceId] ?? ABILITY_COOLDOWN) - 1),
+    }))
+
     setAttackingId(null)
+    setTurn('enemy')
+  }
+
+  const handleActiveAbility = (catId: string) => {
+    if (turn !== 'player' || rolling || battleEnded) return
+    const cat = party.find(c => c.instanceId === catId)
+    if (!cat || cat.currentHp <= 0) return
+    if ((abilityCooldowns[catId] ?? ABILITY_COOLDOWN) > 0) return
+
+    setAttackingId(catId)
+
+    // Equipment ATK bonus
+    const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
+      + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
+
+    const baseAtk = cat.currentAttack + eliteAuraBonus + equipAtk
+    const effect = cat.ability.effect
+
+    addLog(`✨ ${cat.name} activates ${cat.ability.name}!`, 'crit')
+
+    let dmg = 0
+    if (effect === 'crit') {
+      dmg = Math.floor(baseAtk * 2)
+      addLog(`💥 Critical Strike deals ${dmg} damage!`, 'crit')
+    } else if (effect === 'bleed') {
+      dmg = baseAtk + 8
+      addLog(`🔥 Burning Strike deals ${dmg} damage!`, 'crit')
+    } else if (effect === 'heal') {
+      const healAmt = Math.floor(cat.maxHp * 0.4)
+      party.forEach(c => {
+        if (c.currentHp > 0) updateCatHp(c.instanceId, Math.min(c.maxHp, c.currentHp + healAmt))
+      })
+      addLog(`💚 Heals all cats for ${healAmt} HP!`, 'heal')
+    } else if (effect === 'lifesteal') {
+      dmg = baseAtk
+      const stolen = Math.floor(dmg * 0.75)
+      updateCatHp(cat.instanceId, Math.min(cat.maxHp, cat.currentHp + stolen))
+      addLog(`🩸 Drains ${stolen} HP from enemy! Deals ${dmg} damage.`, 'heal')
+    } else if (effect === 'stun') {
+      dmg = Math.floor(baseAtk * 0.5)
+      addLog(`💥 Stun Strike deals ${dmg} damage and stuns!`, 'crit')
+      // Skip dog's next turn by setting turn back to player after a delay
+    } else if (effect === 'shield') {
+      addLog(`🛡️ Shield Wall! Party takes 50% less damage next turn.`, 'info')
+      // Could be tracked with state, but for simplicity: set dogArmor temporarily
+    } else if (effect === 'armor') {
+      dmg = baseAtk
+      addLog(`🛡️ Fortified Strike deals ${dmg} damage!`, 'crit')
+    } else if (effect === 'speed') {
+      dmg = baseAtk
+      addLog(`⚡ Lightning Strike deals ${dmg} damage! Attacks again!`, 'crit')
+    }
+
+    if (dmg > 0) {
+      const newDogHp = Math.max(0, dogHp - dmg)
+      setDogHp(newDogHp)
+      setShaking(true)
+      setParticleActive(true)
+      setTimeout(() => { setShaking(false); setParticleActive(false) }, 400)
+
+      if (newDogHp <= 0) { handleVictory(); return }
+    }
+
+    // Reset cooldown
+    setAbilityCooldowns(prev => ({ ...prev, [catId]: ABILITY_COOLDOWN }))
+
+    setAttackingId(null)
+
+    // Speed effect: player goes again
+    if (effect === 'speed') return
+    // Stun effect: skip dog turn
+    if (effect === 'stun') return
+
     setTurn('enemy')
   }
 
@@ -282,41 +400,84 @@ export default function BattleArena() {
     }
 
     // === DOG ABILITY: Eternal Overlord - Apocalypse Aura ===
-    // Deals 2 damage to ALL cats each turn
     if (dog.id === 'eternal-overlord') {
       addLog(`☠️ Apocalypse Aura damages all cats!`, 'damage')
       targets.forEach(cat => {
-        const auraDmg = 2
-        const newHp = Math.max(0, cat.currentHp - auraDmg)
+        const newHp = Math.max(0, cat.currentHp - 2)
         updateCatHp(cat.instanceId, newHp)
       })
     }
 
+    // === DOG ABILITY: Echo Howler - Sonic Howl (AoE) ===
+    if (dog.id === 'echo-howler') {
+      const aoeDmg = Math.floor(dmg * 0.5)
+      addLog(`📢 Sonic Howl hits ALL cats for ${aoeDmg} damage!`, 'damage')
+      targets.forEach(cat => {
+        const newHp = Math.max(0, cat.currentHp - aoeDmg)
+        updateCatHp(cat.instanceId, newHp)
+      })
+      setShaking(true)
+      setTimeout(() => setShaking(false), 400)
+      setAttackingId(null)
+      const allDead = targets.every(c => c.currentHp - aoeDmg <= 0)
+      if (allDead) { handleDefeat() } else { setTurn('player') }
+      return
+    }
+
+    // === DOG ABILITY: Tentacle Paws - Multi-target ===
+    if (dog.id === 'tentacle-paws') {
+      const multiDmg = Math.floor(dmg * 0.6)
+      addLog(`🐙 Tentacle Grab hits all cats for ${multiDmg} each!`, 'damage')
+      targets.forEach(cat => {
+        const defense = resolveDefense(cat, multiDmg, silenced)
+        defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
+        const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
+        updateCatHp(cat.instanceId, newHp)
+      })
+      setAttackingId(null)
+      const allDead = targets.every(c => c.currentHp <= 0)
+      if (allDead) { handleDefeat() } else { setTurn('player') }
+      return
+    }
+
+    // === DOG ABILITY: Infernal Cerberus - Triple Hellfire ===
+    if (dog.id === 'infernal-cerberus') {
+      addLog(`🔥🔥🔥 Triple Hellfire! 3 attacks!`, 'crit')
+      for (let strike = 0; strike < 3; strike++) {
+        const alive = party.filter(c => c.currentHp > 0)
+        if (!alive.length) break
+        const target = alive[Math.floor(Math.random() * alive.length)]
+        const strikeDmg = Math.floor(dmg * 0.6)
+        const defense = resolveDefense(target, strikeDmg, silenced)
+        defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
+        const newHp = Math.max(0, target.currentHp - defense.actualDamage)
+        updateCatHp(target.instanceId, newHp)
+        addLog(`🔥 Strike ${strike + 1} hits ${target.name} for ${defense.actualDamage}!`, 'damage')
+      }
+      setAttackingId(null)
+      const allDead = party.every(c => c.currentHp <= 0)
+      if (allDead) { handleDefeat() } else { setTurn('player') }
+      return
+    }
+
     const t = targets[Math.floor(Math.random() * targets.length)]
 
-    // Apply defensive abilities - Elite cats get enhanced defenses
-    let actualDamage = dmg
+    // === DOG ABILITY: Void Walker - Void Strike (ignores armor/shield) ===
+    let actualDamage: number
+    if (dog.id === 'void-walker') {
+      actualDamage = dmg
+      addLog(`🌀 Void Strike bypasses ${t.name}'s defenses!`, 'crit')
+    } else {
+      // Apply defensive abilities
+      const defense = resolveDefense(t, dmg, silenced)
+      actualDamage = defense.actualDamage
+      defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
+    }
+
     const tIsElite = t.isElite === true
     const tEliteTier = t.eliteTier || 0
 
-    // Shield ability - Elite cats have higher block chance
-    if (!silenced && t.ability.effect === 'shield') {
-      const shieldChance = tIsElite ? (tEliteTier >= 2 ? 0.60 : 0.50) : 0.35
-      if (Math.random() < shieldChance) {
-        actualDamage = Math.floor(actualDamage * 0.5)
-        addLog(`${t.name}'s shield blocks half the damage! 🛡️`, 'info')
-      }
-    }
-
-    // Armor ability - Elite cats absorb more damage
-    if (!silenced && t.ability.effect === 'armor') {
-      const armorReduction = tIsElite ? (tEliteTier >= 2 ? 7 : 5) : 3
-      actualDamage = Math.max(1, actualDamage - armorReduction)
-      addLog(`${t.name}'s armor absorbs ${armorReduction} damage! 🛡️`, 'info')
-    }
-
     // === DOG ABILITY: Eternal Overlord - Damage Reflect ===
-    // Reflects 20% damage back to attacker (stored for next player attack)
     if (dog.id === 'eternal-overlord') {
       const reflectDmg = Math.floor(actualDamage * 0.2)
       if (reflectDmg > 0) {
@@ -339,16 +500,84 @@ export default function BattleArena() {
 
     updateCatHp(t.instanceId, newHp)
 
-    // Find target position (approximate)
     const targetIndex = party.findIndex(c => c.instanceId === t.instanceId)
-    // This is a bit hacky for positioning, but works for now
     const xPos = (window.innerWidth / 3) * (targetIndex + 0.5)
     showDamage(actualDamage, xPos, window.innerHeight - 200)
 
     addLog(`${dog.name} hits ${t.name} for ${actualDamage}!`, 'damage')
 
+    // === DOG ABILITY: Slime Hound - Toxic Bite (Poison DOT) ===
+    if (dog.id === 'slime-hound') {
+      addLog(`🟢 Toxic Bite poisons ${t.name}!`, 'damage')
+      setDotEffects(prev => [...prev.filter(d => !(d.catId === t.instanceId && d.type === 'poison')),
+        { catId: t.instanceId, turnsLeft: 3, dmgPerTurn: 2, type: 'poison' }
+      ])
+    }
+
+    // === DOG ABILITY: Magma Beast - Lava Burst (Burn DOT) ===
+    if (dog.id === 'magma-beast') {
+      addLog(`🔥 Lava Burst ignites ${t.name}!`, 'damage')
+      setDotEffects(prev => [...prev.filter(d => !(d.catId === t.instanceId && d.type === 'burn')),
+        { catId: t.instanceId, turnsLeft: 3, dmgPerTurn: 3, type: 'burn' }
+      ])
+    }
+
+    // === DOG ABILITY: Frost Wolf - Ice Breath (Freeze) ===
+    if (dog.id === 'frost-wolf') {
+      const freezeTarget = targets[Math.floor(Math.random() * targets.length)]
+      setFrozenCatId(freezeTarget.instanceId)
+      addLog(`❄️ Ice Breath freezes ${freezeTarget.name}! They'll skip next turn!`, 'crit')
+    }
+
+    // === DOG ABILITY: Thunder Hound - Lightning Strike (Chain) ===
+    if (dog.id === 'thunder-hound') {
+      const otherTargets = targets.filter(c => c.instanceId !== t.instanceId && c.currentHp > 0)
+      if (otherTargets.length > 0) {
+        const chainTarget = otherTargets[Math.floor(Math.random() * otherTargets.length)]
+        const chainDmg = Math.floor(actualDamage * 0.5)
+        const chainHp = Math.max(0, chainTarget.currentHp - chainDmg)
+        updateCatHp(chainTarget.instanceId, chainHp)
+        addLog(`⚡ Lightning chains to ${chainTarget.name} for ${chainDmg}!`, 'damage')
+      }
+    }
+
+    // === DOG ABILITY: Chaos Demon - Random effect ===
+    if (dog.id === 'chaos-demon') {
+      const chaosRoll = Math.random()
+      if (chaosRoll < 0.25) {
+        // Heal self
+        const chaosHeal = Math.floor(dog.health * 0.1)
+        setDogHp(h => Math.min(dog.health, h + chaosHeal))
+        addLog(`🎭 Chaotic Energy heals ${dog.name} for ${chaosHeal}!`, 'heal')
+      } else if (chaosRoll < 0.5) {
+        // Damage all cats
+        const chaosDmg = Math.floor(dmg * 0.3)
+        addLog(`🎭 Chaotic Energy damages all cats for ${chaosDmg}!`, 'damage')
+        targets.forEach(cat => {
+          const hp = Math.max(0, cat.currentHp - chaosDmg)
+          updateCatHp(cat.instanceId, hp)
+        })
+      } else if (chaosRoll < 0.75) {
+        // Silence
+        setSilenced(true)
+        addLog(`🎭 Chaotic Energy silences cat abilities!`, 'crit')
+      } else {
+        // Extra damage to target
+        const bonusDmg = Math.floor(dmg * 0.5)
+        const bonusHp = Math.max(0, t.currentHp - bonusDmg)
+        updateCatHp(t.instanceId, bonusHp)
+        addLog(`🎭 Chaotic Energy deals ${bonusDmg} bonus damage to ${t.name}!`, 'damage')
+      }
+    }
+
+    // === DOG ABILITY: Void Emperor - Reality Tear (heal self) ===
+    if (dog.id === 'void-emperor') {
+      const voidHeal = Math.floor(actualDamage * 0.3)
+      setDogHp(h => Math.min(dog.health, h + voidHeal))
+      addLog(`🌑 Reality Tear heals ${dog.name} for ${voidHeal} HP!`, 'heal')
+    }
+
     // === DOG ABILITY: Abyssal Devourer - Soul Drain ===
-    // Heals 25% of damage dealt
     if (dog.id === 'abyssal-devourer') {
       const healAmount = Math.floor(actualDamage * 0.25)
       setDogHp(h => Math.min(dog.health, h + healAmount))
@@ -356,7 +585,6 @@ export default function BattleArena() {
     }
 
     // === DOG ABILITY: Omega Fenrir - Ragnarok Howl ===
-    // Silences cat abilities for next turn
     if (dog.id === 'omega-fenrir') {
       setSilenced(true)
       addLog(`🐺 Ragnarok Howl! Cat abilities silenced next turn!`, 'crit')
@@ -364,10 +592,8 @@ export default function BattleArena() {
 
     setAttackingId(null)
 
-    // Check Defeat (re-check all cats after aura damage)
+    // Check Defeat (re-check all cats after all damage)
     const allDead = party.every(c => {
-      const cat = party.find(p => p.instanceId === c.instanceId)
-      if (!cat) return true
       if (c.instanceId === t.instanceId) return newHp <= 0
       return c.currentHp <= 0
     })
@@ -381,10 +607,11 @@ export default function BattleArena() {
 
   const handleVictory = () => {
     setBattleEnded(true)
+    if (soundEnabled) playSound('victory')
     // Scale rewards based on difficulty level
-    const difficultyMultiplier = 1 + (difficultyLevel * 0.5)
-    const xpEarned = Math.floor((50 + (dogIndex * 25)) * difficultyMultiplier)
-    const coinsEarned = Math.floor((150 + (dogIndex * 30)) * difficultyMultiplier)
+    const difficultyMultiplier = getDifficultyMultiplier(difficultyLevel)
+    const xpEarned = Math.floor((BATTLE_BASE_XP + (battleDogIndex * BATTLE_XP_PER_DOG)) * difficultyMultiplier)
+    const coinsEarned = Math.floor((BATTLE_BASE_COINS + (battleDogIndex * BATTLE_COINS_PER_DOG)) * difficultyMultiplier * coinMultiplier)
 
     addLog(`🎉 VICTORY!`, 'info')
     addLog(`+${xpEarned} XP, +${coinsEarned} Coins`, 'info')
@@ -396,12 +623,44 @@ export default function BattleArena() {
     trackBattleWon(dog.name, coinsEarned, xpEarned, difficultyLevel)
     trackCoinsEarned('battle', coinsEarned)
 
-    setVictoryRewards({ coins: coinsEarned, xp: xpEarned })
+    // Roll for equipment drop
+    const equipDrop = rollEquipmentDrop(battleDogIndex)
+    if (equipDrop) {
+      addEquipment(equipDrop.id)
+      addLog(`🎁 Loot drop: ${equipDrop.name}!`, 'info')
+      if (soundEnabled) playSound('equipDrop')
+    }
+
+    setVictoryRewards({ coins: coinsEarned, xp: xpEarned, equipDrop: equipDrop?.name })
+
+    // Boss Rush: auto-advance to next dog
+    if (bossRushActive) {
+      const nextRushIndex = bossRushDogIndex + 1
+      setBossRushHighest(Math.max(bossRushHighest, bossRushDogIndex))
+      if (nextRushIndex >= DOGS.length) {
+        // Completed all dogs!
+        addLog(`🏆 BOSS RUSH COMPLETE! All ${DOGS.length} dogs defeated!`, 'info')
+        setBossRushActive(false)
+        setTimeout(() => setShowVictoryModal(true), 1000)
+      } else {
+        addLog(`➡️ Next challenger: ${DOGS[nextRushIndex].name}!`, 'info')
+        setBossRushDogIndex(nextRushIndex)
+        setBattleDogIndex(nextRushIndex)
+        // Don't show victory modal, auto-continue
+      }
+      return
+    }
+
     setTimeout(() => setShowVictoryModal(true), 1000)
   }
 
   const handleDefeat = () => {
     setBattleEnded(true)
+    if (soundEnabled) playSound('defeat')
+    if (bossRushActive) {
+      addLog(`💀 Boss Rush ended at dog ${bossRushDogIndex + 1}/${DOGS.length}!`, 'info')
+      setBossRushActive(false)
+    }
     addLog(`💀 DEFEAT!`, 'info')
     recordBattleResult(false, 0)
     trackBattleLost(dog.name, difficultyLevel)
@@ -411,16 +670,224 @@ export default function BattleArena() {
 
   return (
     <div className="relative min-h-[80vh] flex flex-col space-y-4">
+      {/* Dog Selection Screen */}
+      {showDogSelect && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-4"
+        >
+          <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/30 to-orange-500/30 border border-red-500/50">
+            <div className="flex items-center justify-between">
+              <p className="text-white font-semibold flex-1 text-center">
+                <span className="text-lg mr-2">⚔️</span>
+                Choose your opponent! Challenge new dogs to progress, or replay defeated ones for rewards.
+              </p>
+              {storeDogIndex >= DOGS.length && (
+                <motion.button
+                  onClick={() => {
+                    setBossRushActive(true)
+                    setBossRushDogIndex(0)
+                    setBattleDogIndex(0)
+                    setBossRushHighest(0)
+                    setShowDogSelect(false)
+                  }}
+                  className="ml-3 px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-white font-black text-xs uppercase tracking-wider border-2 border-red-400/50 shadow-lg whitespace-nowrap"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Boss Rush
+                </motion.button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {DOGS.map((d, i) => {
+              const isDefeated = i < storeDogIndex
+              const isFrontier = i === storeDogIndex
+              const isLocked = i > storeDogIndex
+              const isBoss = i >= 10
+
+              return (
+                <motion.button
+                  key={d.id}
+                  disabled={isLocked}
+                  onClick={() => {
+                    setBattleDogIndex(i)
+                    setShowDogSelect(false)
+                  }}
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all text-left ${
+                    isLocked
+                      ? 'border-slate-700 opacity-40 cursor-not-allowed'
+                      : isFrontier
+                      ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:scale-[1.03]'
+                      : 'border-slate-600 hover:border-slate-400 hover:scale-[1.03]'
+                  }`}
+                  whileHover={!isLocked ? { y: -2 } : {}}
+                  whileTap={!isLocked ? { scale: 0.97 } : {}}
+                >
+                  {/* Dog Image */}
+                  <div className="relative aspect-[3/4] overflow-hidden bg-slate-900">
+                    {d.imageUrl ? (
+                      <img
+                        src={d.imageUrl}
+                        alt={isLocked ? 'Locked' : d.name}
+                        loading="lazy"
+                        decoding="async"
+                        className={`w-full h-full object-cover ${isLocked ? 'brightness-0 opacity-30' : ''}`}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-800" />
+                    )}
+
+                    {/* Locked overlay */}
+                    {isLocked && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-4xl">🔒</span>
+                      </div>
+                    )}
+
+                    {/* Defeated checkmark */}
+                    {isDefeated && (
+                      <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-emerald-300">
+                        <span className="text-white text-xs font-black">✓</span>
+                      </div>
+                    )}
+
+                    {/* Frontier badge */}
+                    {isFrontier && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-amber-500 border border-amber-300">
+                        <span className="text-[10px] font-black text-slate-900 uppercase">NEW</span>
+                      </div>
+                    )}
+
+                    {/* Boss badge */}
+                    {isBoss && !isLocked && (
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600 border border-red-400">
+                        <span className="text-[10px] font-black text-white uppercase">BOSS</span>
+                      </div>
+                    )}
+
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-2.5 bg-slate-900/90">
+                    <h4 className={`font-black text-sm truncate ${isLocked ? 'text-slate-600' : 'text-white'}`}>
+                      {isLocked ? '???' : d.name}
+                    </h4>
+                    {!isLocked && (
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[10px] text-red-400 font-bold">HP {d.health}</span>
+                        <span className="text-[10px] text-amber-400 font-bold">ATK {d.attack}</span>
+                      </div>
+                    )}
+                    {!isLocked && d.ability && (
+                      <p className="text-[9px] text-slate-400 mt-1 truncate">{d.ability.description}</p>
+                    )}
+                  </div>
+                </motion.button>
+              )
+            })}
+          </div>
+
+          {/* Event Dogs */}
+          {activeEvents.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                <span className="text-xl">🎪</span> Event Battles
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {activeEvents.map(event => {
+                  const periodKey = getEventPeriodKey(event)
+                  const isCompleted = completedEventRewards.includes(periodKey)
+
+                  return (
+                    <motion.button
+                      key={event.id}
+                      onClick={() => {
+                        setEventBattle(event)
+                        setBattleDogIndex(storeDogIndex) // keep store index for non-event logic
+                        setShowDogSelect(false)
+                      }}
+                      className={`relative rounded-xl overflow-hidden border-2 transition-all text-left ${
+                        isCompleted
+                          ? 'border-emerald-500/50 hover:scale-[1.03]'
+                          : 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:scale-[1.03]'
+                      }`}
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden bg-slate-900">
+                        {event.eventDog.imageUrl ? (
+                          <img
+                            src={event.eventDog.imageUrl}
+                            alt={event.eventDog.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-slate-800" />
+                        )}
+
+                        {/* Event badge */}
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-purple-600 border border-purple-400">
+                          <span className="text-[10px] font-black text-white uppercase">EVENT</span>
+                        </div>
+
+                        {/* Event icon */}
+                        <div className="absolute top-2 right-2 text-2xl">{event.icon}</div>
+
+                        {isCompleted && (
+                          <div className="absolute top-10 right-2 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-emerald-300">
+                            <span className="text-white text-xs font-black">✓</span>
+                          </div>
+                        )}
+
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+                      </div>
+
+                      <div className="p-2.5 bg-slate-900/90">
+                        <h4 className="font-black text-sm truncate text-white">{event.eventDog.name}</h4>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-red-400 font-bold">HP {event.eventDog.health}</span>
+                          <span className="text-[10px] text-amber-400 font-bold">ATK {event.eventDog.attack}</span>
+                        </div>
+                        <p className="text-[9px] text-purple-300 mt-1 truncate">{event.name}</p>
+                      </div>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Battle Arena (hidden during dog selection) */}
+      {!showDogSelect && <>
       {/* Instruction Banner */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="p-4 rounded-xl bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-500/50"
       >
-        <p className="text-white text-center font-semibold">
-          <span className="text-lg mr-2">🎲</span>
-          Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat enemy dogs and bosses!
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-white font-semibold flex-1 text-center">
+            <span className="text-lg mr-2">🎲</span>
+            Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat enemy dogs and bosses!
+          </p>
+          <motion.button
+            onClick={() => { setEventBattle(null); setShowDogSelect(true) }}
+            className="ml-3 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-600 text-slate-300 text-xs font-bold hover:border-slate-400 transition-all whitespace-nowrap"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Switch Dog
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* MOBILE LAYOUT (< lg) - Compact Layout Matching Mockup */}
@@ -469,35 +936,39 @@ export default function BattleArena() {
             <D20Dice value={dice} rolling={rolling} />
           </div>
 
-          {/* Battle Log - 20% wider by moving left edge */}
-          <div
-            ref={mobileLogRef}
-            className="bg-slate-900/90 rounded-lg p-2 border border-slate-700/50 h-[180px] overflow-y-auto custom-scrollbar"
-          >
-            {log.slice(-12).map((l, i) => (
-              <div key={i} className={`text-xs font-medium leading-relaxed mb-1 ${
-                l.type === 'crit' ? 'text-yellow-400 font-bold' :
-                l.type === 'damage' ? 'text-red-400' :
-                l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
-              }`}>
-                {l.text}
-              </div>
-            ))}
-          </div>
+          <BattleLogPanel ref={mobileLogRef} logs={log} variant="mobile" />
         </div>
 
         {/* Attack Button - Large and Prominent */}
-        <div className="mt-12">
+        <div className="mt-12 space-y-2">
           {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleAttack}
-              className="w-full px-6 py-5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-red-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
-            >
-              ⚔️ ATTACK!
-            </motion.button>
+            <>
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleAttack}
+                className="w-full px-6 py-5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-red-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+              >
+                ⚔️ ATTACK!
+              </motion.button>
+              {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && (
+                <motion.button
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleActiveAbility(selectedCatId)}
+                  className="w-full px-6 py-3 bg-gradient-to-b from-purple-600 to-indigo-800 text-white font-black text-lg rounded-xl shadow-2xl border-4 border-purple-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+                >
+                  ✨ {party.find(c => c.instanceId === selectedCatId)?.ability.name || 'ABILITY'}
+                </motion.button>
+              )}
+              {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) > 0 && (
+                <div className="text-center text-xs text-slate-500">
+                  Ability ready in {abilityCooldowns[selectedCatId]} turn{(abilityCooldowns[selectedCatId] ?? 0) !== 1 ? 's' : ''}
+                </div>
+              )}
+            </>
           )}
           {turn === 'player' && !selectedCatId && !battleEnded && (
             <div className="flex justify-center">
@@ -576,19 +1047,38 @@ export default function BattleArena() {
               <D20Dice value={dice} rolling={rolling} />
             </div>
 
-            {/* Action Button */}
-            <div className="w-64 flex justify-center mb-4">
+            {/* Action Buttons */}
+            <div className="w-64 flex flex-col items-center gap-2 mb-4">
               {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
-                <motion.button
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleAttack}
-                  className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
-                >
-                  ATTACK!
-                </motion.button>
+                <>
+                  <motion.button
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleAttack}
+                    className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
+                  >
+                    ATTACK!
+                  </motion.button>
+                  {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && (
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleActiveAbility(selectedCatId)}
+                      className="px-6 py-2.5 bg-gradient-to-b from-purple-600 to-indigo-800 text-white font-black text-sm rounded-xl shadow-lg border-2 border-purple-400 tracking-wider"
+                    >
+                      ✨ {party.find(c => c.instanceId === selectedCatId)?.ability.name}
+                    </motion.button>
+                  )}
+                  {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) > 0 && (
+                    <div className="text-[10px] text-slate-500">
+                      Ability in {abilityCooldowns[selectedCatId]} turn{(abilityCooldowns[selectedCatId] ?? 0) !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </>
               )}
               {turn === 'player' && !selectedCatId && !battleEnded && (
                 <div className="text-slate-200 text-sm text-center font-semibold py-2 px-4 bg-black/50 rounded-lg">
@@ -620,19 +1110,7 @@ export default function BattleArena() {
           </div>
 
           {/* Battle Log - Right Side */}
-          <div
-            ref={desktopLogRef}
-            className="w-64 h-80 bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 overflow-y-auto border border-slate-700 text-xs font-mono shadow-fantasy custom-scrollbar"
-          >
-            {log.map((l, i) => (
-              <div key={i} className={`mb-1 ${l.type === 'crit' ? 'text-yellow-400 font-bold' :
-                  l.type === 'damage' ? 'text-red-400' :
-                    l.type === 'heal' ? 'text-emerald-400' : 'text-slate-300'
-                }`}>
-                {l.text}
-              </div>
-            ))}
-          </div>
+          <BattleLogPanel ref={desktopLogRef} logs={log} variant="desktop" />
         </div>
 
         {/* Bottom Area: Player Party */}
@@ -719,112 +1197,22 @@ export default function BattleArena() {
         colors={['#FF0000', '#FF4444', '#FF6666']}
       />
 
-      {/* Defeat Modal */}
-      <Modal
+      <BattleDefeatModal
         isOpen={showDefeatModal}
-        onClose={() => {
-          setShowDefeatModal(false)
-          setView('collection')
-        }}
-        title="💀 DEFEAT"
-        size="sm"
-      >
-        <div className="text-center py-6">
-          <div className="text-6xl mb-4">😿</div>
-          <h3 className="text-2xl font-bold text-red-400 mb-2">All cats defeated!</h3>
-          <p className="text-slate-300 mb-6">
-            Your party has fallen in battle. Visit Collection to heal your cats for 20 coins!
-          </p>
+        stats={stats}
+        onGoToCollection={() => { setShowDefeatModal(false); setTimeout(() => setView('collection'), 350) }}
+        onGoToBait={() => { setShowDefeatModal(false); setTimeout(() => setView('bait'), 350) }}
+      />
 
-          <div className="bg-slate-800/50 rounded-lg p-4 mb-6 border border-slate-700">
-            <div className="text-sm text-slate-400 mb-2">Battle Statistics</div>
-            <div className="flex justify-around">
-              <div>
-                <div className="text-2xl font-bold text-gold-400">{stats.totalWins}</div>
-                <div className="text-xs text-slate-500">WINS</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-400">{stats.totalBattles}</div>
-                <div className="text-xs text-slate-500">BATTLES</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-red-400">{stats.totalBattles - stats.totalWins}</div>
-                <div className="text-xs text-slate-500">LOSSES</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setShowDefeatModal(false)
-                setTimeout(() => setView('collection'), 350)
-              }}
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl shadow-glow-purple hover:shadow-premium-lg transition-all hover:scale-105"
-            >
-              📚 Collection
-            </button>
-            <button
-              onClick={() => {
-                setShowDefeatModal(false)
-                setTimeout(() => setView('bait'), 350)
-              }}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
-            >
-              🎣 Baiting Area
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Victory Modal */}
-      <Modal
+      <BattleVictoryModal
         isOpen={showVictoryModal}
-        onClose={() => {
-          setShowVictoryModal(false)
-          setTimeout(() => nextDog(), 350)
-        }}
-        title="🎉 VICTORY!"
-        size="sm"
-      >
-        <div className="text-center py-6">
-          <div className="text-6xl mb-4 animate-bounce">🏆</div>
-          <h3 className="text-2xl font-bold text-gold-400 mb-2">Epic Victory!</h3>
-          <p className="text-slate-300 mb-6">
-            You have defeated {dog.name}! Your cats grow stronger!
-          </p>
-
-          <div className="bg-slate-800/50 rounded-lg p-6 mb-6 border border-gold-500/30">
-            <div className="text-sm text-slate-400 mb-4 uppercase tracking-wider">Rewards Earned</div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-center gap-3">
-                <span className="text-4xl">💰</span>
-                <div>
-                  <div className="text-3xl font-black text-gold-400">+{victoryRewards.coins}</div>
-                  <div className="text-xs text-slate-500">COINS</div>
-                </div>
-              </div>
-              <div className="flex items-center justify-center gap-3">
-                <span className="text-4xl">⭐</span>
-                <div>
-                  <div className="text-3xl font-black text-cyan-400">+{victoryRewards.xp}</div>
-                  <div className="text-xs text-slate-500">EXPERIENCE</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              setShowVictoryModal(false)
-              setTimeout(() => nextDog(), 350)
-            }}
-            className="w-full px-6 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-black text-lg rounded-xl shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95"
-          >
-            Continue to Next Battle →
-          </button>
-        </div>
-      </Modal>
+        dog={dog}
+        rewards={victoryRewards}
+        isFrontierBattle={isFrontierBattle}
+        onNextBattle={() => { setShowVictoryModal(false); setTimeout(() => { nextDog(); setBattleDogIndex(storeDogIndex + 1) }, 350) }}
+        onChooseBattle={() => { setShowVictoryModal(false); setShowDogSelect(true) }}
+      />
+      </>}
     </div>
   )
 }

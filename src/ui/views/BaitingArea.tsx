@@ -8,6 +8,7 @@ import ParticleSystem from '../components/ParticleSystem'
 import CatchCelebrationModal from '../components/CatchCelebrationModal'
 import { containerVariants, cardVariants } from '../animations'
 import { trackBaitUsed, trackCatchSuccess, trackCatchFailure } from '../../utils/analytics'
+import { playSound } from '../../utils/sound'
 
 export default function BaitingArea({ baits }: { baits: Bait[] }) {
   const [result, setResult] = useState<{ cat?: Cat, ok: boolean } | null>(null)
@@ -19,6 +20,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
   const inventory = useGame(s => s.baits)
   const useB = useGame(s => s.useBait)
   const befriend = useGame(s => s.befriendCat)
+  const soundEnabled = useGame(s => s.soundEnabled)
 
   const getRarityColor = (tier: number) => {
     const colors = [
@@ -42,12 +44,14 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
 
     setTimeout(() => setParticlePos(p => ({ ...p, active: false })), 100)
 
-    const bait = baits.find(b => b.id === id)!
+    const bait = baits.find(b => b.id === id)
+    if (!bait) return
     trackBaitUsed(bait.name, bait.tier)
 
     const cat = useB(id)
     if (cat) {
       trackCatchSuccess(cat.name, cat.rarity, bait.name, bait.tier)
+      if (soundEnabled) playSound('catCaught')
       // Show celebration modal instead of inline result
       setCaughtCat(cat)
       // Use setTimeout to ensure state is set before showing modal
@@ -110,7 +114,8 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
             {Object.entries(inventory)
               .filter(([_, qty]) => qty > 0)
               .map(([id, qty]) => {
-                const bait = baits.find(b => b.id === id)!
+                const bait = baits.find(b => b.id === id)
+                if (!bait) return null
                 return (
                   <motion.button
                     key={id}

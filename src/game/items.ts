@@ -35,6 +35,35 @@ export const EQUIPMENT: Equipment[] = [
   { id: 'celestial-crown', name: 'Celestial Crown', slot: 'accessory', rarity: 'Legendary', atkBonus: 5, hpBonus: 15, description: '+5 ATK, +15 HP', cost: 0 },
 ]
 
+// ===== Elemental Stones (Feline Frenzy Friday drops) =====
+
+export interface Stone {
+  id: string
+  name: string
+  element: string
+  effect: string
+  iconUrl: string
+}
+
+export const STONES: Stone[] = [
+  { id: 'emberstone', name: 'Emberstone', element: 'FIRE', effect: '3x damage + burn (3 dmg/turn for 2 turns)', iconUrl: '/images/events/stones/Emberstone.png' },
+  { id: 'froststone', name: 'Froststone', element: 'ICE', effect: '2x damage + freeze (enemy skips next turn)', iconUrl: '/images/events/stones/Froststone.png' },
+  { id: 'terrastone', name: 'Terrastone', element: 'EARTH', effect: '2x damage + rock shield (blocks next hit)', iconUrl: '/images/events/stones/Terrastone.png' },
+  { id: 'stormstone', name: 'Stormstone', element: 'LIGHTNING', effect: 'Double strike + guaranteed crit on first', iconUrl: '/images/events/stones/Stormstone.png' },
+  { id: 'voidstone', name: 'Voidstone', element: 'SHADOW', effect: '2.5x damage + 100% lifesteal', iconUrl: '/images/events/stones/Voidstone.png' },
+]
+
+/** Roll for stone drop from Feline Frenzy Friday (20% chance) */
+export function rollStoneDrop(element: string): Stone | null {
+  if (Math.random() > 0.20) return null
+  return STONES.find(s => s.element === element) ?? null
+}
+
+/** Check if an item ID is a stone */
+export function isStone(itemId: string): boolean {
+  return STONES.some(s => s.id === itemId)
+}
+
 /** Get possible equipment drops for a given dog index (higher = better loot) */
 export function getEquipmentDropPool(dogIndex: number): Equipment[] {
   if (dogIndex >= 12) return EQUIPMENT.filter(e => e.rarity === 'Legendary' || e.rarity === 'Epic')

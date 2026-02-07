@@ -32,7 +32,7 @@ export interface OwnedCat extends Cat {
   eliteTier?: number      // 1 = Elite, 2 = Prismatic
   mergedFromIds?: string[] // instanceIds of 3 consumed cats
   ascension?: number      // 0-3, number of ascensions (prestige resets)
-  equipment?: { weapon?: string; accessory?: string } // equipped item IDs
+  equipment?: { weapon?: string; accessory?: string; stone?: string } // equipped item IDs
 }
 
 export interface Achievement {
@@ -111,6 +111,9 @@ interface GameState {
   equipItem: (catInstanceId:string, equipmentId:string)=>boolean
   unequipItem: (catInstanceId:string, slot:'weapon'|'accessory')=>void
   buyEquipment: (equipmentId:string)=>boolean
+  equipStone: (catInstanceId:string, stoneId:string)=>boolean
+  unequipStone: (catInstanceId:string)=>void
+  consumeStone: (catInstanceId:string)=>void
   claimEventReward: (event:GameEvent)=>boolean
   completeTutorial: ()=>void
   recordTrainingComplete: (instanceId:string)=>void
@@ -703,6 +706,62 @@ export const useGame = create<GameState>((set, get) => ({
       inventory: { ...s.inventory, [equipmentId]: (s.inventory[equipmentId] || 0) + 1 },
     })
     return true
+  },
+
+  equipStone: (catInstanceId, stoneId)=> {
+    const s = get()
+    if ((s.inventory[stoneId] || 0) <= 0) return false
+    const cat = s.owned.find(c => c.instanceId === catInstanceId)
+    if (!cat) return false
+
+    const currentEquip = cat.equipment || {}
+    const newInventory = { ...s.inventory }
+    // Return existing stone to inventory
+    if (currentEquip.stone) {
+      newInventory[currentEquip.stone] = (newInventory[currentEquip.stone] || 0) + 1
+    }
+    newInventory[stoneId] = Math.max(0, (newInventory[stoneId] || 0) - 1)
+
+    const owned = s.owned.map(c => {
+      if (c.instanceId !== catInstanceId) return c
+      return { ...c, equipment: { ...currentEquip, stone: stoneId } }
+    })
+    set({ owned, inventory: newInventory })
+    return true
+  },
+
+  unequipStone: (catInstanceId)=> {
+    const s = get()
+    const cat = s.owned.find(c => c.instanceId === catInstanceId)
+    if (!cat) return
+    const currentEquip = cat.equipment || {}
+    if (!currentEquip.stone) return
+
+    const newInventory = { ...s.inventory, [currentEquip.stone]: (s.inventory[currentEquip.stone] || 0) + 1 }
+    const owned = s.owned.map(c => {
+      if (c.instanceId !== catInstanceId) return c
+      const newEquip = { ...currentEquip }
+      delete newEquip.stone
+      return { ...c, equipment: newEquip }
+    })
+    set({ owned, inventory: newInventory })
+  },
+
+  consumeStone: (catInstanceId)=> {
+    const s = get()
+    const cat = s.owned.find(c => c.instanceId === catInstanceId)
+    if (!cat) return
+    const currentEquip = cat.equipment || {}
+    if (!currentEquip.stone) return
+
+    // Remove stone from cat — do NOT return to inventory (consumed)
+    const owned = s.owned.map(c => {
+      if (c.instanceId !== catInstanceId) return c
+      const newEquip = { ...currentEquip }
+      delete newEquip.stone
+      return { ...c, equipment: newEquip }
+    })
+    set({ owned })
   },
 
   claimEventReward: (event)=> {

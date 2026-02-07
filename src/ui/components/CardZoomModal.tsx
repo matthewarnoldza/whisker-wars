@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { OwnedCat } from '../../game/store'
 import { useGame } from '../../game/store'
 import { MAX_ASCENSION, ASCENSION_COSTS, MAX_CAT_LEVEL } from '../../game/constants'
-import { EQUIPMENT } from '../../game/items'
+import { EQUIPMENT, STONES } from '../../game/items'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import { useState } from 'react'
@@ -19,7 +19,10 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   const inventory = useGame(s => s.inventory)
   const equipItem = useGame(s => s.equipItem)
   const unequipItem = useGame(s => s.unequipItem)
+  const equipStone = useGame(s => s.equipStone)
+  const unequipStone = useGame(s => s.unequipStone)
   const [showEquipMenu, setShowEquipMenu] = useState<'weapon' | 'accessory' | null>(null)
+  const [showStoneMenu, setShowStoneMenu] = useState(false)
 
   if (!cat) return null
 
@@ -300,6 +303,67 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                   </div>
                 )
               })}
+            </div>
+
+            {/* Stone Slot */}
+            <div className="mt-2 sm:mt-3 relative">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowStoneMenu(!showStoneMenu) }}
+                className={`w-full p-2 rounded-lg border text-center transition-all ${
+                  cat.equipment?.stone
+                    ? 'bg-slate-800/80 border-emerald-500/50 hover:border-emerald-400'
+                    : 'bg-slate-900/50 border-slate-700 border-dashed hover:border-slate-500'
+                }`}
+              >
+                <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">
+                  💎 Stone
+                </div>
+                {(() => {
+                  const stoneId = cat.equipment?.stone
+                  const stone = stoneId ? STONES.find(s => s.id === stoneId) : null
+                  return stone ? (
+                    <>
+                      <div className="text-[11px] font-bold text-emerald-300 truncate">{stone.name}</div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">{stone.effect}</div>
+                    </>
+                  ) : (
+                    <div className="text-[11px] text-slate-600">Empty</div>
+                  )
+                })()}
+              </button>
+
+              {/* Stone equip dropdown */}
+              {showStoneMenu && (
+                <div
+                  className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {cat.equipment?.stone && (
+                    <button
+                      type="button"
+                      onClick={() => { unequipStone(cat.instanceId); setShowStoneMenu(false) }}
+                      className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-slate-700 border-b border-slate-700"
+                    >
+                      Unequip {STONES.find(s => s.id === cat.equipment!.stone)?.name}
+                    </button>
+                  )}
+                  {STONES.filter(s => (inventory[s.id] || 0) > 0).map(stone => (
+                    <button
+                      key={stone.id}
+                      type="button"
+                      onClick={() => { equipStone(cat.instanceId, stone.id); setShowStoneMenu(false) }}
+                      className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-700 flex justify-between items-center"
+                    >
+                      <span className="font-bold">{stone.name}</span>
+                      <span className="text-slate-400">{stone.effect} (x{inventory[stone.id]})</span>
+                    </button>
+                  ))}
+                  {STONES.filter(s => (inventory[s.id] || 0) > 0).length === 0 && !cat.equipment?.stone && (
+                    <div className="px-3 py-2 text-xs text-slate-500">No stones available</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Ascension Stars */}

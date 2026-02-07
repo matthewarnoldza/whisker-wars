@@ -669,6 +669,13 @@ export default function Collection() {
                     </motion.button>
                   )}
 
+                  {/* Stone Equipped Indicator */}
+                  {cat.equipment?.stone && (
+                    <div className="absolute bottom-2 left-2 z-20 px-1.5 py-0.5 rounded-md bg-emerald-600/90 border border-emerald-400/50 shadow-lg">
+                      <span className="text-[9px] font-black text-white">💎</span>
+                    </div>
+                  )}
+
                   {/* Favorite Star - Top Right (below delete when hovered) */}
                   <motion.button
                     aria-label={isFavorite ? `Remove ${cat.name} from favorites` : `Add ${cat.name} to favorites`}

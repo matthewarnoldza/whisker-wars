@@ -5,6 +5,7 @@ interface VictoryRewards {
   coins: number
   xp: number
   equipDrop?: string
+  stoneDrop?: string
 }
 
 interface BattleVictoryModalProps {
@@ -61,6 +62,15 @@ export default function BattleVictoryModal({
                 <div>
                   <div className="text-lg font-black text-purple-400">{rewards.equipDrop}</div>
                   <div className="text-xs text-slate-500">EQUIPMENT DROP</div>
+                </div>
+              </div>
+            )}
+            {rewards.stoneDrop && (
+              <div className="flex items-center justify-center gap-3 pt-2 border-t border-slate-700/50 mt-2">
+                <span className="text-4xl">💎</span>
+                <div>
+                  <div className="text-lg font-black text-emerald-400">{rewards.stoneDrop}</div>
+                  <div className="text-xs text-slate-500">ELEMENTAL STONE</div>
                 </div>
               </div>
             )}

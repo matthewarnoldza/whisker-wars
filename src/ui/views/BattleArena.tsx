@@ -6,13 +6,15 @@ import ParticleSystem from '../components/ParticleSystem'
 import BattleLogPanel, { type BattleLog } from '../components/BattleLogPanel'
 import BattleVictoryModal from '../components/BattleVictoryModal'
 import BattleDefeatModal from '../components/BattleDefeatModal'
+import StoneCelebrationModal from '../components/StoneCelebrationModal'
 import { useGame } from '../../game/store'
 import { DOGS } from '../../game/data'
 import { rollD20 } from '../../game/dice'
 import { resolveAbility, resolveDefense } from '../../game/abilityResolver'
 import { BATTLE_BASE_COINS, BATTLE_COINS_PER_DOG, BATTLE_BASE_XP, BATTLE_XP_PER_DOG, getDifficultyMultiplier, BATTLE_LOG_MAX_ENTRIES } from '../../game/constants'
-import { EQUIPMENT, rollEquipmentDrop } from '../../game/items'
-import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, type GameEvent } from '../../game/events'
+import { EQUIPMENT, rollEquipmentDrop, STONES, rollStoneDrop } from '../../game/items'
+import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, getActiveElement, getScaledFrenzyDog, FRENZY_STONES, type GameEvent, type FrenzyElement } from '../../game/events'
+import { resolveStoneEffect } from '../../game/stoneResolver'
 import { playSound } from '../../utils/sound'
 import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '../animations'
@@ -43,6 +45,7 @@ export default function BattleArena() {
   const setView = useGame(s => s.setView)
   const stats = useGame(s => s.stats)
   const addEquipment = useGame(s => s.addEquipment)
+  const consumeStone = useGame(s => s.consumeStone)
   const soundEnabled = useGame(s => s.soundEnabled)
   const completedEventRewards = useGame(s => s.completedEventRewards)
 
@@ -74,7 +77,10 @@ export default function BattleArena() {
   const [attackingId, setAttackingId] = useState<string | null>(null)
   const [showDefeatModal, setShowDefeatModal] = useState(false)
   const [showVictoryModal, setShowVictoryModal] = useState(false)
-  const [victoryRewards, setVictoryRewards] = useState<{ coins: number; xp: number; equipDrop?: string }>({ coins: 0, xp: 0 })
+  const [showStoneCelebration, setShowStoneCelebration] = useState(false)
+  const [droppedStone, setDroppedStone] = useState<typeof STONES[number] | null>(null)
+  const [pendingVictoryAction, setPendingVictoryAction] = useState<(() => void) | null>(null)
+  const [victoryRewards, setVictoryRewards] = useState<{ coins: number; xp: number; equipDrop?: string; stoneDrop?: string }>({ coins: 0, xp: 0 })
   const [silenced, setSilenced] = useState(false) // Omega Fenrir ability
   const [frozenCatId, setFrozenCatId] = useState<string | null>(null) // Frost Wolf ability
   const [dogDodgeChance, setDogDodgeChance] = useState(0) // Shadow Stalker ability
@@ -82,6 +88,11 @@ export default function BattleArena() {
   const [dotEffects, setDotEffects] = useState<{ catId: string; turnsLeft: number; dmgPerTurn: number; type: string }[]>([]) // poison/burn
   const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({}) // catInstanceId -> turns remaining
   const ABILITY_COOLDOWN = 3 // Turns between active ability uses
+  // Stone activation state
+  const [stoneActivated, setStoneActivated] = useState<Record<string, boolean>>({})
+  const [rockShieldCatId, setRockShieldCatId] = useState<string | null>(null)
+  const [stoneBurnOnDog, setStoneBurnOnDog] = useState<{ dmgPerTurn: number; turnsLeft: number } | null>(null)
+  const [stoneFreezeOnDog, setStoneFreezeOnDog] = useState(false)
   const mobileLogRef = useRef<HTMLDivElement>(null)
   const desktopLogRef = useRef<HTMLDivElement>(null)
 
@@ -91,6 +102,15 @@ export default function BattleArena() {
   const eliteAuraBonus = useMemo(() => {
     return party.filter(c => c.isElite && c.currentHp > 0).length
   }, [party])
+
+  // Stone info for selected cat (for UI button display)
+  const selectedCatStone = useMemo(() => {
+    if (!selectedCatId) return null
+    const cat = party.find(c => c.instanceId === selectedCatId)
+    const stoneId = cat?.equipment?.stone
+    if (!stoneId || stoneActivated[selectedCatId]) return null
+    return STONES.find(s => s.id === stoneId) ?? null
+  }, [selectedCatId, party, stoneActivated])
 
   // Reset battle when dog changes
   useEffect(() => {
@@ -111,6 +131,10 @@ export default function BattleArena() {
     setDogDodgeChance(0)
     setDogArmor(0)
     setDotEffects([])
+    setStoneActivated({})
+    setRockShieldCatId(null)
+    setStoneBurnOnDog(null)
+    setStoneFreezeOnDog(false)
     // Initialize ability cooldowns (start ready)
     const initialCooldowns: Record<string, number> = {}
     party.forEach(c => { initialCooldowns[c.instanceId] = 0 })
@@ -118,6 +142,8 @@ export default function BattleArena() {
     // Set passive dog abilities
     if (DOGS[battleDogIndex]?.id === 'shadow-stalker') setDogDodgeChance(0.30)
     if (DOGS[battleDogIndex]?.id === 'crystal-guardian') setDogArmor(4)
+    // Frenzy dog passives
+    if (eventBattle?.eventDog?.id === 'obsidian-shade') setDogDodgeChance(0.20)
     if (party.length > 0) {
       trackBattleStart(party.length, party.map(c => c.name).join(','), dog.name, difficultyLevel)
     }
@@ -152,6 +178,25 @@ export default function BattleArena() {
         .map(d => ({ ...d, turnsLeft: d.turnsLeft - 1 }))
         .filter(d => d.turnsLeft > 0)
       )
+    }
+  }, [turn])
+
+  // Process stone burn DOT on dog at start of player turn
+  useEffect(() => {
+    if (turn === 'player' && !battleEnded && stoneBurnOnDog) {
+      const burnDmg = stoneBurnOnDog.dmgPerTurn
+      const newHp = Math.max(0, dogHp - burnDmg)
+      setDogHp(newHp)
+      addLog(`🔥 Burn deals ${burnDmg} damage to ${dog.name}!`, 'damage')
+      if (stoneBurnOnDog.turnsLeft <= 1) {
+        addLog(`🔥 Burn on ${dog.name} wears off.`, 'info')
+        setStoneBurnOnDog(null)
+      } else {
+        setStoneBurnOnDog({ ...stoneBurnOnDog, turnsLeft: stoneBurnOnDog.turnsLeft - 1 })
+      }
+      if (newHp <= 0) {
+        handleVictory()
+      }
     }
   }, [turn])
 
@@ -312,6 +357,132 @@ export default function BattleArena() {
     setTurn('enemy')
   }
 
+  const handleStoneAttack = async () => {
+    if (!selectedCatId || turn !== 'player' || battleEnded) return
+
+    const cat = party.find(c => c.instanceId === selectedCatId)
+    if (!cat || cat.currentHp <= 0) return
+    if (!cat.equipment?.stone || stoneActivated[cat.instanceId]) return
+
+    const stoneId = cat.equipment.stone
+    const stone = STONES.find(s => s.id === stoneId)
+    if (!stone) return
+
+    // Frozen cat can't attack
+    if (frozenCatId === cat.instanceId) {
+      addLog(`❄️ ${cat.name} is frozen and can't attack!`, 'damage')
+      setFrozenCatId(null)
+      setTurn('enemy')
+      return
+    }
+
+    setAttackingId(cat.instanceId)
+    addLog(`💎 ${cat.name} channels ${stone.name}!`, 'crit')
+
+    const v = await roll()
+
+    // Critical fail — stone consumed, no effect
+    if (v === 1) {
+      addLog(`🎲 CRITICAL FAIL! 💥 The stone shatters uselessly!`, 'damage')
+      consumeStone(cat.instanceId)
+      setStoneActivated(prev => ({ ...prev, [cat.instanceId]: true }))
+      setAttackingId(null)
+      setTurn('enemy')
+      return
+    }
+
+    if (v === 20) {
+      addLog(`🎲 NATURAL 20! ⚡ LEGENDARY STONE STRIKE! ⚡`, 'crit')
+    }
+
+    // Equipment ATK bonus
+    const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
+      + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
+
+    const baseDmg = cat.currentAttack + eliteAuraBonus + equipAtk + Math.floor(v / 5)
+
+    // Resolve stone effect
+    const element = stone.element as FrenzyElement
+    const result = resolveStoneEffect(element, cat, baseDmg)
+
+    // Log stone effect messages
+    result.logMessages.forEach(msg => addLog(msg.text, msg.type))
+
+    // Apply burn on dog
+    if (result.burnApplied) {
+      setStoneBurnOnDog({ dmgPerTurn: result.burnApplied.dmgPerTurn, turnsLeft: result.burnApplied.turns })
+    }
+
+    // Apply freeze on dog
+    if (result.freezeApplied) {
+      setStoneFreezeOnDog(true)
+    }
+
+    // Apply rock shield on cat
+    if (result.rockShieldApplied) {
+      setRockShieldCatId(cat.instanceId)
+    }
+
+    // Apply lifesteal
+    if (result.healAmount > 0 && result.healTargetId) {
+      const healTarget = party.find(c => c.instanceId === result.healTargetId)
+      if (healTarget) {
+        const newHp = Math.min(healTarget.maxHp, healTarget.currentHp + result.healAmount)
+        updateCatHp(result.healTargetId, newHp)
+      }
+    }
+
+    // Shadow Stalker / Obsidian Shade dodge check
+    if (dogDodgeChance > 0 && Math.random() < dogDodgeChance) {
+      addLog(`👻 ${dog.name} dodges the stone attack!`, 'info')
+      consumeStone(cat.instanceId)
+      setStoneActivated(prev => ({ ...prev, [cat.instanceId]: true }))
+      setAttackingId(null)
+      setTurn('enemy')
+      return
+    }
+
+    // Apply armor reduction
+    let finalDmg = result.damage
+    if (dogArmor > 0) {
+      finalDmg = Math.max(1, result.damage - dogArmor)
+      if (finalDmg < result.damage) {
+        addLog(`🛡️ ${dog.name}'s armor absorbs ${result.damage - finalDmg} damage!`, 'info')
+      }
+    }
+
+    // Apply damage
+    let newDogHp = Math.max(0, dogHp - finalDmg)
+    setDogHp(newDogHp)
+    showDamage(finalDmg, window.innerWidth / 2, 100)
+
+    setShaking(true)
+    setTimeout(() => setShaking(false), 400)
+    setParticleActive(true)
+    setTimeout(() => setParticleActive(false), 100)
+
+    // Double strike (Lightning) — second hit
+    if (result.doubleStrike && newDogHp > 0) {
+      const secondDmg = Math.max(1, baseDmg - dogArmor)
+      addLog(`⚡ Second strike hits for ${secondDmg}!`, 'crit')
+      newDogHp = Math.max(0, newDogHp - secondDmg)
+      setDogHp(newDogHp)
+      showDamage(secondDmg, window.innerWidth / 2 + 30, 120)
+    }
+
+    // Consume stone and mark activated
+    consumeStone(cat.instanceId)
+    setStoneActivated(prev => ({ ...prev, [cat.instanceId]: true }))
+
+    if (newDogHp <= 0) {
+      handleVictory()
+      return
+    }
+
+    setAttackingId(null)
+    setTurn('enemy')
+  }
+
   const handleActiveAbility = (catId: string) => {
     if (turn !== 'player' || rolling || battleEnded) return
     const cat = party.find(c => c.instanceId === catId)
@@ -386,6 +557,14 @@ export default function BattleArena() {
   }
 
   const handleDogTurn = async () => {
+    // Stone freeze check — frozen dog skips turn
+    if (stoneFreezeOnDog) {
+      setStoneFreezeOnDog(false)
+      addLog(`❄️ ${dog.name} is frozen solid! Skips turn!`, 'crit')
+      setTurn('player')
+      return
+    }
+
     setAttackingId('dog')
     addLog(`${dog.name} attacks!`, 'info')
 
@@ -440,6 +619,24 @@ export default function BattleArena() {
       return
     }
 
+    // === FRENZY DOG: Granite Colossus - Tectonic Slam (AoE + armor) ===
+    if (dog.id === 'granite-colossus') {
+      const aoeDmg = Math.floor(dmg * 0.4)
+      addLog(`🪨 Tectonic Slam hits ALL cats for ${aoeDmg}!`, 'damage')
+      targets.forEach(cat => {
+        const defense = resolveDefense(cat, aoeDmg, silenced)
+        defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
+        const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
+        updateCatHp(cat.instanceId, newHp)
+      })
+      setDogArmor(a => a + 3)
+      addLog(`🛡️ ${dog.name} gains 3 armor!`, 'info')
+      setAttackingId(null)
+      const allDead = targets.every(c => c.currentHp <= 0)
+      if (allDead) { handleDefeat() } else { setTurn('player') }
+      return
+    }
+
     // === DOG ABILITY: Infernal Cerberus - Triple Hellfire ===
     if (dog.id === 'infernal-cerberus') {
       addLog(`🔥🔥🔥 Triple Hellfire! 3 attacks!`, 'crit')
@@ -461,6 +658,15 @@ export default function BattleArena() {
     }
 
     const t = targets[Math.floor(Math.random() * targets.length)]
+
+    // Rock shield check — absorbs one hit completely
+    if (rockShieldCatId === t.instanceId) {
+      setRockShieldCatId(null)
+      addLog(`🪨 Rock Shield absorbs the hit on ${t.name}!`, 'info')
+      setAttackingId(null)
+      setTurn('player')
+      return
+    }
 
     // === DOG ABILITY: Void Walker - Void Strike (ignores armor/shield) ===
     let actualDamage: number
@@ -522,11 +728,26 @@ export default function BattleArena() {
       ])
     }
 
+    // === FRENZY DOG: Ember Drake - Inferno Breath (Burn DOT) ===
+    if (dog.id === 'ember-drake') {
+      addLog(`🔥 Inferno Breath burns ${t.name}!`, 'damage')
+      setDotEffects(prev => [...prev.filter(d => !(d.catId === t.instanceId && d.type === 'burn')),
+        { catId: t.instanceId, turnsLeft: 2, dmgPerTurn: 4, type: 'burn' }
+      ])
+    }
+
     // === DOG ABILITY: Frost Wolf - Ice Breath (Freeze) ===
     if (dog.id === 'frost-wolf') {
       const freezeTarget = targets[Math.floor(Math.random() * targets.length)]
       setFrozenCatId(freezeTarget.instanceId)
       addLog(`❄️ Ice Breath freezes ${freezeTarget.name}! They'll skip next turn!`, 'crit')
+    }
+
+    // === FRENZY DOG: Glacial Howler - Permafrost Howl (Freeze) ===
+    if (dog.id === 'glacial-howler') {
+      const freezeTarget = targets[Math.floor(Math.random() * targets.length)]
+      setFrozenCatId(freezeTarget.instanceId)
+      addLog(`❄️ Permafrost Howl freezes ${freezeTarget.name}! They'll skip next turn!`, 'crit')
     }
 
     // === DOG ABILITY: Thunder Hound - Lightning Strike (Chain) ===
@@ -538,6 +759,18 @@ export default function BattleArena() {
         const chainHp = Math.max(0, chainTarget.currentHp - chainDmg)
         updateCatHp(chainTarget.instanceId, chainHp)
         addLog(`⚡ Lightning chains to ${chainTarget.name} for ${chainDmg}!`, 'damage')
+      }
+    }
+
+    // === FRENZY DOG: Voltfang Warden - Chain Lightning ===
+    if (dog.id === 'voltfang-warden') {
+      const otherTargets = targets.filter(c => c.instanceId !== t.instanceId && c.currentHp > 0)
+      if (otherTargets.length > 0) {
+        const chainTarget = otherTargets[Math.floor(Math.random() * otherTargets.length)]
+        const chainDmg = Math.floor(actualDamage * 0.6)
+        const chainHp = Math.max(0, chainTarget.currentHp - chainDmg)
+        updateCatHp(chainTarget.instanceId, chainHp)
+        addLog(`⚡ Chain Lightning arcs to ${chainTarget.name} for ${chainDmg}!`, 'damage')
       }
     }
 
@@ -582,6 +815,13 @@ export default function BattleArena() {
       const healAmount = Math.floor(actualDamage * 0.25)
       setDogHp(h => Math.min(dog.health, h + healAmount))
       addLog(`💀 Soul Drain heals ${dog.name} for ${healAmount} HP!`, 'heal')
+    }
+
+    // === FRENZY DOG: Obsidian Shade - Soul Siphon (lifesteal) ===
+    if (dog.id === 'obsidian-shade') {
+      const siphonHeal = Math.floor(actualDamage * 0.3)
+      setDogHp(h => Math.min(dog.health, h + siphonHeal))
+      addLog(`🌑 Soul Siphon heals ${dog.name} for ${siphonHeal} HP!`, 'heal')
     }
 
     // === DOG ABILITY: Omega Fenrir - Ragnarok Howl ===
@@ -631,7 +871,23 @@ export default function BattleArena() {
       if (soundEnabled) playSound('equipDrop')
     }
 
-    setVictoryRewards({ coins: coinsEarned, xp: xpEarned, equipDrop: equipDrop?.name })
+    // Roll for stone drop (Feline Frenzy Friday only)
+    let stoneDropName: string | undefined
+    let stoneDropRef: typeof STONES[number] | null = null
+    if (eventBattle?.id === 'feline-frenzy') {
+      const element = getActiveElement()
+      const stoneDrop = rollStoneDrop(element)
+      if (stoneDrop) {
+        addEquipment(stoneDrop.id) // add to shared inventory
+        stoneDropName = stoneDrop.name
+        stoneDropRef = stoneDrop
+        addLog(`💎 Stone drop: ${stoneDrop.name}!`, 'crit')
+        if (soundEnabled) playSound('equipDrop')
+      }
+    }
+    setDroppedStone(stoneDropRef)
+
+    setVictoryRewards({ coins: coinsEarned, xp: xpEarned, equipDrop: equipDrop?.name, stoneDrop: stoneDropName })
 
     // Boss Rush: auto-advance to next dog
     if (bossRushActive) {
@@ -807,7 +1063,13 @@ export default function BattleArena() {
                     <motion.button
                       key={event.id}
                       onClick={() => {
-                        setEventBattle(event)
+                        // Scale Frenzy dogs with player progression
+                        if (event.id === 'feline-frenzy') {
+                          const scaled = getScaledFrenzyDog(event.eventDog, storeDogIndex, difficultyLevel)
+                          setEventBattle({ ...event, eventDog: scaled })
+                        } else {
+                          setEventBattle(event)
+                        }
                         setBattleDogIndex(storeDogIndex) // keep store index for non-event logic
                         setShowDogSelect(false)
                       }}
@@ -952,6 +1214,17 @@ export default function BattleArena() {
               >
                 ⚔️ ATTACK!
               </motion.button>
+              {selectedCatStone && (
+                <motion.button
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleStoneAttack}
+                  className="w-full px-6 py-4 bg-gradient-to-b from-emerald-500 to-teal-700 text-white font-black text-lg rounded-xl shadow-2xl border-4 border-emerald-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+                >
+                  💎 ATTACK + {selectedCatStone.name}!
+                </motion.button>
+              )}
               {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && (
                 <motion.button
                   initial={{ scale: 0 }}
@@ -1061,6 +1334,18 @@ export default function BattleArena() {
                   >
                     ATTACK!
                   </motion.button>
+                  {selectedCatStone && (
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleStoneAttack}
+                      className="px-6 py-2.5 bg-gradient-to-b from-emerald-500 to-teal-700 text-white font-black text-sm rounded-xl shadow-lg border-2 border-emerald-400 tracking-wider hover:shadow-emerald-500/50 transition-shadow"
+                    >
+                      💎 ATTACK + {selectedCatStone.name}!
+                    </motion.button>
+                  )}
                   {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && (
                     <motion.button
                       initial={{ scale: 0 }}
@@ -1209,8 +1494,37 @@ export default function BattleArena() {
         dog={dog}
         rewards={victoryRewards}
         isFrontierBattle={isFrontierBattle}
-        onNextBattle={() => { setShowVictoryModal(false); setTimeout(() => { nextDog(); setBattleDogIndex(storeDogIndex + 1) }, 350) }}
-        onChooseBattle={() => { setShowVictoryModal(false); setShowDogSelect(true) }}
+        onNextBattle={() => {
+          setShowVictoryModal(false)
+          if (droppedStone) {
+            setPendingVictoryAction(() => () => { nextDog(); setBattleDogIndex(storeDogIndex + 1) })
+            setTimeout(() => setShowStoneCelebration(true), 350)
+          } else {
+            setTimeout(() => { nextDog(); setBattleDogIndex(storeDogIndex + 1) }, 350)
+          }
+        }}
+        onChooseBattle={() => {
+          setShowVictoryModal(false)
+          if (droppedStone) {
+            setPendingVictoryAction(() => () => setShowDogSelect(true))
+            setTimeout(() => setShowStoneCelebration(true), 350)
+          } else {
+            setShowDogSelect(true)
+          }
+        }}
+      />
+
+      <StoneCelebrationModal
+        stone={droppedStone}
+        isOpen={showStoneCelebration}
+        onClose={() => {
+          setShowStoneCelebration(false)
+          setDroppedStone(null)
+          if (pendingVictoryAction) {
+            pendingVictoryAction()
+            setPendingVictoryAction(null)
+          }
+        }}
       />
       </>}
     </div>

@@ -127,6 +127,103 @@ export const EVENTS: GameEvent[] = [
   },
 ]
 
+// ===== Feline Frenzy Friday =====
+
+export type FrenzyElement = 'FIRE' | 'ICE' | 'EARTH' | 'LIGHTNING' | 'SHADOW'
+
+const ELEMENT_ROTATION: FrenzyElement[] = ['FIRE', 'ICE', 'EARTH', 'LIGHTNING', 'SHADOW']
+
+const FRENZY_DOGS: Dog[] = [
+  {
+    id: 'ember-drake', name: 'Ember Drake', health: 120, attack: 11,
+    ability: { name: 'Inferno Breath', description: 'Burns a cat for 4 dmg/turn for 2 turns' },
+    imageUrl: '/images/events/dogs/Ember Drake.png',
+  },
+  {
+    id: 'glacial-howler', name: 'Glacial Howler', health: 130, attack: 10,
+    ability: { name: 'Permafrost Howl', description: 'Freezes a random cat, skipping their next turn' },
+    imageUrl: '/images/events/dogs/Glacial Howler.png',
+  },
+  {
+    id: 'granite-colossus', name: 'Granite Colossus', health: 150, attack: 9,
+    ability: { name: 'Tectonic Slam', description: 'Damages all cats for 40% ATK and gains 3 armor' },
+    imageUrl: '/images/events/dogs/Granite Colossus.png',
+  },
+  {
+    id: 'voltfang-warden', name: 'Voltfang Warden', health: 110, attack: 12,
+    ability: { name: 'Chain Lightning', description: 'Chains to 1 other cat for 60% damage' },
+    imageUrl: '/images/events/dogs/Voltfang Warden.png',
+  },
+  {
+    id: 'obsidian-shade', name: 'Obsidian Shade', health: 115, attack: 11,
+    ability: { name: 'Soul Siphon', description: 'Steals 30% of damage dealt as HP, 20% dodge chance' },
+    imageUrl: '/images/events/dogs/Obsidian Shade.png',
+  },
+]
+
+export const FRENZY_STONES = [
+  { id: 'emberstone', name: 'Emberstone', element: 'FIRE' as FrenzyElement },
+  { id: 'froststone', name: 'Froststone', element: 'ICE' as FrenzyElement },
+  { id: 'terrastone', name: 'Terrastone', element: 'EARTH' as FrenzyElement },
+  { id: 'stormstone', name: 'Stormstone', element: 'LIGHTNING' as FrenzyElement },
+  { id: 'voidstone', name: 'Voidstone', element: 'SHADOW' as FrenzyElement },
+]
+
+const ELEMENT_THEMES: Record<FrenzyElement, { gradient: string; border: string; icon: string }> = {
+  FIRE:      { gradient: 'from-red-500/30 to-orange-500/30',    border: 'border-red-500/50',    icon: '🔥' },
+  ICE:       { gradient: 'from-blue-400/30 to-cyan-400/30',     border: 'border-cyan-500/50',   icon: '❄️' },
+  EARTH:     { gradient: 'from-amber-600/30 to-yellow-700/30',  border: 'border-amber-500/50',  icon: '🪨' },
+  LIGHTNING: { gradient: 'from-yellow-400/30 to-amber-300/30',  border: 'border-yellow-500/50', icon: '⚡' },
+  SHADOW:    { gradient: 'from-purple-500/30 to-violet-600/30', border: 'border-purple-500/50', icon: '🌑' },
+}
+
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+export function getActiveElement(date: Date = new Date()): FrenzyElement {
+  return ELEMENT_ROTATION[getISOWeekNumber(date) % 5]
+}
+
+export function getScaledFrenzyDog(baseDog: Dog, dogIndex: number, difficultyLevel: number): Dog {
+  const progressionMultiplier = 1 + (dogIndex / 15) * 0.5
+  const difficultyMultiplier = 1 + difficultyLevel * 0.5
+  const mult = progressionMultiplier * difficultyMultiplier
+  return {
+    ...baseDog,
+    health: Math.floor(baseDog.health * mult),
+    attack: Math.floor(baseDog.attack * mult),
+  }
+}
+
+/** Get the Feline Frenzy Friday event if it's Friday, or null otherwise */
+export function getFrenzyEvent(): GameEvent | null {
+  const now = new Date()
+  if (now.getDay() !== 5) return null // Not Friday
+  const element = getActiveElement(now)
+  const idx = ELEMENT_ROTATION.indexOf(element)
+  const theme = ELEMENT_THEMES[element]
+  const dog = FRENZY_DOGS[idx]
+  const stone = FRENZY_STONES[idx]
+  return {
+    id: 'feline-frenzy',
+    name: 'Feline Frenzy Friday',
+    description: `This week: ${element}! Defeat ${dog.name} for a chance at ${stone.name}!`,
+    icon: theme.icon,
+    startMonth: 0, startDay: 0,
+    endMonth: 0, endDay: 0,
+    themeGradient: theme.gradient,
+    borderColor: theme.border,
+    eventDog: dog,
+    coinReward: 200,
+    coinMultiplier: 1.25,
+  }
+}
+
 /** Check if an event is currently active */
 function isEventActive(event: GameEvent, now: Date): boolean {
   const month = now.getMonth() + 1 // 1-12
@@ -154,16 +251,22 @@ function isEventActive(event: GameEvent, now: Date): boolean {
   return true
 }
 
-/** Get all currently active events */
+/** Get all currently active events (including Feline Frenzy on Fridays) */
 export function getActiveEvents(): GameEvent[] {
   const now = new Date()
-  return EVENTS.filter(e => isEventActive(e, now))
+  const events = EVENTS.filter(e => isEventActive(e, now))
+  const frenzy = getFrenzyEvent()
+  if (frenzy) events.push(frenzy)
+  return events
 }
 
 /** Get a unique key for the current occurrence of an event (to track per-period completion) */
 export function getEventPeriodKey(event: GameEvent): string {
   const now = new Date()
   const year = now.getFullYear()
+  if (event.id === 'feline-frenzy') {
+    return `feline-frenzy-${year}-w${getISOWeekNumber(now)}`
+  }
   if (event.id === 'friday-13th') {
     return `${event.id}-${year}-${now.getMonth() + 1}`
   }

@@ -5,33 +5,11 @@ import type { Equipment, Stone } from '../../game/items'
 import { motion, AnimatePresence } from 'framer-motion'
 import { containerVariants, cardVariants } from '../animations'
 import { playSound } from '../../utils/sound'
+import { RARITY_GRADIENTS, RARITY_GLOWS, RARITY_BORDERS, RARITY_BOX_SHADOWS, RARITY_ORDER } from '../constants/rarity'
 
 type Tab = 'items' | 'shop'
 type Filter = 'all' | 'weapon' | 'accessory' | 'stone'
 type Sort = 'rarity' | 'name'
-
-const RARITY_ORDER: Record<string, number> = { Common: 0, Uncommon: 1, Rare: 2, Epic: 3, Legendary: 4 }
-const RARITY_COLORS: Record<string, string> = {
-  Common: 'from-slate-500 to-slate-600',
-  Uncommon: 'from-green-500 to-emerald-600',
-  Rare: 'from-blue-500 to-cyan-600',
-  Epic: 'from-purple-500 to-violet-600',
-  Legendary: 'from-amber-500 to-yellow-600',
-}
-const RARITY_BORDER: Record<string, string> = {
-  Common: 'border-slate-500/40',
-  Uncommon: 'border-green-500/40',
-  Rare: 'border-blue-500/40',
-  Epic: 'border-purple-500/40',
-  Legendary: 'border-amber-500/40',
-}
-const RARITY_GLOW: Record<string, string> = {
-  Common: '',
-  Uncommon: 'shadow-[0_0_12px_rgba(34,197,94,0.2)]',
-  Rare: 'shadow-[0_0_12px_rgba(59,130,246,0.3)]',
-  Epic: 'shadow-[0_0_16px_rgba(168,85,247,0.3)]',
-  Legendary: 'shadow-[0_0_20px_rgba(245,158,11,0.4)]',
-}
 
 type InventoryItem = { type: 'equipment'; data: Equipment } | { type: 'stone'; data: Stone }
 
@@ -307,8 +285,8 @@ export default function Inventory() {
                     className={`relative p-3 rounded-xl border text-left transition-all ${
                       isSelected
                         ? 'border-amber-400 bg-amber-500/20 ring-1 ring-amber-400/50'
-                        : `${RARITY_BORDER[rarity]} bg-slate-800/80 hover:bg-slate-800/90`
-                    } ${RARITY_GLOW[rarity]}`}
+                        : `${RARITY_BORDERS[rarity]} bg-slate-800/80 hover:bg-slate-800/90`
+                    } ${RARITY_BOX_SHADOWS[rarity]}`}
                   >
                     {/* Quantity badge */}
                     {item.qty > 0 && (
@@ -326,7 +304,7 @@ export default function Inventory() {
                       <ItemImage item={item} size="md" />
                       <div className="text-center">
                         <div className="text-white font-bold text-xs leading-tight">{name}</div>
-                        <div className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 bg-gradient-to-r ${RARITY_COLORS[rarity]} bg-clip-text text-transparent`}>
+                        <div className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 bg-gradient-to-r ${RARITY_GRADIENTS[rarity]} bg-clip-text text-transparent`}>
                           {item.type === 'equipment' ? item.data.rarity : item.data.element}
                         </div>
                         {item.type === 'equipment' && (
@@ -363,7 +341,7 @@ export default function Inventory() {
                       {selectedItem.type === 'equipment' ? selectedItem.data.name : selectedItem.data.name}
                     </h3>
                     <div className={`text-xs font-bold uppercase bg-gradient-to-r ${
-                      RARITY_COLORS[selectedItem.type === 'equipment' ? selectedItem.data.rarity : 'Legendary']
+                      RARITY_GRADIENTS[selectedItem.type === 'equipment' ? selectedItem.data.rarity : 'Legendary']
                     } bg-clip-text text-transparent`}>
                       {selectedItem.type === 'equipment'
                         ? `${selectedItem.data.rarity} ${selectedItem.data.slot === 'weapon' ? 'Weapon' : 'Accessory'}`
@@ -499,7 +477,7 @@ export default function Inventory() {
                   <motion.div
                     key={item.id}
                     variants={cardVariants}
-                    className={`relative p-3 rounded-xl border ${RARITY_BORDER[item.rarity]} bg-slate-800/80 ${RARITY_GLOW[item.rarity]}`}
+                    className={`relative p-3 rounded-xl border ${RARITY_BORDERS[item.rarity]} bg-slate-800/80 ${RARITY_BOX_SHADOWS[item.rarity]}`}
                   >
                     {qty > 0 && (
                       <div className="absolute top-2 right-2 bg-slate-700 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
@@ -510,7 +488,7 @@ export default function Inventory() {
                       <ItemImage item={{ type: 'equipment', data: item }} size="md" />
                       <div className="text-center">
                         <div className="text-white font-bold text-xs">{item.name}</div>
-                        <div className={`text-[10px] font-bold uppercase bg-gradient-to-r ${RARITY_COLORS[item.rarity]} bg-clip-text text-transparent`}>
+                        <div className={`text-[10px] font-bold uppercase bg-gradient-to-r ${RARITY_GRADIENTS[item.rarity]} bg-clip-text text-transparent`}>
                           {item.rarity} {item.slot === 'weapon' ? 'Weapon' : 'Accessory'}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">{item.description}</div>
@@ -542,7 +520,7 @@ export default function Inventory() {
                 return (
                   <div
                     key={item.id}
-                    className={`relative p-3 rounded-xl border ${RARITY_BORDER[item.rarity]} bg-slate-800/70 opacity-80 ${RARITY_GLOW[item.rarity]}`}
+                    className={`relative p-3 rounded-xl border ${RARITY_BORDERS[item.rarity]} bg-slate-800/70 opacity-90 ${RARITY_BOX_SHADOWS[item.rarity]}`}
                   >
                     {qty > 0 && (
                       <div className="absolute top-2 right-2 bg-slate-700 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
@@ -553,7 +531,7 @@ export default function Inventory() {
                       <ItemImage item={{ type: 'equipment', data: item }} size="md" />
                       <div className="text-center">
                         <div className="text-white font-bold text-xs">{item.name}</div>
-                        <div className={`text-[10px] font-bold uppercase bg-gradient-to-r ${RARITY_COLORS[item.rarity]} bg-clip-text text-transparent`}>
+                        <div className={`text-[10px] font-bold uppercase bg-gradient-to-r ${RARITY_GRADIENTS[item.rarity]} bg-clip-text text-transparent`}>
                           {item.rarity} {item.slot === 'weapon' ? 'Weapon' : 'Accessory'}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">{item.description}</div>

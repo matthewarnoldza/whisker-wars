@@ -485,3 +485,17 @@ body {
     0% { background-position: -200% center; }
     100% { background-position: 200% center; }
 }
+
+/* Text shadow utility for stat numbers on cards */
+.text-shadow-stat {
+    text-shadow: 0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1);
+}
+
+/* Hide scrollbar utility for mobile nav */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

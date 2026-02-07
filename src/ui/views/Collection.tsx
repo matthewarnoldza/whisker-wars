@@ -11,6 +11,7 @@ import { useState, useMemo, useCallback } from 'react'
 import type { OwnedCat } from '../../game/store'
 import type { Rarity } from '../../game/data'
 import { CATS, BAITS, rarityByTier } from '../../game/data'
+import { RARITY_TEXT_COLORS, RARITY_BORDERS } from '../constants/rarity'
 import {
   trackCardZoomed,
   trackCatReleased,
@@ -224,7 +225,7 @@ export default function Collection() {
           : 'bg-gradient-to-r from-purple-500/60 to-pink-500/60 border border-purple-500/50'
         }`}
       >
-        <p className="text-white text-center font-semibold">
+        <p className="text-white text-center font-bold text-sm sm:text-base">
           {showCatadex ? (
             <>
               <span className="text-lg mr-2">📖</span>
@@ -379,7 +380,7 @@ export default function Collection() {
         </div>
 
         {/* Row 2: Sort & Filter */}
-        <div className="flex flex-col lg:flex-row gap-3 pt-3 border-t border-slate-700/50">
+        <div className="flex flex-col lg:flex-row gap-3 pt-3 border-t border-slate-800/30">
           {/* Sort */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Sort:</span>
@@ -567,7 +568,7 @@ export default function Collection() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 gap-x-1 gap-y-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
       >
         <AnimatePresence mode="popLayout">
           {filteredAndSortedCats.map(cat => {
@@ -588,7 +589,7 @@ export default function Collection() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="relative group"
               >
-                <div className={`relative scale-[0.8] sm:scale-100 origin-top -mb-16 sm:mb-0 transition-opacity ${
+                <div className={`relative scale-[0.85] sm:scale-100 origin-top -mb-12 sm:mb-0 transition-opacity ${
                   isMergeIneligible || isMaxTier ? 'opacity-40' : ''
                 }`} style={{ willChange: 'transform' }}>
 
@@ -625,7 +626,7 @@ export default function Collection() {
                         handleMergeSelect(cat.instanceId)
                       }}
                       disabled={isMergeIneligible || isMaxTier || (!isMergeSelected && selectedForMerge.length >= 3)}
-                      className={`absolute top-2 left-2 z-20 w-12 h-12 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
+                      className={`absolute top-2 left-2 z-card-overlay w-10 h-10 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
                         isMergeSelected
                           ? 'bg-cyan-500 text-slate-900 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-300'
                           : isMergeIneligible || isMaxTier || selectedForMerge.length >= 3
@@ -655,7 +656,7 @@ export default function Collection() {
                         }
                       }}
                       disabled={!isSelected && selected.length >= 3}
-                      className={`absolute top-2 left-2 z-20 w-12 h-12 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
+                      className={`absolute top-2 left-2 z-card-overlay w-10 h-10 rounded-full flex items-center justify-center font-black text-sm transition-all ${
                         isSelected
                           ? 'bg-gold-500 text-slate-900 shadow-glow-gold border-2 border-gold-300'
                           : selected.length >= 3
@@ -671,7 +672,7 @@ export default function Collection() {
 
                   {/* Stone Equipped Indicator */}
                   {cat.equipment?.stone && (
-                    <div className="absolute bottom-2 left-2 z-20 px-1.5 py-0.5 rounded-md bg-emerald-600/90 border border-emerald-400/50 shadow-lg">
+                    <div className="absolute bottom-2 left-2 z-card-overlay px-1.5 py-0.5 rounded-md bg-emerald-600/90 border border-emerald-400/50 shadow-lg">
                       <span className="text-[9px] font-black text-white">💎</span>
                     </div>
                   )}
@@ -683,7 +684,7 @@ export default function Collection() {
                       e.stopPropagation()
                       toggleFavorite(cat.instanceId)
                     }}
-                    className={`absolute top-14 right-2 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg border-2 ${
+                    className={`absolute top-14 right-2 z-card-overlay w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg border-2 ${
                       isFavorite
                         ? 'bg-yellow-500 text-white border-yellow-300 opacity-100'
                         : 'bg-slate-800/80 text-slate-400 border-slate-600 opacity-0 group-hover:opacity-100'
@@ -706,7 +707,7 @@ export default function Collection() {
                         releaseCat(cat.instanceId)
                       }
                     }}
-                    className="absolute top-2 right-2 z-20 w-10 h-10 rounded-full bg-red-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg border-2 border-red-400"
+                    className="absolute top-2 right-2 z-card-overlay w-10 h-10 rounded-full bg-red-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg border-2 border-red-400"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
@@ -753,7 +754,7 @@ export default function Collection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+            className="fixed inset-0 z-modal-backdrop flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4"
             onClick={() => setShowMergeConfirm(false)}
           >
             <motion.div

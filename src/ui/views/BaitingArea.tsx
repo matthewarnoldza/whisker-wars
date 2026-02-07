@@ -103,7 +103,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
         className="grid gap-8 lg:grid-cols-2"
       >
         {/* Use Bait Section - First (Left) */}
-        <div className="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
+        <div className="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-premium">
           <div className="mb-4">
             <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 font-heading">
               <span className="text-3xl">🐟</span> Use Bait
@@ -123,7 +123,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                   <motion.button
                     key={id}
                     onClick={(e) => handleUseBait(id, e)}
-                    className={`px-4 py-3 rounded-lg font-bold border-2 border-white/30 bg-gradient-to-br ${getRarityColor(
+                    className={`px-4 py-3 rounded-lg font-bold border border-white/20 bg-gradient-to-br ${getRarityColor(
                       bait.tier
                     )} text-white shadow-lg relative overflow-hidden`}
                     whileHover={{ scale: 1.05, boxShadow: '0 8px 32px rgba(234, 179, 8, 0.2)' }}
@@ -195,7 +195,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
         </div>
 
         {/* Buy Bait Section - Second (Right) */}
-        <div className="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-fantasy">
+        <div className="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-premium">
           <div className="mb-4">
             <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2 font-heading">
               <span className="text-3xl">🎣</span> Buy Bait
@@ -220,7 +220,7 @@ export default function BaitingArea({ baits }: { baits: Bait[] }) {
                   onClick={() => buyBait(b.id)}
                   disabled={!canAfford}
                   className={`p-4 rounded-lg border text-left transition-all ${canAfford
-                      ? 'border-slate-600 bg-slate-700/80 hover:border-gold-500 hover:shadow-gold-glow cursor-pointer'
+                      ? 'border-slate-600 bg-slate-700/80 hover:border-gold-500 hover:shadow-glow-gold cursor-pointer'
                       : 'border-slate-800 bg-slate-900/60 opacity-50 cursor-not-allowed'
                     }`}
                 >

@@ -16,7 +16,7 @@ export default function StorageWarning({ onGetCode }: StorageWarningProps) {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="fixed top-0 left-0 right-0 z-[999998] bg-amber-900/95 border-b-2 border-amber-500/50 px-4 py-3 backdrop-blur-sm"
+        className="fixed top-0 left-0 right-0 z-critical bg-amber-900/95 border-b-2 border-amber-500/50 px-4 py-3 backdrop-blur-sm"
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">

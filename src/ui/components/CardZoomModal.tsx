@@ -6,6 +6,7 @@ import { EQUIPMENT, STONES } from '../../game/items'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import { useState } from 'react'
+import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
 
 interface CardZoomModalProps {
   cat: OwnedCat | null
@@ -40,32 +41,8 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   const ascensionCost = ascension < MAX_ASCENSION ? ASCENSION_COSTS[ascension] : 0
   const canAffordAscend = coins >= ascensionCost
 
-  const getRarityGradient = (rarity: string) => {
-    switch (rarity) {
-      case 'Common': return 'from-slate-500 to-slate-600'
-      case 'Uncommon': return 'from-green-500 to-emerald-600'
-      case 'Rare': return 'from-blue-500 to-cyan-600'
-      case 'Epic': return 'from-purple-500 to-fuchsia-600'
-      case 'Legendary': return 'from-orange-500 to-amber-600'
-      case 'Mythical': return 'from-red-600 to-rose-700'
-      default: return 'from-slate-500 to-slate-600'
-    }
-  }
-
-  const getRarityGlow = (rarity: string) => {
-    switch (rarity) {
-      case 'Common': return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
-      case 'Uncommon': return 'drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]'
-      case 'Rare': return 'drop-shadow-[0_0_25px_rgba(59,130,246,0.9)]'
-      case 'Epic': return 'drop-shadow-[0_0_30px_rgba(168,85,247,1)]'
-      case 'Legendary': return 'drop-shadow-[0_0_35px_rgba(251,146,60,1.2)]'
-      case 'Mythical': return 'drop-shadow-[0_0_40px_rgba(239,68,68,1.3)]'
-      default: return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
-    }
-  }
-
-  const rarityGradient = getRarityGradient(cat.rarity)
-  const rarityGlow = getRarityGlow(cat.rarity)
+  const rarityGradient = RARITY_GRADIENTS[cat.rarity] || RARITY_GRADIENTS['Common']
+  const rarityGlow = RARITY_GLOWS[cat.rarity] || RARITY_GLOWS['Common']
 
   return (
     <AnimatePresence>
@@ -75,7 +52,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+          className="fixed inset-0 z-zoom flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0, y: 50 }}
@@ -88,7 +65,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute -top-2 -right-2 z-10 w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+              className="absolute -top-2 -right-2 z-10 w-10 h-10 rounded-full bg-slate-800 hover:bg-red-600 border border-slate-600 hover:border-red-500 text-slate-400 hover:text-white flex items-center justify-center shadow-2xl hover:scale-110 transition-all"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -224,25 +201,25 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             {/* Stats */}
             <div className="mt-2 sm:mt-3 lg:mt-0 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
-              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-lg border border-amber-700/50 shadow-xl">
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-xl border border-amber-700/50 shadow-xl">
                 <span className="font-black text-amber-200 text-lg sm:text-xl drop-shadow-lg">{cat.currentAttack}</span>
                 <span className="text-[9px] sm:text-[10px] text-amber-300/90 font-bold tracking-wide uppercase">ATK</span>
               </div>
 
               {/* Health */}
-              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded-lg border border-emerald-700/50 shadow-xl">
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded-xl border border-emerald-700/50 shadow-xl">
                 <span className="font-black text-emerald-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.currentHp}/{cat.maxHp}</span>
                 <span className="text-[9px] sm:text-[10px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>
               </div>
 
               {/* Level */}
-              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-purple-900/80 to-purple-950/90 rounded-lg border border-purple-700/50 shadow-xl">
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-purple-900/80 to-purple-950/90 rounded-xl border border-purple-700/50 shadow-xl">
                 <span className="font-black text-purple-200 text-lg sm:text-xl drop-shadow-lg">{cat.level}</span>
                 <span className="text-[9px] sm:text-[10px] text-purple-300/90 font-bold tracking-wide uppercase">LVL</span>
               </div>
 
               {/* Battles */}
-              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-slate-800/80 to-slate-900/90 rounded-lg border border-slate-700/50 shadow-xl">
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-slate-800/80 to-slate-900/90 rounded-xl border border-slate-700/50 shadow-xl">
                 <span className="font-black text-slate-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
                 <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-bold tracking-wide uppercase">W/L</span>
               </div>
@@ -289,7 +266,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                     {/* Equip dropdown */}
                     {showEquipMenu === slot && (
                       <div
-                        className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto"
+                        className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-dropdown max-h-40 overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {equippedItem && (
@@ -353,7 +330,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               {/* Stone equip dropdown */}
               {showStoneMenu && (
                 <div
-                  className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto"
+                  className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-dropdown max-h-40 overflow-y-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {cat.equipment?.stone && (

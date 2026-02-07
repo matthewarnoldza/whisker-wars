@@ -62,7 +62,7 @@ function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           {STREAK_REWARDS.map((_, i) => (
             <div
               key={i}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
                 i < currentDay
                   ? 'bg-amber-500 border-amber-400 text-slate-900'
                   : 'bg-slate-700 border-slate-600 text-slate-400'
@@ -355,7 +355,7 @@ export default function App() {
 
       <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Premium Header with Background */}
-        <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50 shadow-premium overflow-hidden">
+        <header className="sticky top-0 z-header backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50 shadow-premium overflow-hidden">
           {/* Background Image with Overlay */}
           <div className="absolute inset-0 pointer-events-none">
             <img
@@ -481,7 +481,7 @@ export default function App() {
             </div>
 
             {/* Mobile Navigation */}
-            <nav className="flex lg:hidden gap-2 mt-3 pt-3 border-t border-slate-700/50">
+            <nav className="flex lg:hidden gap-2 mt-3 pt-3 border-t border-slate-700/50 overflow-x-auto scrollbar-hide">
               {[
                 { id: 'bait', label: 'Bait', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
                 { id: 'collection', label: 'Collection', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
@@ -513,7 +513,7 @@ export default function App() {
         {profileLoaded && !isPublicPage && <EventBanner />}
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
+        <main className="max-w-7xl mx-auto px-6 py-8 relative z-content">
           <motion.div
             key={view}
             initial="initial"

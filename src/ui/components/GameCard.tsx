@@ -4,25 +4,7 @@ import Avatar from './Avatar'
 import type { Cat, Dog } from '../../game/data'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
-
-// Rarity lookup tables for O(1) access instead of switch statements
-const RARITY_GRADIENTS: Record<string, string> = {
-    'Common': 'from-slate-500 to-slate-600',
-    'Uncommon': 'from-green-500 to-emerald-600',
-    'Rare': 'from-blue-500 to-cyan-600',
-    'Epic': 'from-purple-500 to-fuchsia-600',
-    'Legendary': 'from-orange-500 to-amber-600',
-    'Mythical': 'from-red-600 to-rose-700',
-}
-
-const RARITY_GLOWS: Record<string, string> = {
-    'Common': 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]',
-    'Uncommon': 'drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]',
-    'Rare': 'drop-shadow-[0_0_25px_rgba(59,130,246,0.9)]',
-    'Epic': 'drop-shadow-[0_0_30px_rgba(168,85,247,1)]',
-    'Legendary': 'drop-shadow-[0_0_35px_rgba(251,146,60,1.2)]',
-    'Mythical': 'drop-shadow-[0_0_40px_rgba(239,68,68,1.3)]',
-}
+import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
 
 interface GameCardProps {
     character: Cat | Dog
@@ -147,7 +129,7 @@ export default React.memo(function GameCard({
             )}
 
             {/* Card Container with Rarity Glow */}
-            <div className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
+            <div className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ring-1 ring-white/10 ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
                 style={hasSpecialGlow ? { animation: `${rarityAnimationClass} 2s ease-in-out infinite`, willChange: 'transform, opacity' } : { willChange: 'transform' }}
             >
 
@@ -169,7 +151,7 @@ export default React.memo(function GameCard({
 
                     {/* Minimal Gradient Overlays - only at top and bottom */}
                     <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                 </div>
 
                 {/* Card Content Overlay */}
@@ -177,7 +159,7 @@ export default React.memo(function GameCard({
 
                     {/* Top: Enhanced Name Badge */}
                     <div className="flex flex-col items-center gap-1">
-                        <div className={`px-4 py-2 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-lg border-2 border-white/40 backdrop-blur-sm`}>
+                        <div className={`px-4 py-2 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-xl border-2 border-white/50 backdrop-blur-sm`}>
                             <h3 className="font-black text-sm tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
                                 {character.name}
                             </h3>
@@ -210,32 +192,32 @@ export default React.memo(function GameCard({
                             <div className="flex justify-between items-center px-1 flex-shrink-0">
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-9 h-9 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-lg">
-                                        <span className="font-black text-amber-400 text-base" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{character.attack}</span>
+                                    <div className="w-9 h-9 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-stat">
+                                        <span className="font-black text-amber-400 text-base text-shadow-stat">{character.attack}</span>
                                     </div>
-                                    <span className="text-[7px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
+                                    <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
 
                                 {/* Level */}
                                 {(character as any).level !== undefined && (
-                                    <div className="px-2 py-0.5 bg-black rounded border-2 border-slate-400 shadow-lg">
+                                    <div className="px-2 py-0.5 bg-black rounded border-2 border-slate-400 shadow-stat">
                                         <div className="flex flex-col items-center">
-                                            <span className="text-[6px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
-                                            <span className="text-base font-black text-white leading-none" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>{(character as any).level}</span>
+                                            <span className="text-[7px] text-slate-300 font-bold tracking-wide leading-none">LVL</span>
+                                            <span className="text-base font-black text-white leading-none text-shadow-stat">{(character as any).level}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Health */}
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-11 h-9 bg-black rounded border-2 border-emerald-500 flex items-center justify-center shadow-lg px-1">
-                                        <span className="font-black text-emerald-400 text-xs" style={{ textShadow: '0 0 4px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}>
+                                    <div className="w-11 h-9 bg-black rounded border-2 border-emerald-500 flex items-center justify-center shadow-stat px-1">
+                                        <span className="font-black text-emerald-400 text-xs text-shadow-stat">
                                             {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
                                                 ? `${(character as any).currentHp}/${(character as any).maxHp}`
                                                 : (character as any).currentHp || character.health || 0}
                                         </span>
                                     </div>
-                                    <span className="text-[7px] text-emerald-200 font-bold tracking-wide uppercase">HP</span>
+                                    <span className="text-[8px] text-emerald-200 font-bold tracking-wide uppercase">HP</span>
                                 </div>
                             </div>
                         )}

@@ -4,6 +4,7 @@ import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import ParticleSystem from './ParticleSystem'
 import { useState, useEffect } from 'react'
+import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
 
 interface CatchCelebrationModalProps {
   cat: Cat | null
@@ -56,37 +57,13 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
     shineIntensity: 0.9
   })
 
-  const getRarityGradient = (rarity: string) => {
-    switch (rarity) {
-      case 'Common': return 'from-slate-500 to-slate-600'
-      case 'Uncommon': return 'from-green-500 to-emerald-600'
-      case 'Rare': return 'from-blue-500 to-cyan-600'
-      case 'Epic': return 'from-purple-500 to-fuchsia-600'
-      case 'Legendary': return 'from-orange-500 to-amber-600'
-      case 'Mythical': return 'from-red-600 to-rose-700'
-      default: return 'from-slate-500 to-slate-600'
-    }
-  }
-
-  const getRarityGlow = (rarity: string) => {
-    switch (rarity) {
-      case 'Common': return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
-      case 'Uncommon': return 'drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]'
-      case 'Rare': return 'drop-shadow-[0_0_25px_rgba(59,130,246,0.9)]'
-      case 'Epic': return 'drop-shadow-[0_0_30px_rgba(168,85,247,1)]'
-      case 'Legendary': return 'drop-shadow-[0_0_35px_rgba(251,146,60,1.2)]'
-      case 'Mythical': return 'drop-shadow-[0_0_40px_rgba(239,68,68,1.3)]'
-      default: return 'drop-shadow-[0_0_15px_rgba(148,163,184,0.6)]'
-    }
-  }
-
   // Guard clause - only access cat properties if cat exists
   if (!cat) {
     return null
   }
 
-  const rarityGradient = getRarityGradient(cat.rarity)
-  const rarityGlow = getRarityGlow(cat.rarity)
+  const rarityGradient = RARITY_GRADIENTS[cat.rarity] || RARITY_GRADIENTS.Common
+  const rarityGlow = RARITY_GLOWS[cat.rarity] || RARITY_GLOWS.Common
 
   return (
     <AnimatePresence>
@@ -96,7 +73,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-md overflow-hidden touch-none p-4"
+          className="fixed inset-0 z-celebration flex items-center justify-center bg-slate-950/85 backdrop-blur-md overflow-hidden touch-none p-4"
         >
           {/* Celebration Particles */}
           {windowSize.width > 0 && (

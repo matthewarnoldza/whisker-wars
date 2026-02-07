@@ -7,7 +7,7 @@ interface SplashScreenProps {
 export default function SplashScreen({ onClose }: SplashScreenProps) {
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-cyber-black-500"
+      className="fixed inset-0 z-zoom flex items-center justify-center bg-cyber-black-500"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}

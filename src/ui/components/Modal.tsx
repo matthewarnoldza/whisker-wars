@@ -64,10 +64,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[999999]"
+            className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-modal-backdrop"
             aria-hidden="true"
           />
-          <div className="fixed inset-0 z-[1000000] pointer-events-none overflow-y-auto">
+          <div className="fixed inset-0 z-modal pointer-events-none overflow-y-auto">
             <div className="min-h-screen flex items-start justify-center p-4 pt-24">
               <motion.div
                 ref={modalRef}
@@ -77,7 +77,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                 initial={{ scale: 0.9, opacity: 0, y: -20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: -20 }}
-                className={`w-full ${sizeClasses[size]} bg-slate-900 border border-gold-500/30 rounded-2xl shadow-premium-lg overflow-hidden pointer-events-auto flex flex-col max-h-[calc(100vh-8rem)] my-4`}
+                className={`w-full ${sizeClasses[size]} bg-slate-900 border border-gold-500/30 rounded-2xl shadow-premium-lg shadow-2xl overflow-hidden pointer-events-auto flex flex-col max-h-[calc(100vh-8rem)] my-4`}
               >
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-800 shrink-0">
@@ -88,7 +88,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                   type="button"
                   onClick={onClose}
                   aria-label="Close"
-                  className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-lg"
+                  className="text-slate-400 hover:text-white transition-all p-2 hover:bg-slate-800 rounded-lg focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:outline-none"
                 >
                   ✕
                 </button>

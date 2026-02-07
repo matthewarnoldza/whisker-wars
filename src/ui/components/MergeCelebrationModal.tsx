@@ -66,7 +66,7 @@ export default function MergeCelebrationModal({ eliteCat, isOpen, onClose }: Mer
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-md overflow-hidden touch-none p-4"
+          className="fixed inset-0 z-celebration flex items-center justify-center bg-slate-950/85 backdrop-blur-md overflow-hidden touch-none p-4"
         >
           {/* White Flash Effect */}
           <motion.div

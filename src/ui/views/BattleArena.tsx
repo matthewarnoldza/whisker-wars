@@ -944,7 +944,7 @@ export default function BattleArena() {
         >
           <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/60 to-orange-500/60 border border-red-500/50">
             <div className="flex items-center justify-between">
-              <p className="text-white font-semibold flex-1 text-center">
+              <p className="text-white font-bold text-sm sm:text-base flex-1 text-center">
                 <span className="text-lg mr-2">⚔️</span>
                 Choose your opponent! Challenge new dogs to progress, or replay defeated ones for rewards.
               </p>
@@ -982,12 +982,12 @@ export default function BattleArena() {
                     setBattleDogIndex(i)
                     setShowDogSelect(false)
                   }}
-                  className={`relative rounded-xl overflow-hidden border-2 transition-all text-left ${
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all duration-200 text-left ${
                     isLocked
                       ? 'border-slate-700 opacity-40 cursor-not-allowed'
                       : isFrontier
-                      ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:scale-[1.03]'
-                      : 'border-slate-600 hover:border-slate-400 hover:scale-[1.03]'
+                      ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:scale-[1.03] hover:shadow-[0_0_25px_rgba(245,158,11,0.5)]'
+                      : 'border-slate-600 hover:border-slate-400 hover:shadow-premium hover:scale-[1.03]'
                   }`}
                   whileHover={!isLocked ? { y: -2 } : {}}
                   whileTap={!isLocked ? { scale: 0.97 } : {}}
@@ -1146,7 +1146,7 @@ export default function BattleArena() {
         className="p-4 rounded-xl bg-gradient-to-r from-blue-500/60 to-purple-500/60 border border-blue-500/50"
       >
         <div className="flex items-center justify-between">
-          <p className="text-white font-semibold flex-1 text-center">
+          <p className="text-white font-bold text-sm sm:text-base flex-1 text-center">
             <span className="text-lg mr-2">🎲</span>
             Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat enemy dogs and bosses!
           </p>
@@ -1162,7 +1162,7 @@ export default function BattleArena() {
       </motion.div>
 
       {/* MOBILE LAYOUT (< lg) - Compact Layout Matching Mockup */}
-      <div className="lg:hidden flex flex-col gap-3 px-2 py-3 pb-6">
+      <div className="lg:hidden flex flex-col gap-3 px-2 py-2 pb-6">
         {/* Enemy Section - Card with Health Bar Below */}
         <div className="flex flex-col items-center">
           <motion.div
@@ -1187,14 +1187,14 @@ export default function BattleArena() {
         {/* Turn Indicator */}
         {turn === 'player' && !battleEnded && (
           <div className="flex justify-center">
-            <div className="text-white font-black text-center animate-pulse font-heading tracking-widest text-xl py-2 px-4 bg-black/60 rounded-lg backdrop-blur-sm">
+            <div className="text-white font-black text-center animate-pulse font-heading tracking-widest text-lg py-2 px-5 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
               YOUR TURN
             </div>
           </div>
         )}
         {turn === 'enemy' && !battleEnded && (
           <div className="flex justify-center">
-            <div className="text-red-400 font-black text-center animate-pulse text-xl py-2 px-4 bg-black/60 rounded-lg backdrop-blur-sm">
+            <div className="text-red-400 font-black text-center animate-pulse font-heading tracking-widest text-lg py-2 px-5 bg-red-500/10 rounded-xl backdrop-blur-sm border border-red-500/20">
               ENEMY TURN...
             </div>
           </div>
@@ -1202,16 +1202,18 @@ export default function BattleArena() {
 
         {/* Dice + Battle Log - Side by Side with Expanded Log */}
         <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
-          {/* Dice - Smaller scale */}
-          <div className="scale-[0.65] origin-top-left -mt-8">
-            <D20Dice value={dice} rolling={rolling} />
+          {/* Dice - Compact mobile size */}
+          <div className="w-28 h-28 flex items-center justify-center">
+            <div className="scale-[0.7] origin-center">
+              <D20Dice value={dice} rolling={rolling} />
+            </div>
           </div>
 
           <BattleLogPanel ref={mobileLogRef} logs={log} variant="mobile" />
         </div>
 
         {/* Attack Button - Large and Prominent */}
-        <div className="mt-12 space-y-2">
+        <div className="mt-4 space-y-2">
           {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
             <>
               <motion.button
@@ -1322,7 +1324,7 @@ export default function BattleArena() {
             {/* Dice */}
             <div className="flex flex-col items-center gap-2">
               {turn === 'player' && !battleEnded && (
-                <div className="text-white font-bold animate-pulse font-heading tracking-widest text-sm mb-2 py-1.5 px-3 bg-black/60 rounded-lg backdrop-blur-sm">
+                <div className="text-white font-black animate-pulse font-heading tracking-widest text-sm mb-2 py-1.5 px-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
                   YOUR TURN
                 </div>
               )}
@@ -1408,7 +1410,7 @@ export default function BattleArena() {
         </div>
 
         {/* Bottom Area: Player Party */}
-        <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-24 mt-8">
+        <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-16 mt-4">
           {party.map(cat => {
             const isSelected = selectedCatId === cat.instanceId
             const isDead = cat.currentHp <= 0

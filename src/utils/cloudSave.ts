@@ -21,6 +21,8 @@ export interface CloudSaveData {
   musicEnabled?: boolean
   inventory?: Record<string, number>
   completedEventRewards?: string[]
+  frenzyStreak?: number
+  lastFrenzyParticipation?: string
 }
 
 export interface CloudSavePayload {

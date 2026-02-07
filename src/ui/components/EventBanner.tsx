@@ -3,17 +3,30 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getActiveEvents, getEventPeriodKey } from '../../game/events'
 import { useGame } from '../../game/store'
 import { BAITS } from '../../game/data'
+import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from '../../game/constants'
 import Modal from './Modal'
+import FrenzyCountdown from './FrenzyCountdown'
 
 export default function EventBanner() {
   const completedEventRewards = useGame(s => s.completedEventRewards)
   const claimEventReward = useGame(s => s.claimEventReward)
   const setView = useGame(s => s.setView)
+  const frenzyStreak = useGame(s => s.frenzyStreak)
+  const inventory = useGame(s => s.inventory)
   const [claimedEvent, setClaimedEvent] = useState<string | null>(null)
 
   const activeEvents = useMemo(() => getActiveEvents(), [])
 
-  if (activeEvents.length === 0) return null
+  // On non-event days, still show the Frenzy countdown
+  if (activeEvents.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 mt-2">
+        <FrenzyCountdown />
+      </div>
+    )
+  }
+
+  const shieldCount = inventory['streak-shield'] || 0
 
   return (
     <>
@@ -21,6 +34,7 @@ export default function EventBanner() {
         {activeEvents.map(event => {
           const periodKey = getEventPeriodKey(event)
           const isCompleted = completedEventRewards.includes(periodKey)
+          const isFrenzy = event.id === 'feline-frenzy'
 
           return (
             <motion.div
@@ -35,6 +49,20 @@ export default function EventBanner() {
                   <div className="min-w-0">
                     <p className="text-white font-bold text-sm truncate">{event.name}</p>
                     <p className="text-white/70 text-xs truncate">{event.description}</p>
+                    {isFrenzy && frenzyStreak > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] text-amber-300 font-bold">
+                          Streak: {frenzyStreak}
+                        </span>
+                        {Array.from({ length: Math.min(frenzyStreak, 5) }).map((_, i) => (
+                          <span key={i} className="text-xs">🔥</span>
+                        ))}
+                        {shieldCount > 0 && (
+                          <span className="text-[10px] text-cyan-300 ml-1">🛡️ x{shieldCount}</span>
+                        )}
+                      </div>
+                    )}
+                    {isFrenzy && <div className="mt-1"><FrenzyCountdown /></div>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -78,6 +106,12 @@ export default function EventBanner() {
           const event = activeEvents.find(e => e.id === claimedEvent)
           if (!event) return null
           const bait = event.baitReward ? BAITS.find(b => b.id === event.baitReward) : null
+          const isFrenzy = event.id === 'feline-frenzy'
+
+          // Calculate streak bonus display for frenzy
+          const streakIdx = Math.min(Math.max(frenzyStreak - 1, 0), FRENZY_STREAK_LENGTH - 1)
+          const streakReward = FRENZY_STREAK_REWARDS[streakIdx]
+          const totalCoins = isFrenzy ? Math.floor(event.coinReward * streakReward.coinMultiplier) : event.coinReward
 
           return (
             <Modal
@@ -90,7 +124,12 @@ export default function EventBanner() {
                 <div className="text-5xl mb-3">{event.icon}</div>
                 <h3 className="text-xl font-bold text-white mb-3">{event.name}</h3>
                 <div className="space-y-2 mb-6">
-                  <p className="text-amber-400 font-bold text-lg">+{event.coinReward} Coins</p>
+                  <p className="text-amber-400 font-bold text-lg">+{totalCoins} Coins</p>
+                  {isFrenzy && frenzyStreak > 1 && (
+                    <p className="text-amber-300 text-sm font-semibold">
+                      Streak Bonus: x{streakReward.coinMultiplier} ({streakReward.label})
+                    </p>
+                  )}
                   {bait && (
                     <p className="text-cyan-400 font-semibold">+1x {bait.name}</p>
                   )}

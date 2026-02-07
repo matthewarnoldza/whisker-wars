@@ -11,7 +11,7 @@ import { useGame } from '../../game/store'
 import { DOGS } from '../../game/data'
 import { rollD20 } from '../../game/dice'
 import { resolveAbility, resolveDefense } from '../../game/abilityResolver'
-import { BATTLE_BASE_COINS, BATTLE_COINS_PER_DOG, BATTLE_BASE_XP, BATTLE_XP_PER_DOG, getDifficultyMultiplier, BATTLE_LOG_MAX_ENTRIES } from '../../game/constants'
+import { BATTLE_BASE_COINS, BATTLE_COINS_PER_DOG, BATTLE_BASE_XP, BATTLE_XP_PER_DOG, getDifficultyMultiplier, BATTLE_LOG_MAX_ENTRIES, FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from '../../game/constants'
 import { EQUIPMENT, rollEquipmentDrop, STONES, rollStoneDrop } from '../../game/items'
 import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, getActiveElement, getScaledFrenzyDog, FRENZY_STONES, type GameEvent, type FrenzyElement } from '../../game/events'
 import { resolveStoneEffect } from '../../game/stoneResolver'
@@ -880,18 +880,30 @@ export default function BattleArena() {
       if (soundEnabled) playSound('equipDrop')
     }
 
-    // Roll for stone drop (Feline Frenzy Friday only)
+    // Roll for stone drop (Feline Frenzy Friday only, with streak bonus)
     let stoneDropName: string | undefined
     let stoneDropRef: typeof STONES[number] | null = null
     if (eventBattle?.id === 'feline-frenzy') {
       const element = getActiveElement()
-      const stoneDrop = rollStoneDrop(element)
+      const frenzyStreak = useGame.getState().frenzyStreak
+      const streakIdx = Math.min(Math.max(frenzyStreak - 1, 0), FRENZY_STREAK_LENGTH - 1)
+      const stoneBonus = FRENZY_STREAK_REWARDS[streakIdx]?.stoneDropBonus ?? 0
+      const stoneDrop = rollStoneDrop(element, stoneBonus)
       if (stoneDrop) {
         addEquipment(stoneDrop.id) // add to shared inventory
         stoneDropName = stoneDrop.name
         stoneDropRef = stoneDrop
         addLog(`💎 Stone drop: ${stoneDrop.name}!`, 'crit')
         if (soundEnabled) playSound('equipDrop')
+
+        // Update Frenzy Collector achievement progress
+        setTimeout(() => {
+          const g = useGame.getState()
+          const STONE_IDS = ['emberstone', 'froststone', 'terrastone', 'stormstone', 'voidstone']
+          const uniqueStones = STONE_IDS.filter(id => (g.inventory[id] || 0) > 0).length
+          g.updateAchievementProgress('frenzy-collector', uniqueStones)
+          if (uniqueStones >= 5) g.unlockAchievement('frenzy-collector')
+        }, 100)
       }
     }
     setDroppedStone(stoneDropRef)

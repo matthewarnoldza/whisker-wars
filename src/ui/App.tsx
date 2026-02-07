@@ -21,6 +21,8 @@ import StorageWarning from './components/StorageWarning'
 import SaveCodeModal from './components/SaveCodeModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import EventBanner from './components/EventBanner'
+import FrenzyFridayModal from './components/FrenzyFridayModal'
+import { isFrenzyFriday, getFrenzyWeekKey } from '../game/events'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
 import { isWeb } from '../utils/platform'
@@ -92,6 +94,7 @@ function AchievementsButton() {
   const [showAchievements, setShowAchievements] = useState(false)
   const achievements = useGame(s => s.achievements)
   const claimAchievement = useGame(s => s.claimAchievement)
+  const soundEnabled = useGame(s => s.soundEnabled)
   const unclaimedCount = achievements.filter(a => a.unlocked && !a.claimed).length
 
   return (
@@ -158,7 +161,7 @@ function AchievementsButton() {
                 </div>
                 {ach.unlocked && !ach.claimed && (
                   <button
-                    onClick={() => claimAchievement(ach.id)}
+                    onClick={() => { claimAchievement(ach.id); if (soundEnabled) playSound('coinEarned') }}
                     className="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-lg shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
                   >
                     Claim 100 💰
@@ -268,6 +271,7 @@ export default function App() {
   const [isPublicPage, setIsPublicPage] = useState(false)
   const [showStorageWarning, setShowStorageWarning] = useState(false)
   const [showSaveCodeModal, setShowSaveCodeModal] = useState(false)
+  const [showFrenzyPopup, setShowFrenzyPopup] = useState(false)
 
   // Sync view with URL hash
   useEffect(() => {
@@ -333,6 +337,16 @@ export default function App() {
       // Show tutorial for new profiles who haven't completed it
       if (isNewProfile && !tutorialCompleted) {
         setTimeout(() => setShowWelcomeTutorial(true), 500)
+      }
+
+      // Check for Frenzy Friday announcement
+      if (isFrenzyFriday()) {
+        const frenzyShownKey = `frenzy-shown-${getFrenzyWeekKey()}`
+        if (!sessionStorage.getItem(frenzyShownKey)) {
+          sessionStorage.setItem(frenzyShownKey, '1')
+          const delay = canClaim ? 2500 : 1200
+          setTimeout(() => setShowFrenzyPopup(true), delay)
+        }
       }
     }
   }, [splashCompleted])
@@ -579,6 +593,15 @@ export default function App() {
         onClose={() => setShowDailyReward(false)}
       />
 
+      <FrenzyFridayModal
+        isOpen={showFrenzyPopup}
+        onClose={() => setShowFrenzyPopup(false)}
+        onFightNow={() => {
+          setShowFrenzyPopup(false)
+          setView('battle')
+        }}
+      />
+
       <WelcomeTutorialModal
         isOpen={showWelcomeTutorial}
         onClose={() => {
@@ -624,6 +647,16 @@ export default function App() {
             const health = getStorageHealth()
             if (!health.healthy) {
               setTimeout(() => setShowStorageWarning(true), 1500)
+            }
+
+            // Check for Frenzy Friday announcement on profile switch
+            if (isFrenzyFriday()) {
+              const frenzyShownKey = `frenzy-shown-${getFrenzyWeekKey()}`
+              if (!sessionStorage.getItem(frenzyShownKey)) {
+                sessionStorage.setItem(frenzyShownKey, '1')
+                const delay = canClaim ? 2500 : 1200
+                setTimeout(() => setShowFrenzyPopup(true), delay)
+              }
             }
           }}
         />

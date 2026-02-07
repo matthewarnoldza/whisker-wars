@@ -5,7 +5,8 @@ import { BAITS, CATS, DOGS, rarityByTier } from './data'
 import { EQUIPMENT } from './items'
 import { uploadLeaderboardStats } from '../utils/leaderboard'
 import { uploadSave, type CloudSaveData } from '../utils/cloudSave'
-import { getEventPeriodKey, type GameEvent } from './events'
+import { getEventPeriodKey, getFrenzyWeekKey, isConsecutiveWeek, type GameEvent } from './events'
+import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from './constants'
 import {
   trackBaitPurchased,
   trackCoinsSpent,
@@ -89,6 +90,8 @@ interface GameState {
   trainingCooldowns: Record<string, number[]>
   inventory: Record<string, number> // equipmentId -> qty
   completedEventRewards: string[] // event period keys like "halloween-2025"
+  frenzyStreak: number // consecutive Friday participations
+  lastFrenzyParticipation: string // week key like "2026-w6"
   saveError: string | null
   setView: (v:View)=>void
   addCoins: (n:number)=>void
@@ -231,6 +234,7 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
   { id:'merge-master', name:'Merge Master', description:'Perform 5 cat merges', unlocked:false, claimed:false, progress:0, maxProgress:5 },
   { id:'fusion-champion', name:'Fusion Champion', description:'Perform 10 cat merges', unlocked:false, claimed:false, progress:0, maxProgress:10 },
   { id:'prismatic-power', name:'Prismatic Power', description:'Create a Tier 2 Prismatic cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
+  { id:'frenzy-collector', name:'Frenzy Collector', description:'Collect all 5 elemental stones', unlocked:false, claimed:false, progress:0, maxProgress:5 },
 ]
 
 const getInitialGameState = () => ({
@@ -261,6 +265,8 @@ const getInitialGameState = () => ({
   trainingCooldowns: {} as Record<string, number[]>,
   inventory: {} as Record<string, number>,
   completedEventRewards: [] as string[],
+  frenzyStreak: 0,
+  lastFrenzyParticipation: '',
   saveError: null as string | null,
 })
 
@@ -793,12 +799,53 @@ export const useGame = create<GameState>((set, get) => ({
     const newRewards = [...s.completedEventRewards, periodKey]
     const updates: Partial<GameState> = { completedEventRewards: newRewards }
 
-    // Add coin reward
-    get().addCoins(event.coinReward)
+    if (event.id === 'feline-frenzy') {
+      // Frenzy Friday streak tracking
+      const currentWeekKey = getFrenzyWeekKey()
+      const lastWeek = s.lastFrenzyParticipation
+      let newStreak: number
+
+      if (lastWeek === '') {
+        newStreak = 1
+      } else if (isConsecutiveWeek(lastWeek, currentWeekKey)) {
+        newStreak = s.frenzyStreak + 1
+      } else {
+        // Streak broken — check for Streak Shield
+        const shieldCount = s.inventory['streak-shield'] || 0
+        if (shieldCount > 0) {
+          // Consume shield, preserve streak
+          updates.inventory = { ...s.inventory, 'streak-shield': shieldCount - 1 }
+          newStreak = s.frenzyStreak + 1
+        } else {
+          newStreak = 1
+        }
+      }
+
+      updates.frenzyStreak = newStreak
+      updates.lastFrenzyParticipation = currentWeekKey
+
+      // Apply streak coin multiplier
+      const streakIdx = Math.min(newStreak - 1, FRENZY_STREAK_LENGTH - 1)
+      const streakReward = FRENZY_STREAK_REWARDS[streakIdx]
+      const totalCoins = Math.floor(event.coinReward * streakReward.coinMultiplier)
+      get().addCoins(totalCoins)
+
+      // Award Streak Shield at full rotation completion (every 5 weeks)
+      if (newStreak >= 5 && newStreak % 5 === 0) {
+        const inv = updates.inventory || { ...s.inventory }
+        inv['streak-shield'] = (inv['streak-shield'] || 0) + 1
+        updates.inventory = inv
+      }
+    } else {
+      // Non-frenzy event: standard coin reward
+      get().addCoins(event.coinReward)
+    }
 
     // Add bait reward if applicable
     if (event.baitReward) {
-      updates.baits = { ...s.baits, [event.baitReward]: (s.baits[event.baitReward] || 0) + 1 }
+      const currentBaits = updates.baits || { ...s.baits }
+      currentBaits[event.baitReward] = (currentBaits[event.baitReward] || 0) + 1
+      updates.baits = currentBaits
     }
 
     set(updates)
@@ -876,6 +923,8 @@ export const useGame = create<GameState>((set, get) => ({
       trainingCooldowns: s.trainingCooldowns,
       inventory: s.inventory,
       completedEventRewards: s.completedEventRewards,
+      frenzyStreak: s.frenzyStreak,
+      lastFrenzyParticipation: s.lastFrenzyParticipation,
     })
     const storageKey = `${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`
     try {
@@ -938,6 +987,8 @@ export const useGame = create<GameState>((set, get) => ({
           musicEnabled: s.musicEnabled,
           inventory: s.inventory,
           completedEventRewards: s.completedEventRewards,
+          frenzyStreak: s.frenzyStreak,
+          lastFrenzyParticipation: s.lastFrenzyParticipation,
         }
         uploadSave(cloudData, profile, profile.cloudCode).catch(() => {})
       }
@@ -1000,6 +1051,8 @@ export const useGame = create<GameState>((set, get) => ({
         trainingCooldowns: d.trainingCooldowns ?? {},
         inventory: d.inventory ?? {},
         completedEventRewards: d.completedEventRewards ?? [],
+        frenzyStreak: d.frenzyStreak ?? 0,
+        lastFrenzyParticipation: d.lastFrenzyParticipation ?? '',
       })
       stateLoaded = true
     } catch (error) {
@@ -1122,6 +1175,8 @@ export const useGame = create<GameState>((set, get) => ({
       trainingCooldowns: d.trainingCooldowns ?? {},
       inventory: d.inventory ?? {},
       completedEventRewards: d.completedEventRewards ?? [],
+      frenzyStreak: d.frenzyStreak ?? 0,
+      lastFrenzyParticipation: d.lastFrenzyParticipation ?? '',
     })
     try {
       localStorage.setItem(`${PROFILE_KEY_PREFIX}${profileId}`, payload)

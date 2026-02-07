@@ -54,9 +54,10 @@ export const STONES: Stone[] = [
   { id: 'voidstone', name: 'Voidstone', element: 'SHADOW', effect: '2.5x damage + 100% lifesteal', iconUrl: '/images/events/stones/Voidstone.png' },
 ]
 
-/** Roll for stone drop from Feline Frenzy Friday (20% chance) */
-export function rollStoneDrop(element: string): Stone | null {
-  if (Math.random() > 0.20) return null
+/** Roll for stone drop from Feline Frenzy Friday (20% base chance + optional streak bonus) */
+export function rollStoneDrop(element: string, bonusChance: number = 0): Stone | null {
+  const totalChance = Math.min(1.0, 0.20 + bonusChance)
+  if (Math.random() > totalChance) return null
   return STONES.find(s => s.element === element) ?? null
 }
 

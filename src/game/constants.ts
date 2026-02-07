@@ -68,5 +68,17 @@ export const DAILY_STREAK_REWARDS = [
 export const DAILY_STREAK_LENGTH = DAILY_STREAK_REWARDS.length
 export const TWO_DAYS_MS = 48 * 60 * 60 * 1000
 
+// ===== Frenzy Friday =====
+export const FRENZY_BASE_COINS = 350
+export const FRENZY_BASE_MULTIPLIER = 1.5
+export const FRENZY_STREAK_REWARDS = [
+  { coinMultiplier: 1.0, stoneDropBonus: 0, label: 'Week 1' },
+  { coinMultiplier: 1.5, stoneDropBonus: 0, label: '2-Week Streak' },
+  { coinMultiplier: 2.0, stoneDropBonus: 0, label: '3-Week Streak' },
+  { coinMultiplier: 2.5, stoneDropBonus: 0.10, label: '4-Week Streak' },
+  { coinMultiplier: 3.0, stoneDropBonus: 1.0, label: 'Full Rotation!' },
+] as const
+export const FRENZY_STREAK_LENGTH = FRENZY_STREAK_REWARDS.length
+
 // ===== Default State =====
 export const DEFAULT_BAITS: Record<string, number> = { 'toy-mouse': 1, 'silver-sardine': 1 }

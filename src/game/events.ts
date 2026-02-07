@@ -1,4 +1,5 @@
 import type { Dog } from './data'
+import { FRENZY_BASE_COINS, FRENZY_BASE_MULTIPLIER } from './constants'
 
 export interface GameEvent {
   id: string
@@ -131,9 +132,9 @@ export const EVENTS: GameEvent[] = [
 
 export type FrenzyElement = 'FIRE' | 'ICE' | 'EARTH' | 'LIGHTNING' | 'SHADOW'
 
-const ELEMENT_ROTATION: FrenzyElement[] = ['FIRE', 'ICE', 'EARTH', 'LIGHTNING', 'SHADOW']
+export const ELEMENT_ROTATION: FrenzyElement[] = ['FIRE', 'ICE', 'EARTH', 'LIGHTNING', 'SHADOW']
 
-const FRENZY_DOGS: Dog[] = [
+export const FRENZY_DOGS: Dog[] = [
   {
     id: 'ember-drake', name: 'Ember Drake', health: 120, attack: 11,
     ability: { name: 'Inferno Breath', description: 'Burns a cat for 4 dmg/turn for 2 turns' },
@@ -169,7 +170,7 @@ export const FRENZY_STONES = [
   { id: 'voidstone', name: 'Voidstone', element: 'SHADOW' as FrenzyElement },
 ]
 
-const ELEMENT_THEMES: Record<FrenzyElement, { gradient: string; border: string; icon: string }> = {
+export const ELEMENT_THEMES: Record<FrenzyElement, { gradient: string; border: string; icon: string }> = {
   FIRE:      { gradient: 'from-red-500/30 to-orange-500/30',    border: 'border-red-500/50',    icon: '🔥' },
   ICE:       { gradient: 'from-blue-400/30 to-cyan-400/30',     border: 'border-cyan-500/50',   icon: '❄️' },
   EARTH:     { gradient: 'from-amber-600/30 to-yellow-700/30',  border: 'border-amber-500/50',  icon: '🪨' },
@@ -219,8 +220,8 @@ export function getFrenzyEvent(): GameEvent | null {
     themeGradient: theme.gradient,
     borderColor: theme.border,
     eventDog: dog,
-    coinReward: 200,
-    coinMultiplier: 1.25,
+    coinReward: FRENZY_BASE_COINS,
+    coinMultiplier: FRENZY_BASE_MULTIPLIER,
   }
 }
 
@@ -278,4 +279,60 @@ export function getActiveCoinMultiplier(): number {
   const active = getActiveEvents()
   if (active.length === 0) return 1.0
   return Math.max(...active.map(e => e.coinMultiplier))
+}
+
+// ===== Frenzy Friday Helpers =====
+
+/** Get the week key for a given date (for streak tracking) */
+export function getFrenzyWeekKey(date: Date = new Date()): string {
+  return `${date.getFullYear()}-w${getISOWeekNumber(date)}`
+}
+
+/** Check if two week keys represent consecutive weeks */
+export function isConsecutiveWeek(prevKey: string, currentKey: string): boolean {
+  const [prevYear, prevWeek] = prevKey.split('-w').map(Number)
+  const [curYear, curWeek] = currentKey.split('-w').map(Number)
+  if (curYear === prevYear && curWeek === prevWeek + 1) return true
+  if (curYear === prevYear + 1 && curWeek === 1 && prevWeek >= 52) return true
+  return false
+}
+
+/** Check if it's currently Friday */
+export function isFrenzyFriday(date: Date = new Date()): boolean {
+  return date.getDay() === 5
+}
+
+/** Get the element for the upcoming Friday (works on any day of the week) */
+export function getUpcomingFridayElement(now: Date = new Date()): FrenzyElement {
+  const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7
+  const nextFriday = new Date(now)
+  nextFriday.setDate(now.getDate() + daysUntilFriday)
+  return getActiveElement(nextFriday)
+}
+
+/** Get milliseconds until end of current Friday (23:59:59.999) */
+export function getMsUntilFridayEnd(now: Date = new Date()): number {
+  const endOfDay = new Date(now)
+  endOfDay.setHours(23, 59, 59, 999)
+  return Math.max(0, endOfDay.getTime() - now.getTime())
+}
+
+/** Get milliseconds until next Friday 00:00 from a non-Friday date */
+export function getMsUntilNextFriday(now: Date = new Date()): number {
+  const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7
+  const nextFriday = new Date(now)
+  nextFriday.setDate(now.getDate() + daysUntilFriday)
+  nextFriday.setHours(0, 0, 0, 0)
+  return Math.max(0, nextFriday.getTime() - now.getTime())
+}
+
+/** Get frenzy dog, stone, and theme details for a given element */
+export function getFrenzyDetails(element: FrenzyElement) {
+  const idx = ELEMENT_ROTATION.indexOf(element)
+  return {
+    element,
+    dog: FRENZY_DOGS[idx],
+    stone: FRENZY_STONES[idx],
+    theme: ELEMENT_THEMES[element],
+  }
 }

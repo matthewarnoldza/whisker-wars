@@ -10,7 +10,7 @@ import StoneCelebrationModal from '../components/StoneCelebrationModal'
 import { useGame } from '../../game/store'
 import { DOGS } from '../../game/data'
 import { rollD20 } from '../../game/dice'
-import { resolveAbility, resolveDefense } from '../../game/abilityResolver'
+import { resolveDefense } from '../../game/abilityResolver'
 import { BATTLE_BASE_COINS, BATTLE_COINS_PER_DOG, BATTLE_BASE_XP, BATTLE_XP_PER_DOG, getDifficultyMultiplier, BATTLE_LOG_MAX_ENTRIES, FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from '../../game/constants'
 import { EQUIPMENT, rollEquipmentDrop, STONES, rollStoneDrop } from '../../game/items'
 import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, getActiveElement, getScaledFrenzyDog, FRENZY_STONES, type GameEvent, type FrenzyElement } from '../../game/events'
@@ -20,7 +20,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '../animations'
 import {
   trackBattleStart,
-  trackAbilityTriggered,
   trackBattleWon,
   trackBattleLost,
   trackCoinsEarned,
@@ -91,6 +90,7 @@ export default function BattleArena() {
   const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({}) // catInstanceId -> turns remaining
   const [atkDebuffs, setAtkDebuffs] = useState<Record<string, { multiplier: number; turnsLeft: number }>>({}) // Star Barks: Acidmaw Ravager ATK reduction
   const [dogReflect, setDogReflect] = useState(0) // Star Barks: The Assimilator / Cosmic Queen reflect %
+  const [dogAbilityCooldown, setDogAbilityCooldown] = useState(0) // Dog ability cooldown (same as cat ABILITY_COOLDOWN)
   const [showAlienStory, setShowAlienStory] = useState(false) // Star Barks unlock modal
   // Read fresh HP from the Zustand store (avoids stale closure values)
   const isAllPartyDead = () => {
@@ -108,6 +108,7 @@ export default function BattleArena() {
   const [stoneFreezeOnDog, setStoneFreezeOnDog] = useState(false)
   const mobileLogRef = useRef<HTMLDivElement>(null)
   const desktopLogRef = useRef<HTMLDivElement>(null)
+  const hasAutoShownAlienPopup = useRef(false)
 
   const dog = eventBattle ? eventBattle.eventDog : DOGS[battleDogIndex]
 
@@ -146,6 +147,7 @@ export default function BattleArena() {
     setDotEffects([])
     setAtkDebuffs({})
     setDogReflect(0)
+    setDogAbilityCooldown(0)
     setStoneActivated({})
     setRockShieldCatId(null)
     setStoneBurnOnDog(null)
@@ -164,6 +166,14 @@ export default function BattleArena() {
       trackBattleStart(party.length, party.map(c => c.name).join(','), dog.name, difficultyLevel)
     }
   }, [battleDogIndex, eventBattle])
+
+  // Auto-show Star Barks popup when player qualifies (beat Eternal Overlord or beyond)
+  useEffect(() => {
+    if (!alienUnlocked && !hasAutoShownAlienPopup.current && showDogSelect && (storeDogIndex >= 15 || difficultyLevel > 0)) {
+      hasAutoShownAlienPopup.current = true
+      setShowAlienStory(true)
+    }
+  }, [showDogSelect, alienUnlocked, storeDogIndex, difficultyLevel])
 
   // Auto-scroll log to bottom when updated
   useEffect(() => {
@@ -313,28 +323,7 @@ export default function BattleArena() {
     const baseDmg = effectiveAtk + eliteAuraBonus + equipAtk + Math.floor(v / 5)
 
     // Check if silenced (Omega Fenrir ability) — silence wears off after one turn
-    const wasSilenced = silenced
     if (silenced) setSilenced(false)
-
-    // Resolve ability effects
-    const result = resolveAbility(cat, v, baseDmg, wasSilenced)
-    const { damage: dmg, isCrit, healAmount, healTargetId, isStun, isSpeed, logMessages, abilityTriggered } = result
-
-    // Apply log messages
-    logMessages.forEach(msg => addLog(msg.text, msg.type))
-
-    // Track ability analytics
-    if (abilityTriggered) {
-      trackAbilityTriggered(cat.name, abilityTriggered.abilityName, abilityTriggered.effectType, 'battle')
-      if (soundEnabled) playSound('abilityTrigger')
-    }
-
-    // Apply healing if any
-    if (healAmount > 0 && healTargetId) {
-      const newHp = Math.min(cat.maxHp, cat.currentHp + healAmount)
-      updateCatHp(healTargetId, newHp)
-      if (soundEnabled) playSound('heal')
-    }
 
     // Shadow Stalker / Nebula Stalker dodge check
     if (dogDodgeChance > 0 && Math.random() < dogDodgeChance) {
@@ -352,15 +341,14 @@ export default function BattleArena() {
     }
 
     // Apply Crystal Guardian armor reduction
-    let finalDmg = dmg
+    let finalDmg = baseDmg
     if (dogArmor > 0) {
-      finalDmg = Math.max(1, dmg - dogArmor)
-      if (finalDmg < dmg) {
-        addLog(`🛡️ ${dog.name}'s crystal armor absorbs ${dmg - finalDmg} damage!`, 'info')
+      finalDmg = Math.max(1, baseDmg - dogArmor)
+      if (finalDmg < baseDmg) {
+        addLog(`🛡️ ${dog.name}'s crystal armor absorbs ${baseDmg - finalDmg} damage!`, 'info')
       }
     }
 
-    // Void Walker — ignore cat armor/shield (already resolved, but this is for dog's armor)
     // Apply damage and check victory
     const newDogHp = Math.max(0, dogHp - finalDmg)
     setDogHp(newDogHp)
@@ -371,29 +359,8 @@ export default function BattleArena() {
     setParticleActive(true)
     setTimeout(() => setParticleActive(false), 100)
 
-    // Stun path
-    if (isStun) {
-      addLog('💥 STUN! The enemy flinches and misses a turn!', 'crit')
-      if (newDogHp <= 0) { handleVictory(); return }
-      setAttackingId(null)
-      return
-    }
-
-    // Speed path — extra attack, player goes again
-    if (isSpeed) {
-      if (newDogHp <= 0) { handleVictory(); return }
-      setAttackingId(null)
-      return
-    }
-
-    // Normal hit
-    if (isCrit) {
-      addLog(`💥 Critical Hit! ${dmg} damage!`, 'crit')
-      if (soundEnabled) playSound('criticalHit')
-    } else {
-      addLog(`Hit for ${dmg} damage.`, 'damage')
-      if (soundEnabled) playSound('attack')
-    }
+    addLog(`Hit for ${finalDmg} damage.`, 'damage')
+    if (soundEnabled) playSound('attack')
 
     if (newDogHp <= 0) { handleVictory(); return }
 
@@ -557,6 +524,7 @@ export default function BattleArena() {
     const effect = cat.ability.effect
 
     addLog(`✨ ${cat.name} activates ${cat.ability.name}!`, 'crit')
+    if (soundEnabled) playSound('abilityTrigger')
 
     let dmg = 0
     if (effect === 'crit') {
@@ -636,8 +604,10 @@ export default function BattleArena() {
       return
     }
 
+    const dogAbilityReady = dogAbilityCooldown <= 0
+
     // === DOG ABILITY: Eternal Overlord - Apocalypse Aura ===
-    if (dog.id === 'eternal-overlord') {
+    if (dogAbilityReady && dog.id === 'eternal-overlord') {
       addLog(`☠️ Apocalypse Aura damages all cats!`, 'damage')
       targets.forEach(cat => {
         const newHp = Math.max(0, cat.currentHp - 2)
@@ -646,7 +616,7 @@ export default function BattleArena() {
     }
 
     // === DOG ABILITY: Echo Howler - Sonic Howl (AoE) ===
-    if (dog.id === 'echo-howler') {
+    if (dogAbilityReady && dog.id === 'echo-howler') {
       const aoeDmg = Math.floor(dmg * 0.5)
       addLog(`📢 Sonic Howl hits ALL cats for ${aoeDmg} damage!`, 'damage')
       targets.forEach(cat => {
@@ -655,6 +625,7 @@ export default function BattleArena() {
       })
       setShaking(true)
       setTimeout(() => setShaking(false), 400)
+      setDogAbilityCooldown(ABILITY_COOLDOWN)
       setAttackingId(null)
       const allDead = targets.every(c => c.currentHp - aoeDmg <= 0)
       if (allDead) { handleDefeat() } else { setTurn('player') }
@@ -662,7 +633,7 @@ export default function BattleArena() {
     }
 
     // === DOG ABILITY: Tentacle Paws - Multi-target ===
-    if (dog.id === 'tentacle-paws') {
+    if (dogAbilityReady && dog.id === 'tentacle-paws') {
       const multiDmg = Math.floor(dmg * 0.6)
       addLog(`🐙 Tentacle Grab hits all cats for ${multiDmg} each!`, 'damage')
       targets.forEach(cat => {
@@ -671,13 +642,14 @@ export default function BattleArena() {
         const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
         updateCatHp(cat.instanceId, newHp)
       })
+      setDogAbilityCooldown(ABILITY_COOLDOWN)
       setAttackingId(null)
       if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
       return
     }
 
     // === FRENZY DOG: Granite Colossus - Tectonic Slam (AoE + armor) ===
-    if (dog.id === 'granite-colossus') {
+    if (dogAbilityReady && dog.id === 'granite-colossus') {
       const aoeDmg = Math.floor(dmg * 0.4)
       addLog(`🪨 Tectonic Slam hits ALL cats for ${aoeDmg}!`, 'damage')
       targets.forEach(cat => {
@@ -688,13 +660,14 @@ export default function BattleArena() {
       })
       setDogArmor(a => a + 3)
       addLog(`🛡️ ${dog.name} gains 3 armor!`, 'info')
+      setDogAbilityCooldown(ABILITY_COOLDOWN)
       setAttackingId(null)
       if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
       return
     }
 
     // === DOG ABILITY: Infernal Cerberus - Triple Hellfire ===
-    if (dog.id === 'infernal-cerberus') {
+    if (dogAbilityReady && dog.id === 'infernal-cerberus') {
       addLog(`🔥🔥🔥 Triple Hellfire! 3 attacks!`, 'crit')
       for (let strike = 0; strike < 3; strike++) {
         // Read fresh HP from store each strike (previous strikes update store)
@@ -709,6 +682,7 @@ export default function BattleArena() {
         updateCatHp(target.instanceId, newHp)
         addLog(`🔥 Strike ${strike + 1} hits ${target.name} for ${defense.actualDamage}!`, 'damage')
       }
+      setDogAbilityCooldown(ABILITY_COOLDOWN)
       setAttackingId(null)
       if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
       return
@@ -727,7 +701,7 @@ export default function BattleArena() {
 
     // === DOG ABILITY: Void Walker / Void Reaver - bypass defenses ===
     let actualDamage: number
-    if (dog.id === 'void-walker' || dog.id === 'void-reaver') {
+    if (dogAbilityReady && (dog.id === 'void-walker' || dog.id === 'void-reaver')) {
       actualDamage = dmg
       addLog(`🌀 ${dog.id === 'void-reaver' ? 'Dimensional Rift' : 'Void Strike'} bypasses ${t.name}'s defenses!`, 'crit')
     } else {
@@ -741,7 +715,7 @@ export default function BattleArena() {
     const tEliteTier = t.eliteTier || 0
 
     // === DOG ABILITY: Eternal Overlord - Damage Reflect ===
-    if (dog.id === 'eternal-overlord') {
+    if (dogAbilityReady && dog.id === 'eternal-overlord') {
       const reflectDmg = Math.floor(actualDamage * 0.2)
       if (reflectDmg > 0) {
         addLog(`🔄 Apocalypse Aura reflects ${reflectDmg} damage!`, 'damage')
@@ -779,6 +753,9 @@ export default function BattleArena() {
     showDamage(actualDamage, xPos, window.innerHeight - 200)
 
     addLog(`${dog.name} hits ${t.name} for ${actualDamage}!`, 'damage')
+
+    // Dog ability effects (gated behind cooldown)
+    if (dogAbilityReady) {
 
     // === DOG ABILITY: Slime Hound - Toxic Bite (Poison DOT) ===
     if (dog.id === 'slime-hound') {
@@ -1040,6 +1017,15 @@ export default function BattleArena() {
       })
     }
 
+    } // end dogAbilityReady
+
+    // Manage dog ability cooldown
+    if (dogAbilityReady) {
+      setDogAbilityCooldown(ABILITY_COOLDOWN)
+    } else {
+      setDogAbilityCooldown(c => c - 1)
+    }
+
     setAttackingId(null)
 
     // Check defeat using fresh store state (avoids stale closure HP values)
@@ -1179,6 +1165,21 @@ export default function BattleArena() {
             </div>
           </div>
 
+          {/* Star Barks — Alien Invasion Unlock Banner (top of screen) */}
+          {!alienUnlocked && (storeDogIndex >= 15 || difficultyLevel > 0) && (
+            <motion.button
+              onClick={() => setShowAlienStory(true)}
+              className="w-full py-4 px-4 bg-gradient-to-r from-green-700 via-emerald-600 to-teal-700 text-white font-black text-base sm:text-lg rounded-xl border-2 border-green-400 shadow-[0_0_25px_rgba(16,185,129,0.5)] tracking-wider animate-pulse"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(16,185,129,0.7)' }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="block text-xl mb-1">👽 INCOMING TRANSMISSION 👽</span>
+              <span className="block text-xs sm:text-sm font-semibold text-green-200 tracking-wide">CLICK TO START EXPANSION</span>
+            </motion.button>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {DOGS.slice(0, 15).map((d, i) => {
               const isDefeated = difficultyLevel > 0 ? i !== storeDogIndex : i < storeDogIndex
@@ -1268,20 +1269,6 @@ export default function BattleArena() {
               )
             })}
           </div>
-
-          {/* Star Barks — Alien Invasion Unlock Button */}
-          {storeDogIndex >= 15 && !alienUnlocked && (
-            <motion.button
-              onClick={() => setShowAlienStory(true)}
-              className="w-full mt-4 py-4 bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 text-white font-black text-lg rounded-xl border-2 border-green-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] tracking-wider"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(16,185,129,0.6)' }}
-              whileTap={{ scale: 0.98 }}
-            >
-              👽 INCOMING TRANSMISSION...
-            </motion.button>
-          )}
 
           {/* Star Barks — Alien Dog Grid */}
           {alienUnlocked && (

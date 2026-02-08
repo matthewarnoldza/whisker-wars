@@ -76,6 +76,23 @@ export default function Collection() {
   const handleSortChange = useCallback((option: SortOption) => { trackSortUsed(option); setSortBy(option) }, [])
   const handleFilterChange = useCallback((option: FilterOption) => { trackFilterUsed(option); setFilterBy(option) }, [])
 
+  // Cats eligible for merge: only cats that have 3+ duplicates (same id + tier), sorted by name
+  const mergeCandidates = useMemo(() => {
+    const groups = new Map<string, typeof cats>()
+    cats.forEach(cat => {
+      if ((cat.eliteTier || 0) >= 2) return // Can't merge max tier
+      const key = `${cat.id}:${cat.eliteTier || 0}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(cat)
+    })
+    const eligible: typeof cats = []
+    groups.forEach(group => {
+      if (group.length >= 3) eligible.push(...group)
+    })
+    eligible.sort((a, b) => a.name.localeCompare(b.name))
+    return eligible
+  }, [cats])
+
   const handleMergeToggle = useCallback(() => {
     setMergeMode(m => !m)
     setSelectedForMerge([])
@@ -352,14 +369,14 @@ export default function Collection() {
             <span className="relative z-10">💊 Heal All (25💰)</span>
           </motion.button>
 
-          {/* Heal Message Toast */}
+          {/* Heal Message Toast — fixed to top center, above everything */}
           <AnimatePresence>
             {healMessage && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 whitespace-nowrap"
+                exit={{ opacity: 0, y: -20 }}
+                className="fixed top-4 left-1/2 -translate-x-1/2 px-5 py-3 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-critical whitespace-nowrap"
               >
                 <span className="text-sm font-medium text-slate-200">{healMessage}</span>
               </motion.div>
@@ -579,15 +596,24 @@ export default function Collection() {
         </motion.div>
       )}
 
+      {/* Merge mode empty state */}
+      {!showCatadex && mergeMode && mergeCandidates.length === 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12 space-y-3">
+          <div className="text-6xl mb-4">🐱</div>
+          <h3 className="text-xl font-bold text-slate-300">No cats ready to merge</h3>
+          <p className="text-slate-500 text-sm">You need 3 of the same cat (and tier) to merge. Catch more duplicates!</p>
+        </motion.div>
+      )}
+
       {/* Cats Grid */}
-      {!showCatadex && <motion.div
+      {!showCatadex && (!mergeMode || mergeCandidates.length > 0) && <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
         className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
       >
         <AnimatePresence mode="popLayout">
-          {filteredAndSortedCats.map(cat => {
+          {(mergeMode ? mergeCandidates : filteredAndSortedCats).map(cat => {
             const isSelected = selectedSet.has(cat.instanceId)
             const isFavorite = favoritesSet.has(cat.instanceId)
             const battlePosition = isSelected ? selected.indexOf(cat.instanceId) + 1 : 0

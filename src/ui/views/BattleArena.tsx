@@ -1281,9 +1281,9 @@ export default function BattleArena() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {DOGS.slice(15).map((d, i) => {
                   const realIndex = i + 15
-                  const isDefeated = difficultyLevel > 0 ? realIndex !== storeDogIndex : realIndex < storeDogIndex
+                  const isDefeated = realIndex < storeDogIndex
                   const isFrontier = realIndex === storeDogIndex
-                  const isLocked = difficultyLevel > 0 ? false : realIndex > storeDogIndex
+                  const isLocked = realIndex > storeDogIndex
                   const isOverlord = realIndex >= 21
 
                   return (

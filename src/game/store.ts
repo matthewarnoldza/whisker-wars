@@ -79,6 +79,7 @@ interface GameState {
   favorites: string[] // instanceIds of favorite cats
   dogIndex: number
   difficultyLevel: number // Difficulty multiplier for multi-dog battles
+  alienUnlocked: boolean // Star Barks alien dogs unlocked
   theme: 'light' | 'dark'
   soundEnabled: boolean // Toggle for sound effects
   musicEnabled: boolean // Toggle for background music
@@ -138,6 +139,7 @@ interface GameState {
   renameProfile: (profileId:string, name:string)=>void
   setProfileCloudCode: (code:string)=>void
   restoreProfile: (name:string, cloudCode:string, data:Record<string, unknown>)=>string
+  unlockAlienPhase: ()=>void
   clearSaveError: ()=>void
 }
 
@@ -229,7 +231,8 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
   { id:'legendary-catch', name:'Legendary Catch', description:'Catch a Legendary or Mythical cat', unlocked:false, claimed:false, progress:0, maxProgress:1 },
   { id:'level-10', name:'Power Up', description:'Level a cat to level 10', unlocked:false, claimed:false, progress:0, maxProgress:1 },
   { id:'coin-hoarder', name:'Coin Hoarder', description:'Accumulate 1000 coins', unlocked:false, claimed:false, progress:0, maxProgress:1000 },
-  { id:'dog-slayer', name:'Dog Slayer', description:'Defeat all dog enemies', unlocked:false, claimed:false, progress:0, maxProgress:DOGS.length },
+  { id:'dog-slayer', name:'Dog Slayer', description:'Defeat all dog enemies', unlocked:false, claimed:false, progress:0, maxProgress:15 },
+  { id:'star-barks-victor', name:'Star Barks Victor', description:'Defeat all alien mutated dogs', unlocked:false, claimed:false, progress:0, maxProgress:9 },
   { id:'first-merge', name:'First Fusion', description:'Merge 3 cats into your first Elite', unlocked:false, claimed:false, progress:0, maxProgress:1 },
   { id:'merge-master', name:'Merge Master', description:'Perform 5 cat merges', unlocked:false, claimed:false, progress:0, maxProgress:5 },
   { id:'fusion-champion', name:'Fusion Champion', description:'Perform 10 cat merges', unlocked:false, claimed:false, progress:0, maxProgress:10 },
@@ -261,6 +264,7 @@ const getInitialGameState = () => ({
   lastDailyReward: 0,
   dailyStreak: 0,
   difficultyLevel: 0, // For multi-dog battles after beating all dogs
+  alienUnlocked: false, // Star Barks alien dogs
   tutorialCompleted: false,
   trainingCooldowns: {} as Record<string, number[]>,
   inventory: {} as Record<string, number>,
@@ -379,15 +383,24 @@ export const useGame = create<GameState>((set, get) => ({
       }
 
       setTimeout(() => {
-        // Unlock achievement on first completion of all dogs
-        if (s.dogIndex >= DOGS.length - 1 && s.difficultyLevel === 0) {
+        // Unlock achievement on first completion of all original dogs (index 14 = Eternal Overlord)
+        if (s.dogIndex === 14 && s.difficultyLevel === 0) {
           get().unlockAchievement('dog-slayer')
+        }
+        // Unlock achievement on first completion of alien dogs (index 23 = The Cosmic Queen)
+        if (s.dogIndex === DOGS.length - 1 && s.difficultyLevel === 0) {
+          get().unlockAchievement('star-barks-victor')
         }
       }, 100)
 
       return { dogIndex: newIndex, difficultyLevel: newDifficultyLevel, stats: newStats }
     })
     get().save() // Persist dog progression immediately
+  },
+
+  unlockAlienPhase: ()=> {
+    set({ alienUnlocked: true })
+    get().save()
   },
 
   addXpToCat: (instanceId, amount)=> set(s=> {
@@ -911,6 +924,7 @@ export const useGame = create<GameState>((set, get) => ({
       selectedForBattle: s.selectedForBattle,
       dogIndex: s.dogIndex,
       difficultyLevel: s.difficultyLevel,
+      alienUnlocked: s.alienUnlocked,
       favorites: s.favorites,
       theme: s.theme,
       soundEnabled: s.soundEnabled,
@@ -974,6 +988,7 @@ export const useGame = create<GameState>((set, get) => ({
           owned: s.owned,
           dogIndex: s.dogIndex,
           difficultyLevel: s.difficultyLevel,
+          alienUnlocked: s.alienUnlocked,
           favorites: s.favorites,
           theme: s.theme,
           achievements: s.achievements,
@@ -1031,6 +1046,7 @@ export const useGame = create<GameState>((set, get) => ({
         selectedForBattle: d.selectedForBattle ?? [],
         dogIndex: d.dogIndex ?? 0,
         difficultyLevel: d.difficultyLevel ?? 0,
+        alienUnlocked: d.alienUnlocked ?? false,
         favorites: d.favorites ?? [],
         theme: d.theme ?? 'dark',
         soundEnabled: d.soundEnabled ?? true,

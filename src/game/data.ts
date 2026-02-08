@@ -116,6 +116,16 @@ export const DOGS: Dog[] = [
   { id:'omega-fenrir', name:'Omega Fenrir', health: 300, attack: 16, ability:{name:'Ragnarok Howl', description:'Silences cat abilities for 1 turn'}, imageUrl:'/images/dogs/Omega Fenrir.png' },
   { id:'abyssal-devourer', name:'Abyssal Devourer', health: 350, attack: 17, ability:{name:'Soul Drain', description:'Steals 25% HP from attackers'}, imageUrl:'/images/dogs/Abyssal Devourer.png' },
   { id:'eternal-overlord', name:'Eternal Overlord', health: 400, attack: 18, ability:{name:'Apocalypse Aura', description:'Damages all cats + reflects 20% damage'}, imageUrl:'/images/dogs/Eternal Overlord.png' },
+  // Star Barks — Alien Mutated Dogs
+  { id:'xenospore-hound', name:'Xenospore Hound', health: 450, attack: 19, ability:{name:'Toxic Spores', description:'Poisons all cats'}, imageUrl:'/images/dogs/Xenospore Hound.png' },
+  { id:'acidmaw-ravager', name:'Acidmaw Ravager', health: 520, attack: 20, ability:{name:'Corrosive Bite', description:'Reduces cat ATK for 2 turns'}, imageUrl:'/images/dogs/Acidmaw Ravager.png' },
+  { id:'hiveling-alpha', name:'Hiveling Alpha', health: 600, attack: 21, ability:{name:'Swarm Strike', description:'4 hits on random cats'}, imageUrl:'/images/dogs/Hiveling Alpha.png' },
+  { id:'nebula-stalker', name:'Nebula Stalker', health: 700, attack: 22, ability:{name:'Phase Shift', description:'Dodges + counter-attacks'}, imageUrl:'/images/dogs/Nebula Stalker.png' },
+  { id:'parasyte-warden', name:'Parasyte Warden', health: 800, attack: 23, ability:{name:'Neural Hijack', description:'Forces cat to hit ally'}, imageUrl:'/images/dogs/Parasyte Warden.png' },
+  { id:'plasmic-behemoth', name:'Plasmic Behemoth', health: 900, attack: 24, ability:{name:'Plasma Barrage', description:'AOE damage + burns'}, imageUrl:'/images/dogs/Plasmic Behemoth.png' },
+  { id:'void-reaver', name:'Void Reaver', health: 1000, attack: 26, ability:{name:'Dimensional Rift', description:'Ignores defenses + lifesteal'}, imageUrl:'/images/dogs/Void Reaver.png' },
+  { id:'the-assimilator', name:'The Assimilator', health: 1150, attack: 28, ability:{name:'Genetic Override', description:'Copies cat ability + reflects damage'}, imageUrl:'/images/dogs/The Assimilator.png' },
+  { id:'cosmic-queen', name:'The Cosmic Queen', health: 1300, attack: 30, ability:{name:'Extinction Protocol', description:'Dual random devastating effects each turn'}, imageUrl:'/images/dogs/The Cosmic Queen.png' },
 ]
 
 export const TRAINING_DOG: Dog = {

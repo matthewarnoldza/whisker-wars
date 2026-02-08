@@ -48,6 +48,8 @@ export default function BattleArena() {
   const consumeStone = useGame(s => s.consumeStone)
   const soundEnabled = useGame(s => s.soundEnabled)
   const completedEventRewards = useGame(s => s.completedEventRewards)
+  const alienUnlocked = useGame(s => s.alienUnlocked)
+  const unlockAlienPhase = useGame(s => s.unlockAlienPhase)
 
   // Dog selection: battleDogIndex can differ from storeDogIndex for replays
   const [showDogSelect, setShowDogSelect] = useState(true)
@@ -87,6 +89,9 @@ export default function BattleArena() {
   const [dogArmor, setDogArmor] = useState(0) // Crystal Guardian ability
   const [dotEffects, setDotEffects] = useState<{ catId: string; turnsLeft: number; dmgPerTurn: number; type: string }[]>([]) // poison/burn
   const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({}) // catInstanceId -> turns remaining
+  const [atkDebuffs, setAtkDebuffs] = useState<Record<string, { multiplier: number; turnsLeft: number }>>({}) // Star Barks: Acidmaw Ravager ATK reduction
+  const [dogReflect, setDogReflect] = useState(0) // Star Barks: The Assimilator / Cosmic Queen reflect %
+  const [showAlienStory, setShowAlienStory] = useState(false) // Star Barks unlock modal
   // Read fresh HP from the Zustand store (avoids stale closure values)
   const isAllPartyDead = () => {
     const fresh = useGame.getState().owned
@@ -139,6 +144,8 @@ export default function BattleArena() {
     setDogDodgeChance(0)
     setDogArmor(0)
     setDotEffects([])
+    setAtkDebuffs({})
+    setDogReflect(0)
     setStoneActivated({})
     setRockShieldCatId(null)
     setStoneBurnOnDog(null)
@@ -150,6 +157,7 @@ export default function BattleArena() {
     // Set passive dog abilities
     if (DOGS[battleDogIndex]?.id === 'shadow-stalker') setDogDodgeChance(0.30)
     if (DOGS[battleDogIndex]?.id === 'crystal-guardian') setDogArmor(4)
+    if (DOGS[battleDogIndex]?.id === 'nebula-stalker') setDogDodgeChance(0.40)
     // Frenzy dog passives
     if (eventBattle?.eventDog?.id === 'obsidian-shade') setDogDodgeChance(0.20)
     if (party.length > 0) {
@@ -190,6 +198,25 @@ export default function BattleArena() {
       if (isAllPartyDead()) {
         handleDefeat()
       }
+    }
+  }, [turn])
+
+  // Tick down ATK debuffs at start of player turn
+  useEffect(() => {
+    if (turn === 'player' && !battleEnded && Object.keys(atkDebuffs).length > 0) {
+      setAtkDebuffs(prev => {
+        const next: Record<string, { multiplier: number; turnsLeft: number }> = {}
+        for (const [id, debuff] of Object.entries(prev)) {
+          const remaining = debuff.turnsLeft - 1
+          if (remaining > 0) {
+            next[id] = { ...debuff, turnsLeft: remaining }
+          } else {
+            const cat = party.find(c => c.instanceId === id)
+            if (cat) addLog(`💪 ${cat.name}'s attack power is restored!`, 'info')
+          }
+        }
+        return next
+      })
     }
   }, [turn])
 
@@ -280,8 +307,10 @@ export default function BattleArena() {
     const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
       + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
 
-    // Base damage with Elite Aura bonus + equipment
-    const baseDmg = cat.currentAttack + eliteAuraBonus + equipAtk + Math.floor(v / 5)
+    // Base damage with Elite Aura bonus + equipment (apply ATK debuff if active)
+    const debuff = atkDebuffs[cat.instanceId]
+    const effectiveAtk = debuff && debuff.turnsLeft > 0 ? Math.floor(cat.currentAttack * debuff.multiplier) : cat.currentAttack
+    const baseDmg = effectiveAtk + eliteAuraBonus + equipAtk + Math.floor(v / 5)
 
     // Check if silenced (Omega Fenrir ability) — silence wears off after one turn
     const wasSilenced = silenced
@@ -307,9 +336,16 @@ export default function BattleArena() {
       if (soundEnabled) playSound('heal')
     }
 
-    // Shadow Stalker dodge check
+    // Shadow Stalker / Nebula Stalker dodge check
     if (dogDodgeChance > 0 && Math.random() < dogDodgeChance) {
       addLog(`👻 ${dog.name} dodges the attack!`, 'info')
+      // Nebula Stalker counter-attacks on dodge
+      if (dog.id === 'nebula-stalker') {
+        const counterDmg = Math.floor(dog.attack * 0.5)
+        const newHp = Math.max(0, cat.currentHp - counterDmg)
+        updateCatHp(cat.instanceId, newHp)
+        addLog(`🌌 Phase Counter! ${dog.name} strikes back for ${counterDmg}!`, 'crit')
+      }
       setAttackingId(null)
       setTurn('enemy')
       return
@@ -515,7 +551,9 @@ export default function BattleArena() {
     const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
       + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
 
-    const baseAtk = cat.currentAttack + eliteAuraBonus + equipAtk
+    const abilityDebuff = atkDebuffs[catId]
+    const abilityEffectiveAtk = abilityDebuff && abilityDebuff.turnsLeft > 0 ? Math.floor(cat.currentAttack * abilityDebuff.multiplier) : cat.currentAttack
+    const baseAtk = abilityEffectiveAtk + eliteAuraBonus + equipAtk
     const effect = cat.ability.effect
 
     addLog(`✨ ${cat.name} activates ${cat.ability.name}!`, 'crit')
@@ -687,11 +725,11 @@ export default function BattleArena() {
       return
     }
 
-    // === DOG ABILITY: Void Walker - Void Strike (ignores armor/shield) ===
+    // === DOG ABILITY: Void Walker / Void Reaver - bypass defenses ===
     let actualDamage: number
-    if (dog.id === 'void-walker') {
+    if (dog.id === 'void-walker' || dog.id === 'void-reaver') {
       actualDamage = dmg
-      addLog(`🌀 Void Strike bypasses ${t.name}'s defenses!`, 'crit')
+      addLog(`🌀 ${dog.id === 'void-reaver' ? 'Dimensional Rift' : 'Void Strike'} bypasses ${t.name}'s defenses!`, 'crit')
     } else {
       // Apply defensive abilities
       const defense = resolveDefense(t, dmg, silenced)
@@ -710,6 +748,17 @@ export default function BattleArena() {
         const reflectHp = Math.max(0, t.currentHp - reflectDmg)
         updateCatHp(t.instanceId, reflectHp)
       }
+    }
+
+    // === STAR BARKS: Dynamic damage reflect (Assimilator / Cosmic Queen) ===
+    if (dogReflect > 0) {
+      const reflDmg = Math.floor(actualDamage * dogReflect)
+      if (reflDmg > 0) {
+        addLog(`🔄 Reflected ${reflDmg} damage back to ${t.name}!`, 'damage')
+        const reflHp = Math.max(0, t.currentHp - reflDmg)
+        updateCatHp(t.instanceId, reflHp)
+      }
+      setDogReflect(0) // Reflect consumed after one trigger
     }
 
     let newHp = Math.max(0, t.currentHp - actualDamage)
@@ -847,6 +896,148 @@ export default function BattleArena() {
     if (dog.id === 'omega-fenrir') {
       setSilenced(true)
       addLog(`🐺 Ragnarok Howl! Cat abilities silenced next turn!`, 'crit')
+    }
+
+    // === STAR BARKS: Xenospore Hound - Toxic Spores (poison ALL cats) ===
+    if (dog.id === 'xenospore-hound') {
+      const alive = party.filter(c => c.currentHp > 0)
+      alive.forEach(cat => {
+        setDotEffects(prev => [...prev, { catId: cat.instanceId, turnsLeft: 2, dmgPerTurn: 2, type: 'poison' }])
+      })
+      addLog(`🟢 Toxic Spores! All cats are poisoned! (2 dmg/turn for 2 turns)`, 'crit')
+    }
+
+    // === STAR BARKS: Acidmaw Ravager - Corrosive Bite (ATK debuff) ===
+    if (dog.id === 'acidmaw-ravager') {
+      setAtkDebuffs(prev => ({ ...prev, [t.instanceId]: { multiplier: 0.8, turnsLeft: 2 } }))
+      addLog(`🧪 Corrosive Bite! ${t.name}'s attack reduced by 20% for 2 turns!`, 'crit')
+    }
+
+    // === STAR BARKS: Hiveling Alpha - Swarm Strike (4 random hits) ===
+    if (dog.id === 'hiveling-alpha') {
+      const alive = party.filter(c => c.currentHp > 0)
+      for (let s = 0; s < 3; s++) { // 3 additional hits (4 total with main attack)
+        const swarmTarget = alive[Math.floor(Math.random() * alive.length)]
+        if (swarmTarget && swarmTarget.currentHp > 0) {
+          const swarmDmg = Math.floor(dmg * 0.4)
+          const defense = resolveDefense(swarmTarget, swarmDmg, silenced)
+          defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
+          const newHp = Math.max(0, swarmTarget.currentHp - defense.actualDamage)
+          updateCatHp(swarmTarget.instanceId, newHp)
+          addLog(`🐝 Swarm hit ${swarmTarget.name} for ${defense.actualDamage}!`, 'damage')
+        }
+      }
+    }
+
+    // === STAR BARKS: Nebula Stalker - Phase Shift (dodge + counter on dodge) ===
+    if (dog.id === 'nebula-stalker') {
+      setDogDodgeChance(0.4)
+      addLog(`🌌 Phase Shift! Nebula Stalker phases in and out of reality! (40% dodge + counter)`, 'crit')
+    }
+
+    // === STAR BARKS: Parasyte Warden - Neural Hijack (friendly fire) ===
+    if (dog.id === 'parasyte-warden') {
+      const alive = party.filter(c => c.currentHp > 0)
+      if (alive.length > 1) {
+        const hijacked = alive.find(c => c.instanceId === t.instanceId) || alive[0]
+        const allies = alive.filter(c => c.instanceId !== hijacked.instanceId)
+        const victim = allies[Math.floor(Math.random() * allies.length)]
+        if (victim) {
+          const hijackDmg = Math.floor(hijacked.currentAttack * 0.3)
+          const newHp = Math.max(0, victim.currentHp - hijackDmg)
+          updateCatHp(victim.instanceId, newHp)
+          addLog(`🧠 Neural Hijack! ${hijacked.name} attacks ${victim.name} for ${hijackDmg}!`, 'crit')
+        }
+      }
+    }
+
+    // === STAR BARKS: Plasmic Behemoth - Plasma Barrage (AOE + burn) ===
+    if (dog.id === 'plasmic-behemoth') {
+      const alive = party.filter(c => c.currentHp > 0)
+      const aoeDmg = Math.floor(dmg * 0.5)
+      alive.forEach(cat => {
+        if (cat.instanceId !== t.instanceId) { // main target already hit
+          const defense = resolveDefense(cat, aoeDmg, silenced)
+          defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
+          const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
+          updateCatHp(cat.instanceId, newHp)
+        }
+      })
+      addLog(`💥 Plasma Barrage hits all cats!`, 'crit')
+      // Burn a random alive cat
+      const burnTarget = alive[Math.floor(Math.random() * alive.length)]
+      if (burnTarget) {
+        setDotEffects(prev => [...prev, { catId: burnTarget.instanceId, turnsLeft: 2, dmgPerTurn: 4, type: 'burn' }])
+        addLog(`🔥 ${burnTarget.name} is burning! (4 dmg/turn for 2 turns)`, 'damage')
+      }
+    }
+
+    // === STAR BARKS: Void Reaver - Dimensional Rift (ignore defense + lifesteal) ===
+    if (dog.id === 'void-reaver') {
+      const riftHeal = Math.floor(actualDamage * 0.3)
+      setDogHp(h => Math.min(dog.health, h + riftHeal))
+      addLog(`🕳️ Dimensional Rift! Ignores defenses and drains ${riftHeal} HP!`, 'crit')
+    }
+
+    // === STAR BARKS: The Assimilator - Genetic Override (copy + reflect) ===
+    if (dog.id === 'the-assimilator') {
+      // Copy active cat's ability effect against party
+      const effect = t.ability.effect
+      if (effect === 'heal') {
+        const assimHeal = Math.floor(dog.health * 0.15)
+        setDogHp(h => Math.min(dog.health, h + assimHeal))
+        addLog(`🧬 Genetic Override copies ${t.ability.name}! ${dog.name} heals ${assimHeal} HP!`, 'crit')
+      } else if (effect === 'bleed') {
+        setDotEffects(prev => [...prev, { catId: t.instanceId, turnsLeft: 3, dmgPerTurn: 3, type: 'burn' }])
+        addLog(`🧬 Genetic Override copies ${t.ability.name}! ${t.name} is burning!`, 'crit')
+      } else if (effect === 'stun') {
+        setFrozenCatId(t.instanceId)
+        addLog(`🧬 Genetic Override copies ${t.ability.name}! ${t.name} is stunned!`, 'crit')
+      } else {
+        const bonusDmg = Math.floor(dmg * 0.3)
+        const newHp = Math.max(0, t.currentHp - bonusDmg)
+        updateCatHp(t.instanceId, newHp)
+        addLog(`🧬 Genetic Override copies ${t.ability.name}! Deals ${bonusDmg} bonus damage!`, 'crit')
+      }
+      // 25% damage reflect active until next dog turn
+      setDogReflect(0.25)
+      addLog(`🛡️ Genetic Override: 25% damage will be reflected!`, 'info')
+    }
+
+    // === STAR BARKS: The Cosmic Queen - Extinction Protocol (dual random) ===
+    if (dog.id === 'cosmic-queen') {
+      const effects = ['silence', 'aoe', 'burn', 'lifesteal', 'reflect']
+      const picked: string[] = []
+      while (picked.length < 2) {
+        const e = effects[Math.floor(Math.random() * effects.length)]
+        if (!picked.includes(e)) picked.push(e)
+      }
+      picked.forEach(e => {
+        if (e === 'silence') {
+          setSilenced(true)
+          addLog(`👽 Extinction Protocol: Silence! Cat abilities blocked!`, 'crit')
+        } else if (e === 'aoe') {
+          const alive = party.filter(c => c.currentHp > 0)
+          const aoeDmg = Math.floor(dmg * 0.4)
+          alive.forEach(cat => {
+            if (cat.instanceId !== t.instanceId) {
+              const newHp = Math.max(0, cat.currentHp - aoeDmg)
+              updateCatHp(cat.instanceId, newHp)
+            }
+          })
+          addLog(`👽 Extinction Protocol: AOE blast hits all cats for ${aoeDmg}!`, 'crit')
+        } else if (e === 'burn') {
+          setDotEffects(prev => [...prev, { catId: t.instanceId, turnsLeft: 2, dmgPerTurn: 4, type: 'burn' }])
+          addLog(`👽 Extinction Protocol: ${t.name} is scorched! (4 dmg/turn)`, 'crit')
+        } else if (e === 'lifesteal') {
+          const lsHeal = Math.floor(actualDamage * 0.3)
+          setDogHp(h => Math.min(dog.health, h + lsHeal))
+          addLog(`👽 Extinction Protocol: Drains ${lsHeal} HP!`, 'crit')
+        } else if (e === 'reflect') {
+          setDogReflect(0.25)
+          addLog(`👽 Extinction Protocol: Cosmic shield active! 25% damage reflected next turn!`, 'crit')
+        }
+      })
     }
 
     setAttackingId(null)
@@ -989,9 +1180,9 @@ export default function BattleArena() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {DOGS.map((d, i) => {
+            {DOGS.slice(0, 15).map((d, i) => {
               const isDefeated = difficultyLevel > 0 ? i !== storeDogIndex : i < storeDogIndex
-              const isFrontier = i === storeDogIndex
+              const isFrontier = i === storeDogIndex && storeDogIndex < 15
               const isLocked = difficultyLevel > 0 ? false : i > storeDogIndex
               const isBoss = i >= 10
 
@@ -1077,6 +1268,117 @@ export default function BattleArena() {
               )
             })}
           </div>
+
+          {/* Star Barks — Alien Invasion Unlock Button */}
+          {storeDogIndex >= 15 && !alienUnlocked && (
+            <motion.button
+              onClick={() => setShowAlienStory(true)}
+              className="w-full mt-4 py-4 bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 text-white font-black text-lg rounded-xl border-2 border-green-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] tracking-wider"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(16,185,129,0.6)' }}
+              whileTap={{ scale: 0.98 }}
+            >
+              👽 INCOMING TRANSMISSION...
+            </motion.button>
+          )}
+
+          {/* Star Barks — Alien Dog Grid */}
+          {alienUnlocked && (
+            <>
+              <div className="mt-6 mb-3 text-center py-3 border-t border-green-500/30">
+                <span className="text-green-400 font-black text-sm tracking-widest uppercase">
+                  👽 Star Barks — The Cosmic Queen's Armada 👽
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {DOGS.slice(15).map((d, i) => {
+                  const realIndex = i + 15
+                  const isDefeated = difficultyLevel > 0 ? realIndex !== storeDogIndex : realIndex < storeDogIndex
+                  const isFrontier = realIndex === storeDogIndex
+                  const isLocked = difficultyLevel > 0 ? false : realIndex > storeDogIndex
+                  const isOverlord = realIndex >= 21
+
+                  return (
+                    <motion.button
+                      key={d.id}
+                      disabled={isLocked}
+                      onClick={() => {
+                        setBattleDogIndex(realIndex)
+                        setShowDogSelect(false)
+                      }}
+                      className={`relative rounded-xl overflow-hidden border-2 transition-all duration-200 text-left ${
+                        isLocked
+                          ? 'border-slate-700 opacity-40 cursor-not-allowed'
+                          : isFrontier
+                          ? 'border-green-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-[1.03] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'
+                          : 'border-green-900 hover:border-green-600 hover:shadow-premium hover:scale-[1.03]'
+                      }`}
+                      whileHover={!isLocked ? { y: -2 } : {}}
+                      whileTap={!isLocked ? { scale: 0.97 } : {}}
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden bg-slate-900">
+                        {d.imageUrl ? (
+                          <img
+                            src={d.imageUrl}
+                            alt={isLocked ? 'Locked' : d.name}
+                            loading="lazy"
+                            decoding="async"
+                            className={`w-full h-full object-cover ${isLocked ? 'brightness-0 opacity-30' : ''}`}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-green-900/50 to-slate-900 flex items-center justify-center">
+                            <span className="text-4xl">👽</span>
+                          </div>
+                        )}
+
+                        {isLocked && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-4xl">🔒</span>
+                          </div>
+                        )}
+
+                        {isDefeated && (
+                          <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-emerald-300">
+                            <span className="text-white text-xs font-black">✓</span>
+                          </div>
+                        )}
+
+                        {isFrontier && (
+                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-green-500 border border-green-300">
+                            <span className="text-[10px] font-black text-slate-900 uppercase">NEW</span>
+                          </div>
+                        )}
+
+                        {isOverlord && !isLocked && (
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-green-600 border border-green-400">
+                            <span className="text-[10px] font-black text-white uppercase">👽 BOSS</span>
+                          </div>
+                        )}
+
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+                      </div>
+
+                      <div className="p-2.5 bg-slate-900/90">
+                        <h4 className={`font-black text-sm truncate ${isLocked ? 'text-slate-600' : 'text-green-300'}`}>
+                          {isLocked ? '???' : d.name}
+                        </h4>
+                        {!isLocked && (
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-[10px] text-red-400 font-bold">HP {d.health}</span>
+                            <span className="text-[10px] text-amber-400 font-bold">ATK {d.attack}</span>
+                          </div>
+                        )}
+                        {!isLocked && d.ability && (
+                          <p className="text-[9px] text-green-400/70 mt-1 truncate">{d.ability.description}</p>
+                        )}
+                      </div>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </>
+          )}
 
           {/* Event Dogs */}
           {activeEvents.length > 0 && (
@@ -1569,6 +1871,55 @@ export default function BattleArena() {
         }}
       />
       </>}
+
+      {/* Star Barks — Alien Story Unlock Modal */}
+      <AnimatePresence>
+        {showAlienStory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-modal-backdrop bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowAlienStory(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg bg-gradient-to-br from-slate-900 via-green-950 to-slate-900 rounded-2xl border-2 border-green-500/50 shadow-[0_0_40px_rgba(16,185,129,0.3)] p-6 sm:p-8 text-center space-y-5"
+            >
+              <div className="text-5xl">👽</div>
+              <h2 className="text-2xl sm:text-3xl font-black text-green-400 font-heading tracking-wider">
+                STAR BARKS
+              </h2>
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed italic">
+                A long time ago, in a dog park far, far away... The Cosmic Queen has dispatched her Star Barks armada to Earth, and the alien parasites have fused with the most vicious dogs in the kingdom. These mutated monstrosities are stronger, meaner, and weirder than anything your cats have faced. Suit up your finest felines — the war for Whisker Wars just went intergalactic!
+              </p>
+              <div className="pt-2 space-y-3">
+                <motion.button
+                  onClick={() => {
+                    unlockAlienPhase()
+                    setShowAlienStory(false)
+                    if (soundEnabled) playSound('victory')
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white font-black text-lg rounded-xl border-2 border-green-400 shadow-lg tracking-wider"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  BEGIN THE INVASION
+                </motion.button>
+                <button
+                  onClick={() => setShowAlienStory(false)}
+                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Not yet...
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

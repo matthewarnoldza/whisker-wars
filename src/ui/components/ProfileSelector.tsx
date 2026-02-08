@@ -58,6 +58,7 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
         musicEnabled: state.musicEnabled,
         inventory: state.inventory,
         completedEventRewards: state.completedEventRewards,
+        alienUnlocked: state.alienUnlocked,
       }
       uploadSave(saveData, profile).then(result => {
         if (result.success && result.code && result.isNew) {

@@ -23,6 +23,7 @@ export interface CloudSaveData {
   completedEventRewards?: string[]
   frenzyStreak?: number
   lastFrenzyParticipation?: string
+  alienUnlocked?: boolean
 }
 
 export interface CloudSavePayload {

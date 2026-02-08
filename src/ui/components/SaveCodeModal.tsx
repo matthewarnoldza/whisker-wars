@@ -104,6 +104,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
       musicEnabled: state.musicEnabled,
       inventory: state.inventory,
       completedEventRewards: state.completedEventRewards,
+      alienUnlocked: state.alienUnlocked,
     }
 
     // Use existing code if profile has one, otherwise generate new

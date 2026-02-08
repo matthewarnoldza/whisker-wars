@@ -499,6 +499,12 @@ export default function BattleArena() {
 
   const handleActiveAbility = (catId: string) => {
     if (turn !== 'player' || rolling || battleEnded) return
+    // Silence blocks active abilities and is consumed
+    if (silenced) {
+      addLog(`🔇 Silenced! ${party.find(c => c.instanceId === catId)?.name || 'Cat'} can't use abilities!`, 'damage')
+      setSilenced(false)
+      return
+    }
     const cat = party.find(c => c.instanceId === catId)
     if (!cat || cat.currentHp <= 0) return
     if ((abilityCooldowns[catId] ?? ABILITY_COOLDOWN) > 0) return
@@ -984,9 +990,9 @@ export default function BattleArena() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {DOGS.map((d, i) => {
-              const isDefeated = i < storeDogIndex
+              const isDefeated = difficultyLevel > 0 ? i !== storeDogIndex : i < storeDogIndex
               const isFrontier = i === storeDogIndex
-              const isLocked = i > storeDogIndex
+              const isLocked = difficultyLevel > 0 ? false : i > storeDogIndex
               const isBoss = i >= 10
 
               return (
@@ -1251,7 +1257,7 @@ export default function BattleArena() {
                   💎 ATTACK + {selectedCatStone.name}!
                 </motion.button>
               )}
-              {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && (
+              {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && !silenced && (
                 <motion.button
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -1261,6 +1267,11 @@ export default function BattleArena() {
                 >
                   ✨ {party.find(c => c.instanceId === selectedCatId)?.ability.name || 'ABILITY'}
                 </motion.button>
+              )}
+              {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && silenced && (
+                <div className="text-center text-xs text-red-400 font-bold">
+                  🔇 Ability Silenced!
+                </div>
               )}
               {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) > 0 && (
                 <div className="text-center text-xs text-slate-500">
@@ -1372,7 +1383,7 @@ export default function BattleArena() {
                       💎 ATTACK + {selectedCatStone.name}!
                     </motion.button>
                   )}
-                  {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && (
+                  {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && !silenced && (
                     <motion.button
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
@@ -1383,6 +1394,11 @@ export default function BattleArena() {
                     >
                       ✨ {party.find(c => c.instanceId === selectedCatId)?.ability.name}
                     </motion.button>
+                  )}
+                  {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && silenced && (
+                    <div className="text-[10px] text-red-400 font-bold">
+                      🔇 Silenced!
+                    </div>
                   )}
                   {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) > 0 && (
                     <div className="text-[10px] text-slate-500">

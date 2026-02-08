@@ -203,7 +203,7 @@ export default React.memo(function GameCard({
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
                                     <div className="w-9 h-9 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-stat">
-                                        <span className="font-black text-amber-400 text-base text-shadow-stat">{character.attack}</span>
+                                        <span className="font-black text-amber-400 text-base text-shadow-stat">{(character as any).currentAttack || character.attack}</span>
                                     </div>
                                     <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>

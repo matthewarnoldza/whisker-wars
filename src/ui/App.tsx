@@ -391,7 +391,7 @@ export default function App() {
               <div className="flex items-center gap-6">
                 {/* Logo */}
                 <motion.div
-                  className="flex items-center"
+                  className="hidden sm:flex items-center"
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6 }}
@@ -401,7 +401,7 @@ export default function App() {
                     alt="Whisker Wars Logo"
                     loading="lazy"
                     decoding="async"
-                    className="h-16 sm:h-28 w-auto drop-shadow-lg object-contain"
+                    className="h-24 w-auto drop-shadow-lg object-contain"
                   />
                 </motion.div>
 

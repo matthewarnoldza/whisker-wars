@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:itchio": "tsc -b && vite build --mode itchio",
+    "zip:itchio": "npm run build:itchio && cd dist-itchio && zip -r ../whisker-wars-itchio.zip .",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
     "cap:build": "npm run build && npx cap sync",

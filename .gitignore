@@ -40,3 +40,7 @@ yarn-error.log*
 
 # Android signing key
 my-release-key.keystore
+
+# itch.io build artifacts
+dist-itchio/
+whisker-wars-itchio.zip

@@ -383,7 +383,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 onClick={(e) => {
                   e.stopPropagation()
                   if (!canAffordAscend) return
-                  if (window.confirm(`Ascend ${cat.name}? This resets to Level 1 but grants +10% permanent base stats.\n\nCost: ${ascensionCost} coins`)) {
+                  if (window.confirm(`Ascend ${cat.name}? This grants a permanent +20% boost to all stats.\n\nCost: ${ascensionCost} coins`)) {
                     ascendCat(cat.instanceId)
                     onClose()
                   }

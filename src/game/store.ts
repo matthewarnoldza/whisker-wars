@@ -176,6 +176,7 @@ import {
   TWO_DAYS_MS,
   MAX_ASCENSION,
   ASCENSION_COSTS,
+  ASCENSION_STAT_BONUS,
   getAscendedBaseStat,
 } from './constants'
 
@@ -414,13 +415,16 @@ export const useGame = create<GameState>((set, get) => ({
       const ascension = cat.ascension || 0
       const baseHp = getAscendedBaseStat(cat.health, ascension)
       const baseAtk = getAscendedBaseStat(cat.attack, ascension)
+      const eliteMultiplier = cat.isElite
+        ? ((cat.eliteTier || 0) >= 2 ? ELITE_TIER_2_MULTIPLIER : ELITE_TIER_1_MULTIPLIER)
+        : 1
 
       // Level up logic
       while (newXp >= calculateXpForLevel(newLevel) && newLevel < MAX_CAT_LEVEL) {
         newXp -= calculateXpForLevel(newLevel)
         newLevel++
-        newMaxHp = calculateStatBoost(baseHp, newLevel)
-        newCurrentAttack = calculateStatBoost(baseAtk, newLevel)
+        newMaxHp = Math.floor(calculateStatBoost(baseHp, newLevel) * eliteMultiplier)
+        newCurrentAttack = Math.floor(calculateStatBoost(baseAtk, newLevel) * eliteMultiplier)
         trackLevelUp(cat.name, newLevel, cat.rarity)
 
         // Check level 10 achievement
@@ -609,6 +613,15 @@ export const useGame = create<GameState>((set, get) => ({
       ascension: highestAscension,
     }
 
+    // Return equipment from consumed cats to inventory
+    const newInventory = { ...s.inventory }
+    for (const cat of cats) {
+      const equip = cat.equipment || {}
+      if (equip.weapon) newInventory[equip.weapon] = (newInventory[equip.weapon] || 0) + 1
+      if (equip.accessory) newInventory[equip.accessory] = (newInventory[equip.accessory] || 0) + 1
+      if (equip.stone) newInventory[equip.stone] = (newInventory[equip.stone] || 0) + 1
+    }
+
     // Remove consumed cats, clean up battle selection and favorites
     const consumedSet = new Set(instanceIds)
     const newOwned = s.owned.filter(c => !consumedSet.has(c.instanceId))
@@ -624,6 +637,7 @@ export const useGame = create<GameState>((set, get) => ({
       selectedForBattle: newSelected,
       favorites: newFavorites,
       stats: newStats,
+      inventory: newInventory,
     })
 
     // Check achievements
@@ -652,27 +666,13 @@ export const useGame = create<GameState>((set, get) => ({
     if (s.coins < cost) return false
 
     const newAscension = currentAscension + 1
-    const baseCat = CATS.find(c => c.id === cat.id)
-    if (!baseCat) return false
-
-    // Calculate new stats at level 1 with ascension bonus
-    const ascendedBaseHp = getAscendedBaseStat(baseCat.health, newAscension)
-    const ascendedBaseAtk = getAscendedBaseStat(baseCat.attack, newAscension)
-
-    // Apply elite multiplier if applicable
-    const eliteMultiplier = cat.isElite
-      ? ((cat.eliteTier || 0) >= 2 ? ELITE_TIER_2_MULTIPLIER : ELITE_TIER_1_MULTIPLIER)
-      : 1
-
-    const newMaxHp = Math.floor(ascendedBaseHp * eliteMultiplier)
-    const newAttack = Math.floor(ascendedBaseAtk * eliteMultiplier)
+    const newMaxHp = Math.floor(cat.maxHp * (1 + ASCENSION_STAT_BONUS))
+    const newAttack = Math.floor(cat.currentAttack * (1 + ASCENSION_STAT_BONUS))
 
     const owned = s.owned.map(c => {
       if (c.instanceId !== instanceId) return c
       return {
         ...c,
-        level: 1,
-        xp: 0,
         ascension: newAscension,
         currentHp: newMaxHp,
         maxHp: newMaxHp,
@@ -681,7 +681,7 @@ export const useGame = create<GameState>((set, get) => ({
     })
 
     set({ owned, coins: s.coins - cost })
-    get().save() // Persist ascension immediately — coins spent, cat reset
+    get().save() // Persist ascension immediately — coins spent, stats boosted
     return true
   },
 

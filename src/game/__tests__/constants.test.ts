@@ -59,11 +59,11 @@ describe('getAscendedBaseStat', () => {
     expect(getAscendedBaseStat(20, 0)).toBe(20)
   })
 
-  it('increases by 10% per ascension', () => {
+  it('increases by 20% per ascension', () => {
     const base = 20
-    expect(getAscendedBaseStat(base, 1)).toBe(Math.floor(base * 1.1))
-    expect(getAscendedBaseStat(base, 2)).toBe(Math.floor(base * 1.2))
-    expect(getAscendedBaseStat(base, 3)).toBe(Math.floor(base * 1.3))
+    expect(getAscendedBaseStat(base, 1)).toBe(Math.floor(base * 1.2))
+    expect(getAscendedBaseStat(base, 2)).toBe(Math.floor(base * 1.4))
+    expect(getAscendedBaseStat(base, 3)).toBe(Math.floor(base * 1.6))
   })
 
   it('returns integer values', () => {

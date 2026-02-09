@@ -27,7 +27,7 @@ export function calculateStatBoost(baseValue: number, level: number): number {
 // ===== Ascension =====
 export const MAX_ASCENSION = 3
 export const ASCENSION_COSTS = [500, 1000, 2000] // Coins for ascension 1, 2, 3
-export const ASCENSION_STAT_BONUS = 0.10 // +10% base stats per ascension
+export const ASCENSION_STAT_BONUS = 0.20 // +20% stats per ascension
 
 /** Calculate effective base stat with ascension bonus */
 export function getAscendedBaseStat(baseValue: number, ascension: number): number {

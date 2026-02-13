@@ -1041,10 +1041,14 @@ export default function BattleArena() {
     if (soundEnabled) playSound('victory')
     // Scale rewards based on difficulty level
     const difficultyMultiplier = getDifficultyMultiplier(difficultyLevel)
-    const xpEarned = Math.floor((BATTLE_BASE_XP + (battleDogIndex * BATTLE_XP_PER_DOG)) * difficultyMultiplier)
-    const coinsEarned = Math.floor((BATTLE_BASE_COINS + (battleDogIndex * BATTLE_COINS_PER_DOG)) * difficultyMultiplier * coinMultiplier)
+    // Heavily reduce rewards for repeat seasonal/event boss kills (10% of normal)
+    const isRepeatEventBoss = eventBattle && completedEventRewards.includes(getEventPeriodKey(eventBattle))
+    const repeatPenalty = isRepeatEventBoss ? 0.1 : 1.0
+    const xpEarned = Math.floor((BATTLE_BASE_XP + (battleDogIndex * BATTLE_XP_PER_DOG)) * difficultyMultiplier * repeatPenalty)
+    const coinsEarned = Math.floor((BATTLE_BASE_COINS + (battleDogIndex * BATTLE_COINS_PER_DOG)) * difficultyMultiplier * coinMultiplier * repeatPenalty)
 
     addLog(`🎉 VICTORY!`, 'info')
+    if (isRepeatEventBoss) addLog(`Event boss already defeated — reduced rewards`, 'info')
     addLog(`+${xpEarned} XP, +${coinsEarned} Coins`, 'info')
 
     party.forEach(cat => addXpToCat(cat.instanceId, xpEarned))

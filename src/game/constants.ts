@@ -36,7 +36,7 @@ export function getAscendedBaseStat(baseValue: number, ascension: number): numbe
 
 // ===== Elite / Merge =====
 export const ELITE_TIER_1_MULTIPLIER = 1.20
-export const ELITE_TIER_2_MULTIPLIER = 1.35
+export const ELITE_TIER_2_MULTIPLIER = 1.50
 export const MERGE_REQUIRED_COUNT = 3
 
 // ===== Battle Rewards =====

@@ -244,3 +244,41 @@ export function trackTutorialCompleted(): void {
 export function trackTutorialSkipped(slideReached: number): void {
   trackEvent('tutorial_skipped', { slide_reached: slideReached })
 }
+
+// ── Jungle of Talons ──
+
+export function trackJungleRunStart(squadSize: number): void {
+  trackEvent('jungle_run_start', { squad_size: squadSize })
+}
+
+export function trackJungleStageComplete(stage: number, birdName: string): void {
+  trackEvent('jungle_stage_complete', { stage, bird_name: birdName })
+}
+
+export function trackJungleBoonSelected(boonName: string, boonRarity: string): void {
+  trackEvent('jungle_boon_selected', { boon_name: boonName, boon_rarity: boonRarity })
+}
+
+export function trackJungleBossDefeated(bossName: string, stage: number): void {
+  trackEvent('jungle_boss_defeated', { boss_name: bossName, stage })
+}
+
+export function trackJungleRunComplete(score: number, stagesCleared: number): void {
+  trackEvent('jungle_run_complete', { score, stages_cleared: stagesCleared })
+}
+
+export function trackJungleRunFailed(stage: number, score: number): void {
+  trackEvent('jungle_run_failed', { stage, score })
+}
+
+export function trackJunglePurchaseStart(): void {
+  trackEvent('jungle_purchase_start')
+}
+
+export function trackJunglePurchaseComplete(transactionId: string): void {
+  trackEvent('jungle_purchase_complete', { transaction_id: transactionId })
+}
+
+export function trackJunglePurchaseFailed(reason: string): void {
+  trackEvent('jungle_purchase_failed', { reason })
+}

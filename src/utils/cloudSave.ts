@@ -1,5 +1,6 @@
 import { database, ref, set, get } from './firebase'
 import type { ProfileMeta, OwnedCat, Achievement, GameStats } from '../game/store'
+import type { JungleRunState, JungleStats } from '../game/jungleRun'
 
 // Save data structure that gets stored in the cloud
 export interface CloudSaveData {
@@ -24,6 +25,12 @@ export interface CloudSaveData {
   frenzyStreak?: number
   lastFrenzyParticipation?: string
   alienUnlocked?: boolean
+  // Jungle of Talons
+  junglePassUnlocked?: boolean
+  jungleRun?: JungleRunState | null
+  jungleStats?: JungleStats
+  jungleAnnouncementShown?: boolean
+  jungleTabVisited?: boolean
 }
 
 export interface CloudSavePayload {

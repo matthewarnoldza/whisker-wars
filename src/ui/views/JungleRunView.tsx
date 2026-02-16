@@ -470,6 +470,24 @@ export default function JungleRunView() {
           >
             Unlock Expansion
           </motion.button>
+
+          {/* Dev tools — preview/dev builds only */}
+          {import.meta.env.DEV && (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => useGame.getState().unlockJunglePass()}
+                className="px-4 py-2 text-xs text-slate-500 border border-dashed border-slate-700 rounded-lg hover:text-slate-300 hover:border-slate-500 transition-colors"
+              >
+                [DEV] Unlock without payment
+              </button>
+              <button
+                onClick={() => useGame.getState().addCoins(5000)}
+                className="px-4 py-2 text-xs text-slate-500 border border-dashed border-slate-700 rounded-lg hover:text-slate-300 hover:border-slate-500 transition-colors"
+              >
+                [DEV] +5000 coins
+              </button>
+            </div>
+          )}
         </div>
       </JungleBackground>
     )

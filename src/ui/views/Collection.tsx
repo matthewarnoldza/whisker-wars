@@ -11,6 +11,12 @@ import { useState, useMemo, useCallback } from 'react'
 import type { OwnedCat } from '../../game/store'
 import type { Rarity } from '../../game/data'
 import { CATS, BAITS, rarityByTier } from '../../game/data'
+import {
+  ELITE_TIER_1_MULTIPLIER,
+  ELITE_TIER_2_MULTIPLIER,
+  calculateStatBoost,
+  getAscendedBaseStat,
+} from '../../game/constants'
 import { RARITY_TEXT_COLORS, RARITY_BORDERS } from '../constants/rarity'
 import {
   trackCardZoomed,
@@ -836,13 +842,14 @@ export default function Collection() {
                 const currentTier = firstCat.eliteTier || 0
                 const newTier = currentTier + 1
                 const isPrismatic = newTier >= 2
-                const multiplier = isPrismatic ? 1.35 : 1.20
+                const multiplier = isPrismatic ? ELITE_TIER_2_MULTIPLIER : ELITE_TIER_1_MULTIPLIER
                 const highestLevel = Math.max(...selectedForMerge.map(id => cats.find(c => c.instanceId === id)?.level || 1))
+                const highestAscension = Math.max(...selectedForMerge.map(id => cats.find(c => c.instanceId === id)?.ascension || 0))
                 const baseCat = CATS.find(c => c.id === firstCat.id)
                 const baseHp = baseCat?.health || firstCat.health
                 const baseAtk = baseCat?.attack || firstCat.attack
-                const boostHp = Math.floor((baseHp + (highestLevel - 1) * (baseHp * 0.15)) * multiplier)
-                const boostAtk = Math.floor((baseAtk + (highestLevel - 1) * (baseAtk * 0.15)) * multiplier)
+                const boostHp = Math.floor(calculateStatBoost(getAscendedBaseStat(baseHp, highestAscension), highestLevel) * multiplier)
+                const boostAtk = Math.floor(calculateStatBoost(getAscendedBaseStat(baseAtk, highestAscension), highestLevel) * multiplier)
 
                 return (
                   <div className="text-center mb-4">
@@ -868,7 +875,7 @@ export default function Collection() {
                         <span className="text-[10px] text-purple-300 block">LVL</span>
                       </div>
                     </div>
-                    <p className="text-cyan-300 text-xs mt-2">+{isPrismatic ? '35' : '20'}% stats boost</p>
+                    <p className="text-cyan-300 text-xs mt-2">+{isPrismatic ? '50' : '20'}% stats boost</p>
                   </div>
                 )
               })()}

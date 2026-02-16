@@ -80,39 +80,5 @@ export const FRENZY_STREAK_REWARDS = [
 ] as const
 export const FRENZY_STREAK_LENGTH = FRENZY_STREAK_REWARDS.length
 
-// ===== Jungle of Talons =====
-export const JUNGLE_TOTAL_STAGES = 20
-export const JUNGLE_BOSS_STAGES = [10, 20] as const
-export const JUNGLE_HEALING_SPRING_STAGES = [7, 14] as const
-export const JUNGLE_HEALING_SPRING_FRACTION = 0.15
-
-export const JUNGLE_STAGE_SCALING_FACTOR = 0.065
-export const JUNGLE_SQUAD_SIZE = 3
-
-// Boon selection weights
-export const BOON_WEIGHT_COMMON = 0.675
-export const BOON_WEIGHT_RARE = 0.30
-export const BOON_WEIGHT_LEGENDARY = 0.025
-export const BOON_PITY_THRESHOLD = 3
-
-// Scoring
-export const JUNGLE_SCORE_PER_STAGE = 100
-export const JUNGLE_SPEED_BONUS_MAX = 3000
-export const JUNGLE_HP_REMAINING_MULTIPLIER = 3
-export const JUNGLE_BOSS_KILL_SCORE_MID = 500
-export const JUNGLE_BOSS_KILL_SCORE_FINAL = 1500
-export const JUNGLE_ALL_CATS_ALIVE_BONUS = 500
-export const JUNGLE_FLAWLESS_STAGE_BONUS = 200
-export const JUNGLE_BOON_SCORE_COMMON = 10
-export const JUNGLE_BOON_SCORE_RARE = 30
-export const JUNGLE_BOON_SCORE_LEGENDARY = 100
-
-// Coins
-export const JUNGLE_COINS_PER_STAGE = 20
-export const JUNGLE_COINS_PER_BOSS_KILL = 100
-
-// Bird ability cooldown
-export const BIRD_ABILITY_COOLDOWN = 3
-
 // ===== Default State =====
 export const DEFAULT_BAITS: Record<string, number> = { 'toy-mouse': 1, 'silver-sardine': 1 }

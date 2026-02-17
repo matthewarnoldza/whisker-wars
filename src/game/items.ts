@@ -66,6 +66,17 @@ export function isStone(itemId: string): boolean {
   return STONES.some(s => s.id === itemId)
 }
 
+/** Get total ATK and HP bonuses from equipped weapon + accessory */
+export function getEquipmentBonuses(equipment?: { weapon?: string; accessory?: string }): { atkBonus: number; hpBonus: number } {
+  if (!equipment) return { atkBonus: 0, hpBonus: 0 }
+  const weapon = equipment.weapon ? EQUIPMENT.find(e => e.id === equipment.weapon) : null
+  const accessory = equipment.accessory ? EQUIPMENT.find(e => e.id === equipment.accessory) : null
+  return {
+    atkBonus: (weapon?.atkBonus || 0) + (accessory?.atkBonus || 0),
+    hpBonus: (weapon?.hpBonus || 0) + (accessory?.hpBonus || 0),
+  }
+}
+
 /** Get possible equipment drops for a given dog index (higher = better loot) */
 export function getEquipmentDropPool(dogIndex: number): Equipment[] {
   if (dogIndex >= 12) return EQUIPMENT.filter(e => e.rarity === 'Legendary' || e.rarity === 'Epic')

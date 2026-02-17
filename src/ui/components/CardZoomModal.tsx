@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { OwnedCat } from '../../game/store'
 import { useGame } from '../../game/store'
 import { MAX_ASCENSION, ASCENSION_COSTS, MAX_CAT_LEVEL } from '../../game/constants'
-import { EQUIPMENT, STONES } from '../../game/items'
+import { EQUIPMENT, STONES, getEquipmentBonuses } from '../../game/items'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import { useState } from 'react'
@@ -37,6 +37,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   if (!cat) return null
 
   const ascension = cat.ascension || 0
+  const equipBonuses = getEquipmentBonuses(cat.equipment)
   const canAscend = cat.level >= MAX_CAT_LEVEL && ascension < MAX_ASCENSION
   const ascensionCost = ascension < MAX_ASCENSION ? ASCENSION_COSTS[ascension] : 0
   const canAffordAscend = coins >= ascensionCost
@@ -202,13 +203,13 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             <div className="mt-2 sm:mt-3 lg:mt-0 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-amber-900/80 to-amber-950/90 rounded-xl border border-amber-700/50 shadow-xl">
-                <span className="font-black text-amber-200 text-lg sm:text-xl drop-shadow-lg">{cat.currentAttack}</span>
+                <span className="font-black text-amber-200 text-lg sm:text-xl drop-shadow-lg">{cat.currentAttack + equipBonuses.atkBonus}</span>
                 <span className="text-[9px] sm:text-[10px] text-amber-300/90 font-bold tracking-wide uppercase">ATK</span>
               </div>
 
               {/* Health */}
               <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-emerald-900/80 to-emerald-950/90 rounded-xl border border-emerald-700/50 shadow-xl">
-                <span className="font-black text-emerald-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.currentHp}/{cat.maxHp}</span>
+                <span className="font-black text-emerald-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.currentHp + equipBonuses.hpBonus}/{cat.maxHp + equipBonuses.hpBonus}</span>
                 <span className="text-[9px] sm:text-[10px] text-emerald-300/90 font-bold tracking-wide uppercase">HP</span>
               </div>
 

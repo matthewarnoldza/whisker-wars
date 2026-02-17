@@ -5,6 +5,7 @@ import type { Cat, Dog } from '../../game/data'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
+import { getEquipmentBonuses } from '../../game/items'
 
 // Stable style references to prevent Firefox animation restarts on re-render
 const DELAY_0 = { animationDelay: '0s' } as const
@@ -44,6 +45,7 @@ export default React.memo(function GameCard({
     const isElite = (character as any).isElite === true
     const eliteTier = (character as any).eliteTier || 0
     const ascension = (character as any).ascension || 0
+    const equipBonuses = getEquipmentBonuses((character as any).equipment)
 
     // Holographic effect - elite cats get max shine intensity
     const holographic = useHolographicCard({
@@ -203,7 +205,7 @@ export default React.memo(function GameCard({
                                 {/* Attack */}
                                 <div className="flex flex-col items-center gap-0.5">
                                     <div className="w-9 h-9 bg-black rounded border-2 border-amber-500 flex items-center justify-center shadow-stat">
-                                        <span className="font-black text-amber-400 text-base text-shadow-stat">{(character as any).currentAttack || character.attack}</span>
+                                        <span className="font-black text-amber-400 text-base text-shadow-stat">{((character as any).currentAttack || character.attack) + equipBonuses.atkBonus}</span>
                                     </div>
                                     <span className="text-[8px] text-amber-200 font-bold tracking-wide uppercase">ATK</span>
                                 </div>
@@ -223,8 +225,8 @@ export default React.memo(function GameCard({
                                     <div className="w-11 h-9 bg-black rounded border-2 border-emerald-500 flex items-center justify-center shadow-stat px-1">
                                         <span className="font-black text-emerald-400 text-xs text-shadow-stat">
                                             {(character as any).currentHp !== undefined && (character as any).maxHp !== undefined
-                                                ? `${(character as any).currentHp}/${(character as any).maxHp}`
-                                                : (character as any).currentHp || character.health || 0}
+                                                ? `${(character as any).currentHp + equipBonuses.hpBonus}/${(character as any).maxHp + equipBonuses.hpBonus}`
+                                                : ((character as any).currentHp || character.health || 0) + equipBonuses.hpBonus}
                                         </span>
                                     </div>
                                     <span className="text-[8px] text-emerald-200 font-bold tracking-wide uppercase">HP</span>

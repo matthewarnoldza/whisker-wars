@@ -31,7 +31,7 @@ export default function JungleDefeatModal({ score, runState, stageReached, onClo
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[110] bg-red-950/40 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center touch-none overflow-y-auto p-4"
+        className="fixed inset-0 z-[110] bg-slate-950/90 backdrop-blur-lg flex items-center justify-center touch-none overflow-y-auto p-4"
       >
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 20 }}
@@ -120,7 +120,7 @@ export default function JungleDefeatModal({ score, runState, stageReached, onClo
           </motion.div>
 
           {/* Boons Collected */}
-          {runState.activeBoons.length > 0 && (
+          {(runState.activeBoons ?? []).length > 0 && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -133,7 +133,7 @@ export default function JungleDefeatModal({ score, runState, stageReached, onClo
                   const boon = getBoonById(ab.boonId)
                   if (!boon) return null
                   const rarityColor = boon.rarity === 'Legendary' ? 'text-amber-400/70 border-amber-500/20'
-                    : boon.rarity === 'Rare' ? 'text-blue-400/70 border-blue-500/20'
+                    : boon.rarity === 'Rare' ? 'text-purple-400/70 border-purple-500/20'
                     : 'text-slate-400/70 border-slate-500/20'
                   return (
                     <span

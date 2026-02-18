@@ -14,7 +14,8 @@ import PrivacyPolicy from './views/PrivacyPolicy'
 import TermsOfService from './views/TermsOfService'
 
 const JungleRunView = React.lazy(() => import('./views/JungleRunView'))
-import AnimatedBackground from './components/AnimatedBackground'
+import JungleBackground from './components/JungleBackground'
+import JungleAnnouncementModal from './components/JungleAnnouncementModal'
 import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
 import WelcomeTutorialModal from './components/WelcomeTutorialModal'
@@ -380,22 +381,36 @@ export default function App() {
 
   return (
     <>
-      {/* Animated Background */}
-      <div className="animated-bg" />
+      {/* Background Layer */}
+      {view === 'jungle' && junglePassUnlocked ? (
+        <JungleBackground mode="fullscreen" intensity="low" />
+      ) : (
+        <div className="animated-bg" />
+      )}
 
       <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Premium Header with Background */}
-        <header className="sticky top-0 z-header backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50 shadow-premium overflow-hidden">
+        <header className={`sticky top-0 z-header backdrop-blur-xl border-b shadow-premium overflow-hidden ${
+          view === 'jungle' && junglePassUnlocked
+            ? 'bg-emerald-950/80 border-emerald-700/50'
+            : 'bg-slate-900/80 border-slate-700/50'
+        }`}>
           {/* Background Image with Overlay */}
           <div className="absolute inset-0 pointer-events-none">
-            <img
-              src="/images/header/WW header.png"
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover opacity-30"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
+            {view === 'jungle' && junglePassUnlocked ? (
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-emerald-900/80 to-emerald-950/90" />
+            ) : (
+              <>
+                <img
+                  src="/images/header/WW header.png"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover opacity-30"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
+              </>
+            )}
           </div>
 
           <div className="max-w-7xl mx-auto px-4 py-3 relative">
@@ -654,39 +669,12 @@ export default function App() {
       />
 
       {/* Jungle of Talons Announcement Modal */}
-      <Modal
-        isOpen={showJungleAnnouncement}
-        onClose={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement() }}
-        title="New Expansion!"
-        size="sm"
-      >
-        <div className="text-center py-4 space-y-4">
-          <div className="text-6xl">🌴</div>
-          <h3 className="text-2xl font-black text-emerald-400">Jungle of Talons</h3>
-          <p className="text-slate-300 text-sm leading-relaxed">
-            A roguelite jungle adventure awaits! Lead a squad of 3 cats through 20 stages of bird combat.
-            Collect boons, defeat bosses, and climb the leaderboard.
-          </p>
-          <div className="flex gap-3 justify-center pt-2">
-            <motion.button
-              onClick={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement() }}
-              className="px-5 py-2.5 bg-slate-800 text-slate-300 font-bold rounded-xl border border-slate-700"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              Maybe Later
-            </motion.button>
-            <motion.button
-              onClick={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement(); setView('jungle') }}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Explore
-            </motion.button>
-          </div>
-        </div>
-      </Modal>
+      {showJungleAnnouncement && (
+        <JungleAnnouncementModal
+          onExplore={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement(); setView('jungle') }}
+          onDismiss={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement() }}
+        />
+      )}
 
       {/* Splash Screen for Web Only */}
       <AnimatePresence>

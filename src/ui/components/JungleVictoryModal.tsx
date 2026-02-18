@@ -176,7 +176,7 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
                   const boon = getBoonById(ab.boonId)
                   if (!boon) return null
                   const rarityColor = boon.rarity === 'Legendary' ? 'text-amber-400 border-amber-500/30'
-                    : boon.rarity === 'Rare' ? 'text-blue-400 border-blue-500/30'
+                    : boon.rarity === 'Rare' ? 'text-purple-400 border-purple-500/30'
                     : 'text-slate-400 border-slate-500/30'
                   return (
                     <span

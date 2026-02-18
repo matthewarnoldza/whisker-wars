@@ -214,7 +214,7 @@ export function applyBoonStatsToSquad(
       maxHp: newMaxHp,
       currentAtk: newAtk,
       // If max HP increased, keep current HP ratio but don't decrease
-      currentHp: Math.min(newMaxHp, Math.max(cat.currentHp, cat.currentHp)),
+      currentHp: cat.knockedOut ? 0 : Math.min(newMaxHp, cat.currentHp),
     }
   })
 }

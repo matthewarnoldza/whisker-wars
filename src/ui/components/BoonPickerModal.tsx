@@ -16,10 +16,10 @@ const RARITY_COLORS: Record<BoonRarity, { text: string; bg: string; border: stri
     glow: 'hover:shadow-[0_0_20px_rgba(148,163,184,0.3)]',
   },
   Rare: {
-    text: 'text-blue-400',
-    bg: 'bg-blue-600/20',
-    border: 'border-blue-500/40',
-    glow: 'hover:shadow-[0_0_20px_rgba(96,165,250,0.4)]',
+    text: 'text-purple-400',
+    bg: 'bg-purple-600/20',
+    border: 'border-purple-500/40',
+    glow: 'hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]',
   },
   Legendary: {
     text: 'text-amber-400',

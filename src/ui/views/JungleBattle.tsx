@@ -198,6 +198,9 @@ export default function JungleBattle({
         const dmg = dot.damage
         const newHp = Math.max(0, getCatHp(dot.targetId) - dmg)
         updateCatHpLocal(dot.targetId, newHp)
+        if (dmg > 0) {
+          setDamageTakenThisBattle(prev => prev + dmg)
+        }
         const icon = dot.type === 'poison' ? '(poison)' : '(burn)'
         addLog(`${icon} ${cat.name} takes ${dmg} ${dot.type} damage!`, 'damage')
       }
@@ -554,6 +557,7 @@ export default function JungleBattle({
   // ===== Bird Turn =====
 
   const handleBirdTurn = async () => {
+    let localBirdHp = birdHp
     setAttackingId('bird')
     addLog(`${bird.name} attacks!`, 'info')
 
@@ -586,7 +590,8 @@ export default function JungleBattle({
 
     // Apply bird healing
     if (offenseResult.birdHealAmount > 0) {
-      const healed = Math.min(bird.scaledHP, birdHp + offenseResult.birdHealAmount)
+      const healed = Math.min(bird.scaledHP, localBirdHp + offenseResult.birdHealAmount)
+      localBirdHp = healed
       setBirdHp(healed)
     }
 
@@ -688,7 +693,8 @@ export default function JungleBattle({
       if (boonEffects.thornsFraction > 0 && actualDmg > 0) {
         const thornsDmg = Math.floor(actualDmg * boonEffects.thornsFraction)
         if (thornsDmg > 0) {
-          const newBirdHp = Math.max(0, birdHp - thornsDmg)
+          const newBirdHp = Math.max(0, localBirdHp - thornsDmg)
+          localBirdHp = newBirdHp
           setBirdHp(newBirdHp)
           addLog(`Thorn Coat reflects ${thornsDmg} damage to ${bird.name}!`, 'damage')
           if (newBirdHp <= 0) {
@@ -749,6 +755,7 @@ export default function JungleBattle({
   // ===== Bird Defeated =====
 
   const handleBirdDefeated = () => {
+    if (battleEnded) return
     // Check revive (Talon Queen)
     if (!bossHasRevived) {
       const revive = checkBirdRevive(bird, bossHasRevived)
@@ -1298,19 +1305,7 @@ export default function JungleBattle({
         )}
       </AnimatePresence>
 
-      {/* Active Boons Summary -- bottom corner */}
-      <div className="fixed bottom-4 left-4 z-30 text-[10px] text-teal-300 bg-emerald-950/80 border border-emerald-800/50 rounded-lg px-2 py-1.5 space-y-0.5 max-w-[160px] hidden lg:block">
-        <div className="font-bold text-teal-200 text-[11px] mb-0.5">Active Boons</div>
-        {boonEffects.totalAtkBoost > 0 && <div>ATK +{boonEffects.totalAtkBoost}</div>}
-        {boonEffects.totalHpBoost > 0 && <div>HP +{boonEffects.totalHpBoost}</div>}
-        {boonEffects.critThresholdReduction > 0 && <div>Crit threshold -{boonEffects.critThresholdReduction}</div>}
-        {boonEffects.lifestealFraction > 0 && <div>Lifesteal {Math.round(boonEffects.lifestealFraction * 100)}%</div>}
-        {boonEffects.thornsFraction > 0 && <div>Thorns {Math.round(boonEffects.thornsFraction * 100)}%</div>}
-        {boonEffects.damageReduction > 0 && <div>Iron Fur -{boonEffects.damageReduction}</div>}
-        {boonEffects.bonusAttackChance > 0 && <div>Swift Paws {Math.round(boonEffects.bonusAttackChance * 100)}%</div>}
-        {boonEffects.poisonDot && <div>Poison Claws {boonEffects.poisonDot.damage}/turn</div>}
-        {boonEffects.executeBonusDamage > 0 && <div>Executioner +{boonEffects.executeBonusDamage}</div>}
-      </div>
+      {/* Boon effects now shown in ActiveBoonsPanel at top of JungleRunView */}
     </div>
   )
 }

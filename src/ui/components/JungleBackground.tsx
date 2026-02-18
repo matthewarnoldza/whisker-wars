@@ -1,8 +1,9 @@
 import { ReactNode } from 'react'
 
 interface JungleBackgroundProps {
-  children: ReactNode
+  children?: ReactNode
   intensity?: 'low' | 'medium' | 'high'
+  mode?: 'inline' | 'fullscreen'
 }
 
 const INTENSITY_CONFIG = {
@@ -11,11 +12,12 @@ const INTENSITY_CONFIG = {
   high: { particleCount: 8, speedMultiplier: 0.7 },
 }
 
-export default function JungleBackground({ children, intensity = 'medium' }: JungleBackgroundProps) {
+export default function JungleBackground({ children, intensity = 'medium', mode = 'inline' }: JungleBackgroundProps) {
   const config = INTENSITY_CONFIG[intensity]
+  const isFullscreen = mode === 'fullscreen'
 
   return (
-    <div className="relative w-full min-h-full overflow-hidden">
+    <div className={isFullscreen ? 'fixed inset-0 z-0 overflow-hidden pointer-events-none' : 'relative w-full min-h-full overflow-hidden'}>
       {/* Inline keyframe styles */}
       <style>{`
         @keyframes jungle-drift-slow {
@@ -219,10 +221,12 @@ export default function JungleBackground({ children, intensity = 'medium' }: Jun
         }}
       />
 
-      {/* Children content rendered on top */}
-      <div className="relative z-10">
-        {children}
-      </div>
+      {/* Children content rendered on top (inline mode only) */}
+      {!isFullscreen && (
+        <div className="relative z-10">
+          {children}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,14 +1,18 @@
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
 import type { OwnedCat } from '../../game/store'
 import type { JungleStageResult } from '../../game/jungleRun'
-import { isBossStage, isHealingSpring } from '../../game/birds'
-import { getBoonById } from '../../game/boons'
-import { calculateBoonEffects } from '../../game/boons'
+import { isBossStage, isHealingSpring, selectBirdForStage, scaleBirdForStage } from '../../game/birds'
+import { getBoonById, calculateBoonEffects, createPRNG } from '../../game/boons'
 import { calculateScore } from '../../game/jungleRun'
 import { JUNGLE_TOTAL_STAGES, JUNGLE_SQUAD_SIZE } from '../../game/constants'
-import JungleBackground from '../components/JungleBackground'
+import JungleBattle from './JungleBattle'
+import BoonPickerModal from '../components/BoonPickerModal'
+import BossIntroModal from '../components/BossIntroModal'
+import JungleVictoryModal from '../components/JungleVictoryModal'
+import JungleDefeatModal from '../components/JungleDefeatModal'
+import JunglePurchaseModal from '../components/JunglePurchaseModal'
 import Modal from '../components/Modal'
 import {
   trackJungleRunStart,
@@ -100,14 +104,41 @@ function ActiveBoonsPanel({ activeBoons }: { activeBoons: { boonId: string; stac
 
   if (activeBoons.length === 0) return null
 
+  const effects = calculateBoonEffects(activeBoons)
+
+  // Build compact stat pills for always-visible summary
+  const statPills: { label: string; value: string; color: string }[] = []
+  if (effects.totalAtkBoost > 0) statPills.push({ label: 'ATK', value: `+${effects.totalAtkBoost}`, color: 'text-amber-400' })
+  if (effects.totalHpBoost > 0) statPills.push({ label: 'HP', value: `+${effects.totalHpBoost}`, color: 'text-emerald-400' })
+  if (effects.damageReduction > 0) statPills.push({ label: 'DEF', value: `-${effects.damageReduction}`, color: 'text-sky-400' })
+  if (effects.critThresholdReduction > 0) statPills.push({ label: 'CRIT', value: `-${effects.critThresholdReduction}`, color: 'text-red-400' })
+  if (effects.lifestealFraction > 0) statPills.push({ label: 'STEAL', value: `${Math.round(effects.lifestealFraction * 100)}%`, color: 'text-rose-400' })
+  if (effects.thornsFraction > 0) statPills.push({ label: 'THORNS', value: `${Math.round(effects.thornsFraction * 100)}%`, color: 'text-violet-400' })
+  if (effects.bonusAttackChance > 0) statPills.push({ label: 'SWIFT', value: `${Math.round(effects.bonusAttackChance * 100)}%`, color: 'text-cyan-400' })
+  if (effects.poisonDot) statPills.push({ label: 'POISON', value: `${effects.poisonDot.damage}/t`, color: 'text-green-400' })
+  if (effects.executeBonusDamage > 0) statPills.push({ label: 'EXEC', value: `+${effects.executeBonusDamage}`, color: 'text-orange-400' })
+  if (effects.stageStartHeal > 0) statPills.push({ label: 'HEAL', value: `+${effects.stageStartHeal}`, color: 'text-teal-400' })
+  if (effects.coinMultiplier > 1) statPills.push({ label: 'COINS', value: `x${effects.coinMultiplier.toFixed(1)}`, color: 'text-yellow-400' })
+
   return (
     <div className="bg-slate-800/60 rounded-xl border border-emerald-900/40 overflow-hidden">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full px-3 py-2 flex items-center justify-between text-xs font-bold text-emerald-400 hover:bg-slate-700/30 transition-colors"
+        className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-700/30 transition-colors"
       >
-        <span>Active Boons ({activeBoons.length})</span>
-        <span className="text-slate-500">{collapsed ? '+ Show' : '- Hide'}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-emerald-400">Boons ({activeBoons.length})</span>
+          {statPills.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {statPills.map(pill => (
+                <span key={pill.label} className={`text-[11px] font-bold ${pill.color} bg-slate-900/60 px-1.5 py-0.5 rounded`}>
+                  {pill.label} {pill.value}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className="text-slate-500 text-xs flex-shrink-0 ml-2">{collapsed ? '+ Show' : '- Hide'}</span>
       </button>
       <AnimatePresence>
         {!collapsed && (
@@ -361,9 +392,13 @@ export default function JungleRunView() {
   const markJungleTabVisited = useGame(s => s.markJungleTabVisited)
   const soundEnabled = useGame(s => s.soundEnabled)
 
+  const startJungleBattle = useGame(s => s.startJungleBattle)
+
   const [showBossIntro, setShowBossIntro] = useState(false)
   const [healingCountdown, setHealingCountdown] = useState(false)
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const healingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Mark tab as visited
   useEffect(() => {
@@ -374,14 +409,18 @@ export default function JungleRunView() {
   useEffect(() => {
     if (jungleRun?.phase !== 'healing_spring') {
       setHealingCountdown(false)
+      healingTimerRef.current = null
       return
     }
     setHealingCountdown(true)
-    const timer = setTimeout(() => {
+    healingTimerRef.current = setTimeout(() => {
       advanceJungleStage()
       setHealingCountdown(false)
+      healingTimerRef.current = null
     }, 2000)
-    return () => clearTimeout(timer)
+    return () => {
+      if (healingTimerRef.current) clearTimeout(healingTimerRef.current)
+    }
   }, [jungleRun?.phase, advanceJungleStage])
 
   // Auto-advance from stage_cleared
@@ -393,6 +432,16 @@ export default function JungleRunView() {
     return () => clearTimeout(timer)
   }, [jungleRun?.phase, advanceJungleStage])
 
+  // Detect all cats KO'd in any active phase and end the run
+  useEffect(() => {
+    if (!jungleRun) return
+    const activePhases = ['pre_battle', 'healing_spring', 'stage_cleared', 'boon_select'] as const
+    if (!(activePhases as readonly string[]).includes(jungleRun.phase)) return
+    if (jungleRun.squad.every(c => c.knockedOut)) {
+      abandonJungleRun()
+    }
+  }, [jungleRun?.phase, jungleRun?.squad, abandonJungleRun])
+
   const handleStartRun = useCallback(() => {
     startJungleRun()
     trackJungleRunStart(JUNGLE_SQUAD_SIZE)
@@ -403,8 +452,8 @@ export default function JungleRunView() {
   }, [selectJungleSquad])
 
   const handleSquadCancel = useCallback(() => {
-    abandonJungleRun()
-  }, [abandonJungleRun])
+    useGame.setState({ jungleRun: null })
+  }, [])
 
   const handleBoonSelect = useCallback((boonId: string) => {
     const boon = getBoonById(boonId)
@@ -428,15 +477,27 @@ export default function JungleRunView() {
 
   const boonEffects = useMemo(() => {
     if (!jungleRun) return null
-    return calculateBoonEffects(jungleRun.activeBoons)
+    return calculateBoonEffects(jungleRun.activeBoons ?? [])
   }, [jungleRun?.activeBoons])
+
+  const currentBird = useMemo(() => {
+    if (!jungleRun || jungleRun.phase !== 'in_battle') return null
+    const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random())
+    return scaleBirdForStage(bird, jungleRun.currentStage)
+  }, [jungleRun?.phase, jungleRun?.currentStage])
+
+  const bossBird = useMemo(() => {
+    if (!jungleRun || !isBossStage(jungleRun.currentStage)) return null
+    const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random())
+    return scaleBirdForStage(bird, jungleRun.currentStage)
+  }, [jungleRun?.currentStage])
 
   const phase = jungleRun?.phase ?? 'idle'
 
   // ===== LOCKED STATE =====
   if (!junglePassUnlocked) {
     return (
-      <JungleBackground intensity="low">
+      <>
         <div className="max-w-lg mx-auto py-12 text-center space-y-6">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -463,7 +524,7 @@ export default function JungleRunView() {
           </div>
 
           <motion.button
-            onClick={() => trackJunglePurchaseStart()}
+            onClick={() => { trackJunglePurchaseStart(); setShowPurchaseModal(true) }}
             className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-lg"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -488,15 +549,22 @@ export default function JungleRunView() {
               </button>
             </div>
           )}
+
+          {showPurchaseModal && (
+            <JunglePurchaseModal
+              onClose={() => setShowPurchaseModal(false)}
+              onUnlocked={() => setShowPurchaseModal(false)}
+            />
+          )}
         </div>
-      </JungleBackground>
+      </>
     )
   }
 
   // ===== NO ACTIVE RUN =====
   if (!jungleRun || phase === 'idle') {
     return (
-      <JungleBackground intensity="low">
+      <>
         <div className="max-w-2xl mx-auto py-8 space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-black text-emerald-400 mb-1">Jungle of Talons</h1>
@@ -518,14 +586,14 @@ export default function JungleRunView() {
 
           <LeaderboardPreview />
         </div>
-      </JungleBackground>
+      </>
     )
   }
 
   // ===== SQUAD SELECT =====
   if (phase === 'squad_select') {
     return (
-      <JungleBackground intensity="low">
+      <>
         <div className="max-w-3xl mx-auto py-6">
           <SquadSelector
             owned={owned.filter(c => c.currentHp > 0)}
@@ -533,7 +601,7 @@ export default function JungleRunView() {
             onCancel={handleSquadCancel}
           />
         </div>
-      </JungleBackground>
+      </>
     )
   }
 
@@ -542,7 +610,7 @@ export default function JungleRunView() {
   const stageName = STAGE_NAMES[currentStage] ?? `Stage ${currentStage}`
 
   return (
-    <JungleBackground intensity={phase === 'in_battle' ? 'high' : 'medium'}>
+    <>
       <div className="max-w-3xl mx-auto py-4 space-y-4">
         {/* Stage Progress Bar - always visible */}
         <StageProgressBar currentStage={currentStage} totalStages={JUNGLE_TOTAL_STAGES} />
@@ -555,7 +623,7 @@ export default function JungleRunView() {
           <div className="flex justify-end">
             <button
               onClick={() => setShowAbandonConfirm(true)}
-              className="text-xs text-slate-600 hover:text-red-400 transition-colors underline"
+              className="text-xs text-red-400 hover:text-red-300 transition-colors underline"
             >
               Abandon Run
             </button>
@@ -571,7 +639,7 @@ export default function JungleRunView() {
             className="text-center space-y-6 py-8"
           >
             <div>
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Stage {currentStage}</div>
+              <div className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-1">Stage {currentStage}</div>
               <h2 className="text-2xl font-black text-emerald-300">{stageName}</h2>
               {isBossStage(currentStage) && (
                 <div className="mt-2 inline-block px-3 py-1 bg-red-900/50 border border-red-700/50 rounded-full">
@@ -585,23 +653,23 @@ export default function JungleRunView() {
               {jungleRun.squad.map(cat => (
                 <div
                   key={cat.instanceId}
-                  className={`bg-slate-800/60 rounded-xl p-3 border w-24 text-center ${
+                  className={`bg-slate-800/60 rounded-xl p-3 border w-36 text-center ${
                     cat.knockedOut ? 'border-red-800/50 opacity-50' : 'border-emerald-900/40'
                   }`}
                 >
                   {cat.imageUrl ? (
-                    <img src={cat.imageUrl} alt={cat.name} className="w-14 h-14 mx-auto object-contain rounded-lg mb-1" />
+                    <img src={cat.imageUrl} alt={cat.name} className="w-24 h-24 mx-auto object-contain rounded-lg mb-1" />
                   ) : (
-                    <div className="w-14 h-14 mx-auto bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-xl">🐱</div>
+                    <div className="w-24 h-24 mx-auto bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl">🐱</div>
                   )}
-                  <div className="text-[10px] font-bold text-slate-300 truncate">{cat.name}</div>
-                  <div className="mt-1 h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                  <div className="text-xs font-bold text-slate-300 truncate">{cat.name}</div>
+                  <div className="mt-1 h-2 bg-slate-900 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${cat.knockedOut ? 'bg-red-700' : 'bg-emerald-500'}`}
                       style={{ width: `${cat.knockedOut ? 0 : (cat.currentHp / cat.maxHp) * 100}%` }}
                     />
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
+                  <div className="text-xs text-slate-300 mt-0.5">
                     {cat.knockedOut ? 'KO' : `${cat.currentHp}/${cat.maxHp}`}
                   </div>
                 </div>
@@ -613,7 +681,7 @@ export default function JungleRunView() {
                 if (isBossStage(currentStage)) {
                   setShowBossIntro(true)
                 } else {
-                  useGame.getState().advanceJungleStage()
+                  startJungleBattle()
                 }
               }}
               className="px-10 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-xl"
@@ -626,58 +694,41 @@ export default function JungleRunView() {
         )}
 
         {/* IN-BATTLE */}
-        {phase === 'in_battle' && (
-          <div className="py-4">
-            <div className="text-center bg-slate-800/60 rounded-xl p-8 border border-emerald-900/40">
-              <div className="text-4xl mb-4 animate-pulse">&#9876;&#65039;</div>
-              <h2 className="text-xl font-black text-emerald-400 mb-2">Battle in Progress</h2>
-              <p className="text-slate-400 text-sm">Stage {currentStage}: {stageName}</p>
-              <p className="text-slate-500 text-xs mt-2">The JungleBattle component renders here when implemented.</p>
-            </div>
-          </div>
+        {phase === 'in_battle' && currentBird && boonEffects && (
+          <JungleBattle
+            bird={currentBird}
+            squad={jungleRun.squad}
+            boonEffects={boonEffects}
+            stageNumber={currentStage}
+            random={() => Math.random()}
+            onBattleEnd={(result) => {
+              const stageResult: JungleStageResult = {
+                stageNumber: currentStage,
+                birdId: currentBird.id,
+                birdName: currentBird.name,
+                turnsElapsed: result.turnsElapsed,
+                catHpRemaining: result.catHpRemaining,
+                catsKnockedOut: result.catsKnockedOut,
+                wasFlawless: result.wasFlawless,
+                startTime: Date.now(),
+                endTime: Date.now(),
+              }
+              completeJungleStage(stageResult)
+              trackJungleStageComplete(currentStage, currentBird.name)
+              if (currentBird.isBoss) {
+                trackJungleBossDefeated(currentBird.name, currentStage)
+              }
+            }}
+          />
         )}
 
         {/* BOON SELECT */}
         {phase === 'boon_select' && jungleRun.currentBoonOffering && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="py-6"
-          >
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-black text-emerald-400 mb-1">Choose a Boon</h2>
-              <p className="text-slate-400 text-sm">Select a power-up for your squad</p>
-              {jungleRun.currentBoonOffering.wasGuaranteedRare && (
-                <div className="mt-2 text-xs text-purple-400 font-bold">Pity timer activated! Guaranteed Rare+</div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-              {jungleRun.currentBoonOffering.boons.map(boon => {
-                const rarityBorder = boon.rarity === 'Legendary' ? 'border-amber-500/60 shadow-glow-gold' : boon.rarity === 'Rare' ? 'border-purple-500/60 shadow-glow-purple' : 'border-slate-600'
-                const rarityBg = boon.rarity === 'Legendary' ? 'from-amber-900/30 to-slate-900' : boon.rarity === 'Rare' ? 'from-purple-900/30 to-slate-900' : 'from-slate-800 to-slate-900'
-                const rarityText = boon.rarity === 'Legendary' ? 'text-amber-400' : boon.rarity === 'Rare' ? 'text-purple-400' : 'text-slate-400'
-                return (
-                  <motion.button
-                    key={boon.id}
-                    onClick={() => handleBoonSelect(boon.id)}
-                    className={`bg-gradient-to-b ${rarityBg} rounded-xl p-4 border-2 ${rarityBorder} text-left hover:brightness-110 transition-all`}
-                    whileHover={{ scale: 1.03, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {boon.iconUrl && (
-                      <div className="flex justify-center mb-2">
-                        <img src={boon.iconUrl} alt={boon.name} className="w-14 h-14 object-cover rounded-xl border-2 border-slate-600/50" />
-                      </div>
-                    )}
-                    <div className={`text-[10px] font-bold uppercase tracking-wider ${rarityText} mb-1`}>{boon.rarity}</div>
-                    <div className="text-lg font-black text-white mb-2">{boon.name}</div>
-                    <div className="text-xs text-slate-400 leading-relaxed">{boon.description}</div>
-                    <div className="text-[10px] text-slate-600 mt-2">Max stacks: {boon.maxStacks}</div>
-                  </motion.button>
-                )
-              })}
-            </div>
-          </motion.div>
+          <BoonPickerModal
+            offering={jungleRun.currentBoonOffering}
+            activeBoons={jungleRun.activeBoons}
+            onSelect={handleBoonSelect}
+          />
         )}
 
         {/* HEALING SPRING */}
@@ -685,28 +736,27 @@ export default function JungleRunView() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-12 space-y-4"
-            onClick={() => { advanceJungleStage(); setHealingCountdown(false) }}
+            className="text-center py-8 space-y-5 cursor-pointer"
+            onClick={() => { if (healingTimerRef.current) { clearTimeout(healingTimerRef.current); healingTimerRef.current = null } advanceJungleStage(); setHealingCountdown(false) }}
           >
             <motion.div
-              animate={{ y: [0, -10, 0], scale: [1, 1.05, 1] }}
+              animate={{ y: [0, -10, 0], scale: [1, 1.03, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="inline-block"
             >
               <img
                 src="/images/jungle/Healing Spring.png"
                 alt="Healing Spring"
-                className="w-32 h-32 object-contain mx-auto rounded-2xl drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]"
+                className="w-full max-w-md h-48 object-cover mx-auto rounded-2xl drop-shadow-[0_0_24px_rgba(34,211,238,0.5)]"
               />
             </motion.div>
-            <h2 className="text-2xl font-black text-cyan-400">Healing Spring</h2>
-            <p className="text-slate-400 text-sm">Your squad rests and recovers 15% max HP</p>
-            <div className="flex justify-center gap-4 mt-4">
+            <h2 className="text-3xl font-black text-cyan-400">Healing Spring</h2>
+            <p className="text-slate-300 text-base">Your squad rests and recovers 15% max HP</p>
+            <div className="flex justify-center gap-6 mt-4">
               {jungleRun.squad.map(cat => (
                 <div key={cat.instanceId} className="text-center">
-                  <div className="text-xs font-bold text-slate-300">{cat.name}</div>
+                  <div className="text-sm font-bold text-slate-200">{cat.name}</div>
                   <motion.div
-                    className="text-sm font-black text-cyan-400"
+                    className="text-base font-black text-cyan-400"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
@@ -716,7 +766,7 @@ export default function JungleRunView() {
                 </div>
               ))}
             </div>
-            <p className="text-slate-600 text-xs mt-4">Tap to continue</p>
+            <p className="text-slate-400 text-sm mt-4 animate-pulse">Tap to continue</p>
           </motion.div>
         )}
 
@@ -735,131 +785,40 @@ export default function JungleRunView() {
               &#127942;
             </motion.div>
             <h2 className="text-2xl font-black text-emerald-400">Stage {currentStage - 1} Cleared!</h2>
-            <p className="text-slate-400 text-sm mt-2">Advancing to next stage...</p>
+            <p className="text-slate-300 text-sm mt-2">Advancing to next stage...</p>
           </motion.div>
         )}
 
         {/* RUN COMPLETE (Victory) */}
         {phase === 'run_complete' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-8 space-y-6"
-          >
-            <motion.div
-              className="text-7xl"
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            >
-              &#127775;
-            </motion.div>
-            <h2 className="text-3xl font-black text-emerald-400">Jungle Conquered!</h2>
-            <p className="text-slate-300">You conquered all {JUNGLE_TOTAL_STAGES} stages!</p>
-
-            {/* Score breakdown */}
-            {(() => {
-              const score = calculateScore(jungleRun)
-              return (
-                <div className="bg-slate-800/60 rounded-xl p-4 border border-emerald-900/40 max-w-md mx-auto space-y-2 text-left">
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Stages cleared</span><span className="text-emerald-300 font-bold">{score.stagesCleared}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Stage score</span><span className="text-slate-300 font-bold">{score.stageScore}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Speed bonus</span><span className="text-slate-300 font-bold">{score.speedBonus}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">HP remaining</span><span className="text-slate-300 font-bold">{score.hpRemainingScore}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Boss kills</span><span className="text-slate-300 font-bold">{score.bossKillScore}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">All cats alive</span><span className="text-slate-300 font-bold">{score.allCatsAliveBonus}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Boon efficiency</span><span className="text-slate-300 font-bold">{score.boonEfficiencyScore}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Flawless stages</span><span className="text-slate-300 font-bold">{score.flawlessStageScore}</span></div>
-                  <div className="border-t border-slate-700 pt-2 mt-2 flex justify-between text-lg"><span className="text-emerald-400 font-black">Total Score</span><span className="text-emerald-300 font-black">{score.totalScore}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-amber-400 font-bold">Coins earned</span><span className="text-amber-300 font-black">{score.coinsEarned} &#x1FA99;</span></div>
-                </div>
-              )
-            })()}
-
-            <motion.button
-              onClick={handleFinishRun}
-              className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-lg"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Claim Rewards
-            </motion.button>
-          </motion.div>
+          <JungleVictoryModal
+            score={calculateScore(jungleRun)}
+            runState={jungleRun}
+            onClose={handleFinishRun}
+          />
         )}
 
         {/* RUN FAILED (Defeat) */}
         {phase === 'run_failed' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-8 space-y-6"
-          >
-            <motion.div
-              className="text-7xl"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            >
-              &#128128;
-            </motion.div>
-            <h2 className="text-3xl font-black text-red-400">Run Failed</h2>
-            <p className="text-slate-400">Your squad was defeated at Stage {currentStage}</p>
-
-            {/* Score breakdown */}
-            {(() => {
-              const score = calculateScore(jungleRun)
-              return (
-                <div className="bg-slate-800/60 rounded-xl p-4 border border-red-900/40 max-w-md mx-auto space-y-2 text-left">
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Stages cleared</span><span className="text-slate-300 font-bold">{score.stagesCleared}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-400">Score</span><span className="text-slate-300 font-bold">{score.totalScore}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-amber-400 font-bold">Coins earned</span><span className="text-amber-300 font-black">{score.coinsEarned} &#x1FA99;</span></div>
-                </div>
-              )
-            })()}
-
-            <motion.button
-              onClick={handleFinishRun}
-              className="px-8 py-4 bg-gradient-to-r from-red-700 to-red-600 text-white font-black rounded-xl shadow-lg text-lg"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Return to Camp
-            </motion.button>
-          </motion.div>
+          <JungleDefeatModal
+            score={calculateScore(jungleRun)}
+            runState={jungleRun}
+            stageReached={currentStage}
+            onClose={handleFinishRun}
+          />
         )}
 
         {/* Boss Intro Modal */}
-        <Modal isOpen={showBossIntro} onClose={() => setShowBossIntro(false)} title="Boss Encounter" size="sm">
-          <div className="text-center py-4 space-y-4">
-            <motion.div
-              className="text-6xl"
-              animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              {currentStage === 10 ? '🦅' : '🦖'}
-            </motion.div>
-            <h3 className="text-2xl font-black text-red-400">
-              {currentStage === 10 ? 'Talon Queen' : 'Apex Raptor'}
-            </h3>
-            <p className="text-slate-400 text-sm">
-              {currentStage === 10
-                ? 'The queen of the canopy guards the path ahead. She can revive once when defeated!'
-                : 'The ultimate predator of the jungle. Below 30% HP, it enters Apex Fury - attacking with devastating power!'
-              }
-            </p>
-            <motion.button
-              onClick={() => {
-                setShowBossIntro(false)
-                useGame.getState().advanceJungleStage()
-              }}
-              className="px-8 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white font-black rounded-xl shadow-lg"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Challenge Boss!
-            </motion.button>
-          </div>
-        </Modal>
+        {showBossIntro && bossBird && (
+          <BossIntroModal
+            bird={bossBird}
+            stageNumber={currentStage}
+            onContinue={() => {
+              setShowBossIntro(false)
+              startJungleBattle()
+            }}
+          />
+        )}
 
         {/* Abandon Confirm Modal */}
         <Modal isOpen={showAbandonConfirm} onClose={() => setShowAbandonConfirm(false)} title="Abandon Run?" size="sm">
@@ -879,7 +838,7 @@ export default function JungleRunView() {
               <motion.button
                 onClick={() => {
                   setShowAbandonConfirm(false)
-                  finishJungleRun()
+                  abandonJungleRun()
                 }}
                 className="px-6 py-3 bg-red-700 text-white font-bold rounded-xl"
                 whileHover={{ scale: 1.02 }}
@@ -891,6 +850,6 @@ export default function JungleRunView() {
           </div>
         </Modal>
       </div>
-    </JungleBackground>
+    </>
   )
 }

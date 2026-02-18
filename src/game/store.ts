@@ -6,7 +6,7 @@ import { EQUIPMENT } from './items'
 import { uploadLeaderboardStats } from '../utils/leaderboard'
 import { uploadSave, type CloudSaveData } from '../utils/cloudSave'
 import { getEventPeriodKey, getFrenzyWeekKey, isConsecutiveWeek, type GameEvent } from './events'
-import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from './constants'
+import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH, RELEASE_VALUES } from './constants'
 import {
   trackBaitPurchased,
   trackCoinsSpent,
@@ -99,7 +99,7 @@ interface GameState {
   buyBait: (baitId:string)=>void
   useBait: (baitId:string)=>Cat | null
   befriendCat: (cat:Cat)=>void
-  releaseCat: (catId:string)=>void
+  releaseCat: (catId:string)=>number
   toggleSelectCat: (id:string)=>void
   toggleFavorite: (instanceId:string)=>void
   nextDog: ()=>void
@@ -345,11 +345,18 @@ export const useGame = create<GameState>((set, get) => ({
     get().save() // Persist immediately — don't rely on 3s debounce (Chromebooks freeze tabs)
   },
 
-  releaseCat: (instanceId)=> set(s=> {
-    const newOwned = s.owned.filter(cat => cat.instanceId !== instanceId)
-    const newSelected = s.selectedForBattle.filter(id => id !== instanceId)
-    return { owned: newOwned, selectedForBattle: newSelected }
-  }),
+  releaseCat: (instanceId)=> {
+    const cat = get().owned.find(c => c.instanceId === instanceId)
+    if (!cat) return 0
+    const coins = RELEASE_VALUES[cat.rarity] ?? 0
+    set(s => ({
+      owned: s.owned.filter(c => c.instanceId !== instanceId),
+      selectedForBattle: s.selectedForBattle.filter(id => id !== instanceId),
+      coins: s.coins + coins,
+    }))
+    get().save()
+    return coins
+  },
 
   toggleSelectCat: (instanceId)=> set(s=>{
     const sel = new Set(s.selectedForBattle)

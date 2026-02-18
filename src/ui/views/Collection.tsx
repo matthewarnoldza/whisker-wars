@@ -6,7 +6,7 @@ import CardZoomModal from '../components/CardZoomModal'
 import MergeCelebrationModal from '../components/MergeCelebrationModal'
 import { useGame } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
-import { containerVariants, cardVariants } from '../animations'
+import { containerVariants, cardVariants, coinVariants } from '../animations'
 import { useState, useMemo, useCallback } from 'react'
 import type { OwnedCat } from '../../game/store'
 import type { Rarity } from '../../game/data'
@@ -14,6 +14,7 @@ import { CATS, BAITS, rarityByTier } from '../../game/data'
 import {
   ELITE_TIER_1_MULTIPLIER,
   ELITE_TIER_2_MULTIPLIER,
+  RELEASE_VALUES,
   calculateStatBoost,
   getAscendedBaseStat,
 } from '../../game/constants'
@@ -53,6 +54,13 @@ export default function Collection() {
   const [healFlash, setHealFlash] = useState(false)
   const [healMessage, setHealMessage] = useState<string | null>(null)
   const [showCatadex, setShowCatadex] = useState(false)
+  const [coinPopups, setCoinPopups] = useState<{ id: number; value: number; x: number; y: number }[]>([])
+
+  const showCoinPopup = useCallback((value: number, x: number, y: number) => {
+    const id = Date.now()
+    setCoinPopups(prev => [...prev, { id, value, x, y }])
+    setTimeout(() => setCoinPopups(prev => prev.filter(p => p.id !== id)), 1500)
+  }, [])
 
   // Merge mode state
   const [mergeMode, setMergeMode] = useState(false)
@@ -750,9 +758,13 @@ export default function Collection() {
                     aria-label={`Release ${cat.name}`}
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (window.confirm(`Release ${cat.name}? This cannot be undone!`)) {
+                      const releaseValue = RELEASE_VALUES[cat.rarity] ?? 0
+                      if (window.confirm(`Release ${cat.name} for ${releaseValue} coins?`)) {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const earned = releaseCat(cat.instanceId)
+                        showCoinPopup(earned, rect.left + rect.width / 2, rect.top)
+                        if (soundEnabled) playSound('coinEarned')
                         trackCatReleased(cat.name, cat.rarity, cat.level)
-                        releaseCat(cat.instanceId)
                       }
                     }}
                     className="absolute top-2 right-2 z-card-overlay w-10 h-10 rounded-full bg-red-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg border-2 border-red-400"
@@ -925,6 +937,23 @@ export default function Collection() {
           setMergeResultCat(null)
         }}
       />
+
+      {/* Coin popups on release */}
+      <AnimatePresence>
+        {coinPopups.map(({ id, value, x, y }) => (
+          <motion.div
+            key={id}
+            variants={coinVariants}
+            initial="hidden"
+            animate="show"
+            exit="hidden"
+            className="fixed z-50 text-3xl font-black text-yellow-400 pointer-events-none"
+            style={{ left: x, top: y, textShadow: '0 0 10px rgba(0,0,0,0.8)' }}
+          >
+            +{value}
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   )
 }

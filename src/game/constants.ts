@@ -3,6 +3,9 @@ export const INITIAL_COINS = 120
 export const HEAL_COST = 25
 export const DAILY_REWARD_COINS = 50
 export const ACHIEVEMENT_REWARD_COINS = 100
+export const RELEASE_VALUES: Record<string, number> = {
+  Common: 5, Uncommon: 15, Rare: 40, Epic: 80, Legendary: 160, Mythical: 250,
+}
 
 // ===== Training =====
 export const TRAINING_XP = 15

@@ -596,7 +596,7 @@ export default function JungleRunView() {
       <>
         <div className="max-w-3xl mx-auto py-6">
           <SquadSelector
-            owned={owned.filter(c => c.currentHp > 0)}
+            owned={owned}
             onConfirm={handleSquadConfirm}
             onCancel={handleSquadCancel}
           />

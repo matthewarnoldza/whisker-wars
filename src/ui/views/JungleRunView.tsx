@@ -537,7 +537,7 @@ export default function JungleRunView() {
   if (!junglePassUnlocked) {
     return (
       <>
-        <div className="max-w-lg mx-auto py-12 text-center space-y-6">
+        <div className="max-w-lg mx-auto py-12 text-center space-y-6 bg-slate-900/70 backdrop-blur-sm rounded-2xl px-6">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -545,7 +545,7 @@ export default function JungleRunView() {
           >
             <div className="text-6xl mb-4">🔒</div>
             <h1 className="text-3xl font-black text-emerald-400 mb-2">Jungle of Talons</h1>
-            <p className="text-slate-400 text-sm leading-relaxed mb-6">
+            <p className="text-slate-200 text-sm leading-relaxed mb-6">
               Lead your squad through 20 stages of bird combat. Collect boons, defeat bosses,
               and climb the leaderboard in this roguelite jungle adventure.
             </p>

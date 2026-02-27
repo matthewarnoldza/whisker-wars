@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
 import { createYocoCheckout } from '../../utils/yocoCheckout'
@@ -87,7 +88,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
     setState('success')
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -138,7 +139,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
               )}
 
               {/* Feature Cards */}
-              <div className="space-y-2 mb-5">
+              <div className="space-y-2 mb-5 text-left">
                 {FEATURES.map((feature, i) => (
                   <motion.div
                     key={i}
@@ -287,6 +288,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
           )}
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

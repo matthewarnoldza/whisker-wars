@@ -94,14 +94,14 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={state === 'preview' ? onClose : undefined}
-        className="fixed inset-0 z-[110] bg-emerald-950/95 backdrop-blur-lg flex items-center justify-center touch-none overflow-y-auto p-4"
+        className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-lg flex items-center justify-center touch-none overflow-hidden p-4"
       >
         <motion.div
           initial={{ scale: 0.85, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 220 }}
-          className="relative w-full max-w-lg my-4"
+          className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-emerald-950 border border-emerald-500/20 p-5 shadow-[0_0_60px_rgba(16,185,129,0.1)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ===== PREVIEW STATE ===== */}
@@ -112,11 +112,11 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
               exit={{ opacity: 0 }}
             >
               {/* Hero Section */}
-              <div className="relative rounded-2xl overflow-hidden mb-6 bg-emerald-900/60 border border-emerald-500/20">
-                <div className="aspect-[16/9] bg-gradient-to-br from-emerald-900 to-[#022c22] flex items-center justify-center">
+              <div className="relative rounded-xl overflow-hidden mb-5 bg-gradient-to-br from-emerald-900/80 to-[#022c22]">
+                <div className="py-8 flex items-center justify-center">
                   <div className="text-center">
                     <h2
-                      className="text-4xl font-black text-emerald-400 tracking-wider"
+                      className="text-3xl font-black text-emerald-400 tracking-wider"
                       style={{ textShadow: '0 0 30px rgba(52,211,153,0.5)' }}
                     >
                       Jungle of Talons
@@ -138,7 +138,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
               )}
 
               {/* Feature Cards */}
-              <div className="space-y-2 mb-6">
+              <div className="space-y-2 mb-5">
                 {FEATURES.map((feature, i) => (
                   <motion.div
                     key={i}
@@ -174,17 +174,17 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
                 </motion.button>
               </div>
 
-              {/* Payment Badges */}
-              <div className="flex items-center justify-center gap-4 mb-4">
+              {/* Payment Badges + Close */}
+              <div className="flex items-center justify-center gap-3 mb-2">
                 <span className="text-xs text-emerald-200/30 font-bold">Visa</span>
+                <span className="text-[10px] text-emerald-200/15">|</span>
                 <span className="text-xs text-emerald-200/30 font-bold">Mastercard</span>
+                <span className="text-[10px] text-emerald-200/15">|</span>
                 <span className="text-xs text-emerald-200/30 font-bold">SnapScan</span>
               </div>
-
-              {/* Close */}
               <button
                 onClick={onClose}
-                className="w-full text-center text-slate-500 hover:text-slate-300 text-sm py-2 transition-colors font-bold"
+                className="w-full text-center text-slate-500 hover:text-slate-300 text-xs py-1 transition-colors font-bold"
               >
                 Close
               </button>

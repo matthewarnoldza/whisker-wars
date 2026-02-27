@@ -301,6 +301,15 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setView])
 
+  // Handle payment return — Yoco strips hash fragments, so we use ?view= param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const viewParam = params.get('view')
+    if (viewParam && !window.location.hash.slice(1)) {
+      window.location.hash = viewParam
+    }
+  }, [])
+
   // Update URL when view changes
   useEffect(() => {
     const currentHash = window.location.hash.slice(1)

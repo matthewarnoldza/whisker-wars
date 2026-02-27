@@ -35,11 +35,13 @@ export async function createYocoCheckout(
 export function getPaymentReturnStatus(): {
   status: string | null
   checkoutId: string | null
+  view: string | null
 } {
   const params = new URLSearchParams(window.location.search)
   return {
     status: params.get('payment'),
     checkoutId: params.get('checkoutId'),
+    view: params.get('view'),
   }
 }
 

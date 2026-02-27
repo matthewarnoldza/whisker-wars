@@ -28,9 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         amount: 12000,
         currency: 'ZAR',
-        successUrl: `${appUrl}/?payment=success#jungle`,
-        cancelUrl: `${appUrl}/?payment=cancelled#jungle`,
-        failureUrl: `${appUrl}/?payment=failed#jungle`,
+        successUrl: `${appUrl}/?payment=success&view=jungle`,
+        cancelUrl: `${appUrl}/?payment=cancelled&view=jungle`,
+        failureUrl: `${appUrl}/?payment=failed&view=jungle`,
         metadata: {
           profileId,
           cloudCode: cloudCode || '',

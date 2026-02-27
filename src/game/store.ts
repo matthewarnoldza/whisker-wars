@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
 import { EQUIPMENT } from './items'
+import { database, ref as fbRef, get as fbGet } from '../utils/firebase'
 import { uploadLeaderboardStats } from '../utils/leaderboard'
 import { uploadJungleLeaderboardStats } from '../utils/jungleLeaderboard'
 import { uploadSave, type CloudSaveData } from '../utils/cloudSave'
@@ -164,6 +165,7 @@ interface GameState {
   finishJungleRun: ()=>void
   unlockJunglePass: ()=>void
   setJunglePassPending: (pending: boolean)=>void
+  checkPaymentStatus: ()=>Promise<boolean>
   dismissJungleAnnouncement: ()=>void
   markJungleTabVisited: ()=>void
 }
@@ -1134,6 +1136,11 @@ export const useGame = create<GameState>((set, get) => ({
         jungleTabVisited: d.jungleTabVisited ?? false,
       })
       stateLoaded = true
+
+      // If jungle pass not unlocked, check Firebase for a verified payment (handles cross-device/recovery)
+      if (!(d.junglePassUnlocked ?? false)) {
+        setTimeout(() => get().checkPaymentStatus(), 1000)
+      }
     } catch (error) {
       console.error('Failed to load save data:', error)
     }
@@ -1541,6 +1548,34 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   setJunglePassPending: (pending)=> set({ junglePassPending: pending }),
+
+  checkPaymentStatus: async ()=> {
+    const s = get()
+    if (s.junglePassUnlocked) return true
+
+    const profilesData = getProfilesData()
+    const profileId = profilesData.activeProfileId
+    if (!profileId) return false
+
+    try {
+      const snapshot = await fbGet(fbRef(database, `payments/${profileId}`))
+      if (!snapshot.exists()) return false
+
+      const payments = snapshot.val() as Record<string, { product?: string; status?: string }>
+      const hasJunglePass = Object.values(payments).some(
+        (p) => p.product === 'jungle-pass' && p.status === 'succeeded'
+      )
+
+      if (hasJunglePass) {
+        set({ junglePassUnlocked: true, junglePassPending: false })
+        get().save()
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  },
 
   dismissJungleAnnouncement: ()=> {
     set({ jungleAnnouncementShown: true })

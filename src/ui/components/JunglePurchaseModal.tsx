@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
+import { createYocoCheckout } from '../../utils/yocoCheckout'
 
 interface JunglePurchaseModalProps {
   onClose: () => void
   onUnlocked: () => void
+  initialState?: PurchaseState
 }
 
-type PurchaseState = 'preview' | 'loading' | 'checkout' | 'confirming' | 'success'
+type PurchaseState = 'preview' | 'loading' | 'confirming' | 'success'
 
 const FEATURES = [
   { title: '20 Stages', description: 'Roguelike challenge with scaling difficulty' },
@@ -43,28 +45,46 @@ function EmeraldParticles() {
   )
 }
 
-export default function JunglePurchaseModal({ onClose, onUnlocked }: JunglePurchaseModalProps) {
-  const [state, setState] = useState<PurchaseState>('preview')
+export default function JunglePurchaseModal({ onClose, onUnlocked, initialState = 'preview' }: JunglePurchaseModalProps) {
+  const [state, setState] = useState<PurchaseState>(initialState)
+  const [error, setError] = useState<string | null>(null)
   const setJunglePassPending = useGame(s => s.setJunglePassPending)
-  const unlockJunglePass = useGame(s => s.unlockJunglePass)
 
-  const handlePurchaseClick = () => {
+  const handlePurchaseClick = async () => {
     setState('loading')
+    setError(null)
     setJunglePassPending(true)
 
-    // Simulate transitioning to checkout after a brief loading period
-    setTimeout(() => {
-      setState('checkout')
-    }, 1500)
-  }
+    const profile = useGame.getState().getCurrentProfile()
+    if (!profile) {
+      setError('No profile found. Please create a profile first.')
+      setState('preview')
+      setJunglePassPending(false)
+      return
+    }
 
-  const handleCancelCheckout = () => {
-    setJunglePassPending(false)
-    setState('preview')
+    const result = await createYocoCheckout(profile.id, profile.cloudCode)
+
+    if (result.success && result.redirectUrl) {
+      // Save checkout context before leaving the page
+      sessionStorage.setItem('yoco-checkout-id', result.checkoutId || '')
+      // Redirect to Yoco's hosted payment page
+      window.location.href = result.redirectUrl
+    } else {
+      setError(result.error || 'Something went wrong. Please try again.')
+      setState('preview')
+      setJunglePassPending(false)
+    }
   }
 
   const handleEnterJungle = () => {
     onUnlocked()
+  }
+
+  // Transition to success when jungle pass gets unlocked (called from parent via polling)
+  const junglePassUnlocked = useGame(s => s.junglePassUnlocked)
+  if (state === 'confirming' && junglePassUnlocked) {
+    setState('success')
   }
 
   return (
@@ -105,6 +125,17 @@ export default function JunglePurchaseModal({ onClose, onUnlocked }: JunglePurch
                   </div>
                 </div>
               </div>
+
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 p-3 bg-red-900/40 border border-red-500/30 rounded-xl text-center"
+                >
+                  <p className="text-red-300 text-sm font-bold">{error}</p>
+                </motion.div>
+              )}
 
               {/* Feature Cards */}
               <div className="space-y-2 mb-6">
@@ -174,37 +205,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked }: JunglePurch
                 className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full mx-auto mb-6"
               />
               <p className="text-slate-100 font-bold text-lg">Preparing secure checkout...</p>
-              <p className="text-emerald-200/40 text-sm mt-2">This will only take a moment</p>
-            </motion.div>
-          )}
-
-          {/* ===== CHECKOUT STATE ===== */}
-          {state === 'checkout' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="text-center mb-4">
-                <h3 className="text-xl font-black text-slate-100">Complete Payment</h3>
-                <p className="text-emerald-200/50 text-sm mt-1">Secure checkout powered by Peach Payments</p>
-              </div>
-
-              {/* Peach SDK Container */}
-              <div
-                id="peach-checkout-container"
-                className="min-h-[300px] bg-emerald-900/30 border border-emerald-500/10 rounded-xl p-4 mb-4 flex items-center justify-center"
-              >
-                <p className="text-emerald-200/30 text-sm">Payment form will render here</p>
-              </div>
-
-              {/* Cancel Button */}
-              <button
-                onClick={handleCancelCheckout}
-                className="w-full text-center text-slate-500 hover:text-slate-300 text-sm py-3 transition-colors font-bold"
-              >
-                Cancel
-              </button>
+              <p className="text-emerald-200/40 text-sm mt-2">You'll be redirected to complete payment</p>
             </motion.div>
           )}
 
@@ -222,7 +223,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked }: JunglePurch
                 className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full mx-auto mb-6"
               />
               <p className="text-slate-100 font-bold text-lg">Payment received!</p>
-              <p className="text-emerald-200/50 text-sm mt-2">Confirming unlock...</p>
+              <p className="text-emerald-200/50 text-sm mt-2">Confirming your purchase...</p>
             </motion.div>
           )}
 

@@ -22,7 +22,10 @@ import {
   trackJungleRunComplete,
   trackJungleRunFailed,
   trackJunglePurchaseStart,
+  trackJunglePurchaseComplete,
+  trackJunglePurchaseFailed,
 } from '../../utils/analytics'
+import { getPaymentReturnStatus, clearPaymentParams } from '../../utils/yocoCheckout'
 import {
   fetchJungleLeaderboard,
   JUNGLE_LEADERBOARD_CATEGORIES,
@@ -398,12 +401,48 @@ export default function JungleRunView() {
   const [healingCountdown, setHealingCountdown] = useState(false)
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [purchaseModalInitialState, setPurchaseModalInitialState] = useState<'preview' | 'confirming'>('preview')
   const healingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Mark tab as visited
   useEffect(() => {
     markJungleTabVisited()
   }, [markJungleTabVisited])
+
+  // Detect payment return from Yoco redirect
+  const checkPaymentStatus = useGame(s => s.checkPaymentStatus)
+  useEffect(() => {
+    const { status } = getPaymentReturnStatus()
+    if (!status) return
+
+    clearPaymentParams()
+
+    if (status === 'success') {
+      setPurchaseModalInitialState('confirming')
+      setShowPurchaseModal(true)
+      // Poll Firebase for webhook confirmation
+      const poll = async () => {
+        for (let i = 0; i < 15; i++) {
+          const verified = await checkPaymentStatus()
+          if (verified) {
+            trackJunglePurchaseComplete(sessionStorage.getItem('yoco-checkout-id') || '')
+            sessionStorage.removeItem('yoco-checkout-id')
+            return
+          }
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+        // Webhook hasn't arrived yet — user can refresh later
+        trackJunglePurchaseFailed('verification_timeout')
+      }
+      poll()
+    } else if (status === 'cancelled') {
+      useGame.getState().setJunglePassPending(false)
+    } else if (status === 'failed') {
+      trackJunglePurchaseFailed('payment_failed')
+      useGame.getState().setJunglePassPending(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-advance from healing spring after 2 seconds
   useEffect(() => {
@@ -524,7 +563,7 @@ export default function JungleRunView() {
           </div>
 
           <motion.button
-            onClick={() => { trackJunglePurchaseStart(); setShowPurchaseModal(true) }}
+            onClick={() => { trackJunglePurchaseStart(); setPurchaseModalInitialState('preview'); setShowPurchaseModal(true) }}
             className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-lg"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -554,6 +593,7 @@ export default function JungleRunView() {
             <JunglePurchaseModal
               onClose={() => setShowPurchaseModal(false)}
               onUnlocked={() => setShowPurchaseModal(false)}
+              initialState={purchaseModalInitialState}
             />
           )}
         </div>

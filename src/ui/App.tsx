@@ -298,8 +298,10 @@ export default function App() {
   const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
-  const [showSplash, setShowSplash] = useState(isWeb())
-  const [splashCompleted, setSplashCompleted] = useState(!isWeb())
+  // Skip splash screen when returning from payment
+  const isPaymentReturn = new URLSearchParams(window.location.search).has('payment')
+  const [showSplash, setShowSplash] = useState(isWeb() && !isPaymentReturn)
+  const [splashCompleted, setSplashCompleted] = useState(!isWeb() || isPaymentReturn)
   const [isPublicPage, setIsPublicPage] = useState(false)
   const [showStorageWarning, setShowStorageWarning] = useState(false)
   const [showSaveCodeModal, setShowSaveCodeModal] = useState(false)
@@ -328,9 +330,17 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
+    const paymentStatus = params.get('payment')
+
     if (viewParam && VALID_VIEWS.has(viewParam)) {
       setView(viewParam as View)
       window.location.hash = viewParam
+    }
+
+    // Trust successful payment redirect — unlock jungle pass immediately
+    if (paymentStatus === 'success' && viewParam === 'jungle') {
+      useGame.setState({ junglePassUnlocked: true, junglePassPending: false })
+      useGame.getState().save()
     }
   }, [setView])
 

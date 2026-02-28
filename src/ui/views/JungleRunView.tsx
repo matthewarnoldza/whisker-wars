@@ -406,7 +406,7 @@ export default function JungleRunView() {
     markJungleTabVisited()
   }, [markJungleTabVisited])
 
-  // Detect payment return from Yoco redirect
+  // Detect payment return from Yoco redirect (unlock handled by App.tsx)
   useEffect(() => {
     const { status } = getPaymentReturnStatus()
     if (!status) return
@@ -414,14 +414,8 @@ export default function JungleRunView() {
     clearPaymentParams()
 
     if (status === 'success') {
-      // Trust the payment redirect — unlock immediately
-      // (Webhook-based Firebase verification can be added for production)
-      useGame.setState({ junglePassUnlocked: true, junglePassPending: false })
-      useGame.getState().save()
       trackJunglePurchaseComplete(sessionStorage.getItem('yoco-checkout-id') || '')
       sessionStorage.removeItem('yoco-checkout-id')
-      setPurchaseModalInitialState('confirming')
-      setShowPurchaseModal(true)
     } else if (status === 'cancelled') {
       useGame.getState().setJunglePassPending(false)
     } else if (status === 'failed') {

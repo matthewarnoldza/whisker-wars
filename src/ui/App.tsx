@@ -328,13 +328,18 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
-    if (viewParam && !window.location.hash.slice(1)) {
+    if (viewParam && VALID_VIEWS.has(viewParam)) {
+      setView(viewParam as View)
       window.location.hash = viewParam
     }
-  }, [])
+  }, [setView])
 
   // Update URL when view changes
   useEffect(() => {
+    // Skip if returning from payment — the payment return effect handles routing
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('view')) return
+
     const currentHash = window.location.hash.slice(1)
     if (currentHash !== view) {
       window.location.hash = view

@@ -1057,6 +1057,7 @@ export const useGame = create<GameState>((set, get) => ({
           junglePassUnlocked: s.junglePassUnlocked,
           jungleRun: s.jungleRun,
           jungleStats: s.jungleStats,
+          unlockedJungleMedals: s.unlockedJungleMedals,
           jungleAnnouncementShown: s.jungleAnnouncementShown,
           jungleTabVisited: s.jungleTabVisited,
         }
@@ -1276,6 +1277,7 @@ export const useGame = create<GameState>((set, get) => ({
       junglePassUnlocked: d.junglePassUnlocked ?? false,
       jungleRun: d.jungleRun ?? null,
       jungleStats: d.jungleStats ?? createInitialJungleStats(),
+      unlockedJungleMedals: d.unlockedJungleMedals ?? [],
       jungleAnnouncementShown: d.jungleAnnouncementShown ?? false,
       jungleTabVisited: d.jungleTabVisited ?? false,
     })

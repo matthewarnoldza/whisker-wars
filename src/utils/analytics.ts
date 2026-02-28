@@ -5,7 +5,7 @@ declare global {
     gtag: (
       command: 'event' | 'config' | 'set',
       eventNameOrConfig: string,
-      params?: Record<string, string | number | boolean | undefined>
+      params?: Record<string, unknown>
     ) => void
   }
 }
@@ -273,10 +273,26 @@ export function trackJungleRunFailed(stage: number, score: number): void {
 
 export function trackJunglePurchaseStart(): void {
   trackEvent('jungle_purchase_start')
+  // GA4 recommended event — appears as Lead in reports
+  trackEvent('generate_lead', {
+    currency: 'ZAR',
+    value: 120,
+  })
 }
 
 export function trackJunglePurchaseComplete(transactionId: string): void {
   trackEvent('jungle_purchase_complete', { transaction_id: transactionId })
+  // GA4 recommended ecommerce event — appears as Sale with R120 revenue
+  try {
+    if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+      window.gtag('event', 'purchase', {
+        transaction_id: transactionId,
+        value: 120,
+        currency: 'ZAR',
+        items: [{ item_id: 'jungle-pass', item_name: 'Jungle of Talons Expansion', price: 120, quantity: 1 }],
+      })
+    }
+  } catch { /* silently swallow */ }
 }
 
 export function trackJunglePurchaseFailed(reason: string): void {

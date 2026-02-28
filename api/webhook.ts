@@ -108,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await set(existingRef, {
       status: 'succeeded',
       product: 'jungle-pass',
-      amount: payload?.amount || 12000,
+      amount: payload?.amount || 6500,
       currency: payload?.currency || 'ZAR',
       timestamp: Date.now(),
       yocoPaymentId: payload?.paymentId || '',

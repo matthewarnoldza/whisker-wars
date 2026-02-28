@@ -163,7 +163,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
 
               {/* Price + CTA */}
               <div className="text-center mb-3">
-                <div className="text-2xl font-black text-slate-100 mb-0.5">R120</div>
+                <div className="text-2xl font-black text-slate-100 mb-0.5">R65</div>
                 <p className="text-emerald-200/40 text-[11px] mb-3">One-time purchase</p>
                 <motion.button
                   onClick={handlePurchaseClick}

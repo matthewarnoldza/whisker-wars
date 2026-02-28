@@ -276,20 +276,20 @@ export function trackJunglePurchaseStart(): void {
   // GA4 recommended event — appears as Lead in reports
   trackEvent('generate_lead', {
     currency: 'ZAR',
-    value: 120,
+    value: 65,
   })
 }
 
 export function trackJunglePurchaseComplete(transactionId: string): void {
   trackEvent('jungle_purchase_complete', { transaction_id: transactionId })
-  // GA4 recommended ecommerce event — appears as Sale with R120 revenue
+  // GA4 recommended ecommerce event — appears as Sale with R65 revenue
   try {
     if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
       window.gtag('event', 'purchase', {
         transaction_id: transactionId,
-        value: 120,
+        value: 65,
         currency: 'ZAR',
-        items: [{ item_id: 'jungle-pass', item_name: 'Jungle of Talons Expansion', price: 120, quantity: 1 }],
+        items: [{ item_id: 'jungle-pass', item_name: 'Jungle of Talons Expansion', price: 65, quantity: 1 }],
       })
     }
   } catch { /* silently swallow */ }

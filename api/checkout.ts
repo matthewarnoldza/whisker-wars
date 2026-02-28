@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Authorization': `Bearer ${secretKey}`,
       },
       body: JSON.stringify({
-        amount: 12000,
+        amount: 6500,
         currency: 'ZAR',
         successUrl: `${appUrl}/?payment=success&view=jungle`,
         cancelUrl: `${appUrl}/?payment=cancelled&view=jungle`,

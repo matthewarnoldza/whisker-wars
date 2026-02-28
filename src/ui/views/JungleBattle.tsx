@@ -4,7 +4,7 @@ import D20Dice from '../components/D20Dice'
 import StatBar from '../components/StatBar'
 import ParticleSystem from '../components/ParticleSystem'
 import BattleLogPanel, { type BattleLog } from '../components/BattleLogPanel'
-import { resolveAbility, resolveDefense } from '../../game/abilityResolver'
+import { resolveDefense } from '../../game/abilityResolver'
 import {
   resolveBirdOffense,
   resolveBirdDefense,
@@ -13,6 +13,7 @@ import {
 } from '../../game/birdAbilityResolver'
 import type { ScaledBird } from '../../game/birds'
 import type { JungleSquadCat } from '../../game/jungleRun'
+import { EQUIPMENT } from '../../game/items'
 import type { BoonEffects } from '../../game/boons'
 import { BATTLE_LOG_MAX_ENTRIES, BIRD_ABILITY_COOLDOWN } from '../../game/constants'
 import { playSound } from '../../utils/sound'
@@ -65,6 +66,9 @@ export default function JungleBattle({
     initialSquad.forEach(c => { hp[c.instanceId] = c.currentHp })
     return hp
   })
+  // Ref mirrors catHp for accurate reads inside async callbacks (avoids stale closures)
+  const catHpRef = useRef<Record<string, number>>(catHp)
+  catHpRef.current = catHp
   const [catMaxHp] = useState<Record<string, number>>(() => {
     const hp: Record<string, number> = {}
     initialSquad.forEach(c => { hp[c.instanceId] = c.maxHp })
@@ -115,10 +119,18 @@ export default function JungleBattle({
   // ----- Derived -----
   const cats = initialSquad
   const aliveCats = cats.filter(c => (catHp[c.instanceId] ?? 0) > 0)
-  const isAllDead = () => cats.every(c => (catHp[c.instanceId] ?? 0) <= 0)
+  const isAllDead = () => cats.every(c => (catHpRef.current[c.instanceId] ?? 0) <= 0)
 
   // Elite Aura: +1 ATK per living elite cat
   const eliteAuraBonus = cats.filter(c => c.isElite && (catHp[c.instanceId] ?? 0) > 0).length
+
+  // Equipment ATK bonus for a given cat
+  const getEquipAtk = useCallback((cat: JungleSquadCat) => {
+    const equip = cat.equipment
+    if (!equip) return 0
+    return ((equip.weapon ? EQUIPMENT.find(e => e.id === equip.weapon)?.atkBonus : 0) || 0)
+      + ((equip.accessory ? EQUIPMENT.find(e => e.id === equip.accessory)?.atkBonus : 0) || 0)
+  }, [])
 
   // ----- Helpers -----
 
@@ -152,7 +164,12 @@ export default function JungleBattle({
   const getCatMaxHp = useCallback((instanceId: string) => catMaxHp[instanceId] ?? 1, [catMaxHp])
 
   const updateCatHpLocal = useCallback((instanceId: string, newHp: number) => {
-    setCatHp(prev => ({ ...prev, [instanceId]: Math.max(0, newHp) }))
+    const hp = Math.max(0, newHp)
+    setCatHp(prev => {
+      const next = { ...prev, [instanceId]: hp }
+      catHpRef.current = next
+      return next
+    })
   }, [])
 
   // ----- Initialize -----
@@ -284,45 +301,21 @@ export default function JungleBattle({
       return
     }
 
-    // Effective ATK with boon boost, elite aura, and debuff
+    // Effective ATK with boon boost, elite aura, equipment, and debuff
     const debuff = atkDebuffs[cat.instanceId]
-    const rawAtk = cat.currentAtk + boonEffects.totalAtkBoost
+    const equipAtk = getEquipAtk(cat)
+    const rawAtk = cat.currentAtk + boonEffects.totalAtkBoost + equipAtk
     const effectiveAtk = debuff && debuff.turnsLeft > 0
       ? Math.floor(rawAtk * debuff.multiplier)
       : rawAtk
     const baseDmg = effectiveAtk + eliteAuraBonus + Math.floor(v / 5)
 
-    // Resolve cat's offensive ability (crit, bleed, heal, lifesteal, stun, speed)
-    const abilityResult = resolveAbility(
-      // Build an OwnedCat-like object from JungleSquadCat for the resolver
-      {
-        ...cat,
-        id: cat.catId,
-        health: cat.baseMaxHp,
-        currentHp: getCatHp(cat.instanceId),
-        maxHp: getCatMaxHp(cat.instanceId),
-        currentAttack: effectiveAtk,
-        level: 1,
-        xp: 0,
-      } as any,
-      v,
-      baseDmg,
-      silenced,
-    )
+    // Normal attacks deal base damage only -- abilities only fire via the ABILITY button
+    let dmgToBird = baseDmg
 
-    // Log ability messages
-    abilityResult.logMessages.forEach(msg => addLog(msg.text, msg.type))
-
-    let dmgToBird = abilityResult.damage
-
-    // Boon: Crit threshold reduction -- lower the crit threshold
-    if (boonEffects.critThresholdReduction > 0 && !abilityResult.isCrit && cat.ability.effect === 'crit') {
-      const threshold = (cat.isElite ? 13 : 15) - boonEffects.critThresholdReduction
-      if (v >= threshold && v < (cat.isElite ? 13 : 15)) {
-        const multiplier = cat.isElite ? (cat.eliteTier && cat.eliteTier >= 2 ? 2.0 : 1.75) : 1.5
-        dmgToBird = Math.floor(dmgToBird * multiplier)
-        addLog(`Keen Eye! Crit threshold lowered -- critical hit!`, 'crit')
-      }
+    // Natural 20 doubles damage
+    if (v === 20) {
+      dmgToBird = Math.floor(dmgToBird * 2)
     }
 
     // Boon: Executioner -- bonus damage when bird is below threshold
@@ -368,16 +361,6 @@ export default function JungleBattle({
       const reflectedHp = Math.max(0, getCatHp(cat.instanceId) - defenseResult.reflectDamage)
       updateCatHpLocal(cat.instanceId, reflectedHp)
       setDamageTakenThisBattle(prev => prev + defenseResult.reflectDamage)
-    }
-
-    // Ability: heal
-    if (abilityResult.healAmount > 0 && abilityResult.healTargetId) {
-      const healTarget = abilityResult.healTargetId
-      const currentHp = getCatHp(healTarget)
-      const maxHp = getCatMaxHp(healTarget)
-      if (currentHp > 0) {
-        updateCatHpLocal(healTarget, Math.min(maxHp, currentHp + abilityResult.healAmount))
-      }
     }
 
     // Boon: Lifesteal
@@ -432,21 +415,6 @@ export default function JungleBattle({
       [cat.instanceId]: Math.max(0, (prev[cat.instanceId] ?? ABILITY_COOLDOWN) - 1),
     }))
 
-    // Ability: speed -- player goes again
-    if (abilityResult.isSpeed) {
-      setAttackingId(null)
-      return
-    }
-
-    // Ability: stun -- skip bird turn
-    if (abilityResult.isStun) {
-      addLog(`${bird.name} is stunned! Skips next turn!`, 'crit')
-      setAttackingId(null)
-      setTurnsElapsed(prev => prev + 1)
-      // Stay on player turn
-      return
-    }
-
     setAttackingId(null)
     setTurn('enemy')
   }
@@ -470,7 +438,8 @@ export default function JungleBattle({
     setAttackingId(catId)
 
     const debuff = atkDebuffs[catId]
-    const rawAtk = cat.currentAtk + boonEffects.totalAtkBoost
+    const equipAtk = getEquipAtk(cat)
+    const rawAtk = cat.currentAtk + boonEffects.totalAtkBoost + equipAtk
     const effectiveAtk = debuff && debuff.turnsLeft > 0
       ? Math.floor(rawAtk * debuff.multiplier)
       : rawAtk
@@ -514,29 +483,14 @@ export default function JungleBattle({
     }
 
     if (dmg > 0) {
-      // Resolve bird defense
-      const defenseResult = resolveBirdDefense(bird, dmg, cat.name, random)
-      defenseResult.logMessages.forEach(msg => addLog(msg.text, msg.type))
+      // Active abilities always hit (bypass bird defense) — matches BattleArena behavior
+      const newBirdHp = Math.max(0, birdHp - dmg)
+      setBirdHp(newBirdHp)
+      setShaking(true)
+      setParticleActive(true)
+      setTimeout(() => { setShaking(false); setParticleActive(false) }, 400)
 
-      if (defenseResult.dodged) {
-        addLog(`${bird.name} dodges the ability!`, 'info')
-      } else {
-        const finalDmg = defenseResult.actualDamage
-        const newBirdHp = Math.max(0, birdHp - finalDmg)
-        setBirdHp(newBirdHp)
-        setShaking(true)
-        setParticleActive(true)
-        setTimeout(() => { setShaking(false); setParticleActive(false) }, 400)
-
-        // Handle reflect
-        if (defenseResult.reflectDamage > 0) {
-          const reflectedHp = Math.max(0, getCatHp(catId) - defenseResult.reflectDamage)
-          updateCatHpLocal(catId, reflectedHp)
-          setDamageTakenThisBattle(prev => prev + defenseResult.reflectDamage)
-        }
-
-        if (newBirdHp <= 0) { handleBirdDefeated(); return }
-      }
+      if (newBirdHp <= 0) { handleBirdDefeated(); return }
     }
 
     // Reset cooldown
@@ -976,8 +930,10 @@ export default function JungleBattle({
               imageUrl: cat.imageUrl,
               isElite: cat.isElite,
               eliteTier: cat.eliteTier,
+              ascension: cat.ascension,
+              equipment: cat.equipment,
               instanceId: cat.instanceId,
-              level: 1,
+              level: cat.level,
               xp: 0,
               currentHp: getCatHp(cat.instanceId),
               maxHp: getCatMaxHp(cat.instanceId),
@@ -1177,8 +1133,10 @@ export default function JungleBattle({
               imageUrl: cat.imageUrl,
               isElite: cat.isElite,
               eliteTier: cat.eliteTier,
+              ascension: cat.ascension,
+              equipment: cat.equipment,
               instanceId: cat.instanceId,
-              level: 1,
+              level: cat.level,
               xp: 0,
               currentHp: getCatHp(cat.instanceId),
               maxHp: getCatMaxHp(cat.instanceId),

@@ -671,6 +671,19 @@ export default function JungleRunView() {
                     <div className="w-24 h-24 mx-auto bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl">🐱</div>
                   )}
                   <div className="text-xs font-bold text-slate-300 truncate">{cat.name}</div>
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    <span className="text-[10px] text-slate-500">Lv.{cat.level}</span>
+                    {cat.isElite && (
+                      <span className="text-[9px] font-black text-amber-400">
+                        {(cat.eliteTier ?? 0) >= 2 ? 'PRISM' : 'ELITE'}
+                      </span>
+                    )}
+                    {(cat.ascension ?? 0) > 0 && (
+                      <span className="text-amber-400 text-[10px]">
+                        {'★'.repeat(cat.ascension!)}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 h-2 bg-slate-900 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${cat.knockedOut ? 'bg-red-700' : 'bg-emerald-500'}`}

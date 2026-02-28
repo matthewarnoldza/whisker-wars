@@ -45,6 +45,9 @@ export interface JungleSquadCat {
   ability: OwnedCat['ability']
   isElite?: boolean
   eliteTier?: number
+  level: number
+  ascension?: number
+  equipment?: { weapon?: string; accessory?: string; stone?: string }
   baseMaxHp: number
   baseAtk: number
   currentHp: number
@@ -151,6 +154,9 @@ export function snapshotCatForJungle(cat: OwnedCat): JungleSquadCat {
     ability: cat.ability,
     isElite: cat.isElite,
     eliteTier: cat.eliteTier,
+    level: cat.level,
+    ascension: cat.ascension,
+    equipment: cat.equipment,
     baseMaxHp: cat.maxHp,
     baseAtk: cat.currentAttack,
     currentHp: cat.currentHp,

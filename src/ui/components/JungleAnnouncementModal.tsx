@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface JungleAnnouncementModalProps {
@@ -49,7 +50,7 @@ const FEATURES = [
 ]
 
 export default function JungleAnnouncementModal({ onExplore, onDismiss }: JungleAnnouncementModalProps) {
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -147,6 +148,7 @@ export default function JungleAnnouncementModal({ onExplore, onDismiss }: Jungle
           </motion.div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

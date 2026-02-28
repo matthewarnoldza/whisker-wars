@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { JungleRunScore, JungleRunState } from '../../game/jungleRun'
 import { getBoonById } from '../../game/boons'
@@ -36,7 +37,7 @@ export default function JungleDefeatModal({ score, runState, stageReached, onClo
     { label: 'Flawless Stages', value: score.flawlessStageScore },
   ]
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -233,6 +234,7 @@ export default function JungleDefeatModal({ score, runState, stageReached, onClo
           </motion.div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

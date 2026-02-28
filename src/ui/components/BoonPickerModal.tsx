@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BoonOffering, ActiveBoon, BoonRarity } from '../../game/boons'
 
@@ -42,7 +43,7 @@ export default function BoonPickerModal({ offering, activeBoons, onSelect }: Boo
     setTimeout(() => onSelect(boonId), 600)
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -171,6 +172,7 @@ export default function BoonPickerModal({ offering, activeBoons, onSelect }: Boo
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

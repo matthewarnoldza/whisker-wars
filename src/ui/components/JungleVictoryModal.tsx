@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { JungleRunScore, JungleRunState } from '../../game/jungleRun'
 import { getBoonById } from '../../game/boons'
@@ -87,7 +88,7 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
     { label: 'Flawless Stages', value: score.flawlessStageScore },
   ]
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -279,6 +280,7 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
           </motion.div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

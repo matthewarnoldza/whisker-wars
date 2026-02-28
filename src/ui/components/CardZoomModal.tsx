@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { OwnedCat } from '../../game/store'
 import { useGame } from '../../game/store'
@@ -44,7 +45,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
   const rarityGradient = RARITY_GRADIENTS[cat.rarity] || RARITY_GRADIENTS['Common']
   const rarityGlow = RARITY_GLOWS[cat.rarity] || RARITY_GLOWS['Common']
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -420,6 +421,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

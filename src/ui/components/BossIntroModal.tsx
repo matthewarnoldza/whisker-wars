@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { ScaledBird } from '../../game/birds'
 
@@ -36,7 +37,7 @@ const BOSS_THEMES: Record<number, {
 export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIntroModalProps) {
   const theme = BOSS_THEMES[stageNumber] ?? BOSS_THEMES[10]
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -173,6 +174,7 @@ export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIn
           </motion.div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

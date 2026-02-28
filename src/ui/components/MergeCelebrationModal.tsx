@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { OwnedCat } from '../../game/store'
 import GameCard from './GameCard'
@@ -58,7 +59,7 @@ export default function MergeCelebrationModal({ eliteCat, isOpen, onClose }: Mer
   const isPrismatic = (eliteCat.eliteTier || 0) >= 2
   const title = isPrismatic ? 'PRISMATIC FORGED!' : 'ELITE FORGED!'
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -166,6 +167,7 @@ export default function MergeCelebrationModal({ eliteCat, isOpen, onClose }: Mer
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

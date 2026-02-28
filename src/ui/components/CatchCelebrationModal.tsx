@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Cat } from '../../game/data'
 import { useHolographicCard } from '../hooks/useHolographicCard'
@@ -65,7 +66,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
   const rarityGradient = RARITY_GRADIENTS[cat.rarity] || RARITY_GRADIENTS.Common
   const rarityGlow = RARITY_GLOWS[cat.rarity] || RARITY_GLOWS.Common
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -235,6 +236,7 @@ export default function CatchCelebrationModal({ cat, isOpen, onClose }: CatchCel
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

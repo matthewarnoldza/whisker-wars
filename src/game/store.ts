@@ -3,10 +3,17 @@ import { create } from 'zustand'
 import type { Cat, Dog, Bait, Rarity } from './data'
 import { BAITS, CATS, DOGS, rarityByTier } from './data'
 import { EQUIPMENT } from './items'
+import { database, ref as fbRef, get as fbGet } from '../utils/firebase'
 import { uploadLeaderboardStats } from '../utils/leaderboard'
+import { uploadJungleLeaderboardStats } from '../utils/jungleLeaderboard'
 import { uploadSave, type CloudSaveData } from '../utils/cloudSave'
 import { getEventPeriodKey, getFrenzyWeekKey, isConsecutiveWeek, type GameEvent } from './events'
-import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH, RELEASE_VALUES } from './constants'
+import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH, JUNGLE_SQUAD_SIZE, RELEASE_VALUES } from './constants'
+import type { JungleRunState, JungleStats, JungleStageResult } from './jungleRun'
+import { createJungleRun, createInitialJungleStats, calculateScore, applyHealingSpring, applyStageStartHealing, applyBoonStatsToSquad, isValidTransition } from './jungleRun'
+import { generateBoonOffering, applyBoon, calculateBoonEffects, createPRNG, generateSeed } from './boons'
+import { getNewlyUnlockedMedals } from './jungleRewards'
+import { isHealingSpring } from './birds'
 import {
   trackBaitPurchased,
   trackCoinsSpent,
@@ -19,7 +26,7 @@ import {
   trackProfileCreated,
 } from '../utils/analytics'
 
-export type View = 'bait' | 'collection' | 'inventory' | 'battle' | 'training' | 'stats' | 'guide' | 'privacy' | 'terms'
+export type View = 'bait' | 'collection' | 'inventory' | 'battle' | 'training' | 'jungle' | 'stats' | 'guide' | 'privacy' | 'terms'
 
 export interface OwnedCat extends Cat {
   instanceId: string // Unique identifier for this specific cat instance
@@ -94,6 +101,14 @@ interface GameState {
   frenzyStreak: number // consecutive Friday participations
   lastFrenzyParticipation: string // week key like "2026-w6"
   saveError: string | null
+  // Jungle of Talons
+  junglePassUnlocked: boolean
+  junglePassPending: boolean
+  jungleRun: JungleRunState | null
+  jungleStats: JungleStats
+  unlockedJungleMedals: string[]
+  jungleAnnouncementShown: boolean
+  jungleTabVisited: boolean
   setView: (v:View)=>void
   addCoins: (n:number)=>void
   buyBait: (baitId:string)=>void
@@ -141,6 +156,20 @@ interface GameState {
   restoreProfile: (name:string, cloudCode:string, data:Record<string, unknown>)=>string
   unlockAlienPhase: ()=>void
   clearSaveError: ()=>void
+  // Jungle of Talons actions
+  startJungleRun: ()=>void
+  selectJungleSquad: (catInstanceIds: [string, string, string])=>boolean
+  completeJungleStage: (result: JungleStageResult)=>void
+  selectJungleBoon: (boonId: string)=>void
+  advanceJungleStage: ()=>void
+  startJungleBattle: ()=>void
+  abandonJungleRun: ()=>void
+  finishJungleRun: ()=>void
+  unlockJunglePass: ()=>void
+  setJunglePassPending: (pending: boolean)=>void
+  checkPaymentStatus: ()=>Promise<boolean>
+  dismissJungleAnnouncement: ()=>void
+  markJungleTabVisited: ()=>void
 }
 
 const rand = (min:number, max:number)=> Math.floor(Math.random()*(max-min+1))+min
@@ -273,6 +302,14 @@ const getInitialGameState = () => ({
   frenzyStreak: 0,
   lastFrenzyParticipation: '',
   saveError: null as string | null,
+  // Jungle of Talons
+  junglePassUnlocked: false,
+  junglePassPending: false,
+  jungleRun: null as JungleRunState | null,
+  jungleStats: createInitialJungleStats(),
+  unlockedJungleMedals: [] as string[],
+  jungleAnnouncementShown: false,
+  jungleTabVisited: false,
 })
 
 export const useGame = create<GameState>((set, get) => ({
@@ -946,6 +983,12 @@ export const useGame = create<GameState>((set, get) => ({
       completedEventRewards: s.completedEventRewards,
       frenzyStreak: s.frenzyStreak,
       lastFrenzyParticipation: s.lastFrenzyParticipation,
+      junglePassUnlocked: s.junglePassUnlocked,
+      jungleRun: s.jungleRun,
+      jungleStats: s.jungleStats,
+      unlockedJungleMedals: s.unlockedJungleMedals,
+      jungleAnnouncementShown: s.jungleAnnouncementShown,
+      jungleTabVisited: s.jungleTabVisited,
     })
     const storageKey = `${PROFILE_KEY_PREFIX}${profilesData.activeProfileId}`
     try {
@@ -1011,6 +1054,12 @@ export const useGame = create<GameState>((set, get) => ({
           completedEventRewards: s.completedEventRewards,
           frenzyStreak: s.frenzyStreak,
           lastFrenzyParticipation: s.lastFrenzyParticipation,
+          junglePassUnlocked: s.junglePassUnlocked,
+          jungleRun: s.jungleRun,
+          jungleStats: s.jungleStats,
+          unlockedJungleMedals: s.unlockedJungleMedals,
+          jungleAnnouncementShown: s.jungleAnnouncementShown,
+          jungleTabVisited: s.jungleTabVisited,
         }
         uploadSave(cloudData, profile, profile.cloudCode).catch(() => {})
       }
@@ -1076,8 +1125,33 @@ export const useGame = create<GameState>((set, get) => ({
         completedEventRewards: d.completedEventRewards ?? [],
         frenzyStreak: d.frenzyStreak ?? 0,
         lastFrenzyParticipation: d.lastFrenzyParticipation ?? '',
+        junglePassUnlocked: d.junglePassUnlocked ?? false,
+        jungleRun: d.jungleRun ? {
+          ...d.jungleRun,
+          activeBoons: d.jungleRun.activeBoons ?? [],
+          stageResults: d.jungleRun.stageResults ?? [],
+          currentBoonOffering: d.jungleRun.currentBoonOffering ?? null,
+          consecutiveAllCommonOfferings: d.jungleRun.consecutiveAllCommonOfferings ?? 0,
+          prngCallCount: d.jungleRun.prngCallCount ?? 0,
+          bossRevived: d.jungleRun.bossRevived ?? {},
+          startedAt: d.jungleRun.startedAt ?? Date.now(),
+        } : null,
+        jungleStats: {
+          ...createInitialJungleStats(),
+          ...(d.jungleStats ?? {}),
+          bossesDefeated: d.jungleStats?.bossesDefeated ?? [],
+          maxFlawlessStages: d.jungleStats?.maxFlawlessStages ?? 0,
+        },
+        unlockedJungleMedals: d.unlockedJungleMedals ?? [],
+        jungleAnnouncementShown: d.jungleAnnouncementShown ?? false,
+        jungleTabVisited: d.jungleTabVisited ?? false,
       })
       stateLoaded = true
+
+      // If jungle pass not unlocked, check Firebase for a verified payment (handles cross-device/recovery)
+      if (!(d.junglePassUnlocked ?? false)) {
+        setTimeout(() => get().checkPaymentStatus(), 1000)
+      }
     } catch (error) {
       console.error('Failed to load save data:', error)
     }
@@ -1200,6 +1274,12 @@ export const useGame = create<GameState>((set, get) => ({
       completedEventRewards: d.completedEventRewards ?? [],
       frenzyStreak: d.frenzyStreak ?? 0,
       lastFrenzyParticipation: d.lastFrenzyParticipation ?? '',
+      junglePassUnlocked: d.junglePassUnlocked ?? false,
+      jungleRun: d.jungleRun ?? null,
+      jungleStats: d.jungleStats ?? createInitialJungleStats(),
+      unlockedJungleMedals: d.unlockedJungleMedals ?? [],
+      jungleAnnouncementShown: d.jungleAnnouncementShown ?? false,
+      jungleTabVisited: d.jungleTabVisited ?? false,
     })
     try {
       localStorage.setItem(`${PROFILE_KEY_PREFIX}${profileId}`, payload)
@@ -1218,6 +1298,316 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   clearSaveError: ()=> set({ saveError: null }),
+
+  // ===== Jungle of Talons Actions =====
+
+  startJungleRun: ()=> {
+    const s = get()
+    if (!s.junglePassUnlocked) return
+    if (s.jungleRun && s.jungleRun.phase !== 'idle') return
+    set({ jungleRun: {
+      runId: '', seed: 0, phase: 'squad_select' as const,
+      currentStage: 0, squad: [], activeBoons: [],
+      stageResults: [], currentBoonOffering: null,
+      consecutiveAllCommonOfferings: 0, prngCallCount: 0,
+      bossRevived: {}, startedAt: 0,
+    } as JungleRunState })
+  },
+
+  selectJungleSquad: (catInstanceIds)=> {
+    const s = get()
+    if (!s.junglePassUnlocked) return false
+
+    // Validate cats exist, are alive, and we have exactly 3
+    const cats = catInstanceIds.map(id => s.owned.find(c => c.instanceId === id)).filter(Boolean) as OwnedCat[]
+    if (cats.length !== JUNGLE_SQUAD_SIZE) return false
+    if (cats.some(c => c.currentHp <= 0)) return false
+
+    const seed = generateSeed(catInstanceIds.join('-') + Date.now())
+    const run = createJungleRun(cats, seed)
+
+    set({
+      jungleRun: run,
+      jungleStats: { ...s.jungleStats, totalRuns: s.jungleStats.totalRuns + 1 },
+    })
+    get().save()
+    return true
+  },
+
+  completeJungleStage: (result)=> {
+    set(s => {
+      if (!s.jungleRun) return s
+      const run = s.jungleRun
+
+      const newResults = [...run.stageResults, result]
+
+      // Update squad HP from result
+      const updatedSquad = run.squad.map(cat => {
+        const hp = result.catHpRemaining[cat.instanceId]
+        if (hp !== undefined) {
+          return {
+            ...cat,
+            currentHp: Math.max(0, hp),
+            knockedOut: hp <= 0 ? true : cat.knockedOut,
+          }
+        }
+        return cat
+      })
+
+      // Check if all cats are knocked out
+      const allDead = updatedSquad.every(c => c.knockedOut)
+      if (allDead) {
+        return {
+          jungleRun: {
+            ...run,
+            phase: 'run_failed' as const,
+            squad: updatedSquad,
+            stageResults: newResults,
+          },
+        }
+      }
+
+      // Stage 20 completed = run complete
+      if (run.currentStage >= 20) {
+        return {
+          jungleRun: {
+            ...run,
+            phase: 'run_complete' as const,
+            squad: updatedSquad,
+            stageResults: newResults,
+          },
+        }
+      }
+
+      // Generate boon offering
+      const prng = createPRNG(run.seed)
+      // Advance PRNG to correct position
+      for (let i = 0; i < run.prngCallCount; i++) prng()
+
+      let callCount = run.prngCallCount
+      const fortuneStacks = run.activeBoons.find(b => b.boonId === 'fortune-favor')?.stacks ?? 0
+      const offering = generateBoonOffering(
+        () => { callCount++; return prng() },
+        run.activeBoons,
+        run.consecutiveAllCommonOfferings,
+        fortuneStacks,
+      )
+
+      return {
+        jungleRun: {
+          ...run,
+          phase: 'boon_select' as const,
+          squad: updatedSquad,
+          stageResults: newResults,
+          currentBoonOffering: offering,
+          prngCallCount: callCount,
+        },
+      }
+    })
+    get().save()
+  },
+
+  selectJungleBoon: (boonId)=> {
+    set(s => {
+      if (!s.jungleRun || s.jungleRun.phase !== 'boon_select') return s
+      const run = s.jungleRun
+
+      const newActiveBoons = applyBoon(run.activeBoons, boonId)
+      const boonEffects = calculateBoonEffects(newActiveBoons)
+      const updatedSquad = applyBoonStatsToSquad(run.squad, boonEffects)
+
+      // Track pity timer
+      const allCommon = run.currentBoonOffering?.boons.every(b => b.rarity === 'Common') ?? false
+      const newPityCount = allCommon ? run.consecutiveAllCommonOfferings + 1 : 0
+
+      return {
+        jungleRun: {
+          ...run,
+          phase: 'stage_cleared' as const,
+          activeBoons: newActiveBoons,
+          squad: updatedSquad,
+          currentBoonOffering: null,
+          consecutiveAllCommonOfferings: newPityCount,
+        },
+      }
+    })
+    get().save()
+  },
+
+  advanceJungleStage: ()=> {
+    set(s => {
+      if (!s.jungleRun) return s
+      const run = s.jungleRun
+
+      // Safety check: if all cats are KO'd, end the run
+      if (run.squad.every(c => c.knockedOut)) {
+        return {
+          jungleRun: {
+            ...run,
+            phase: 'run_failed' as const,
+          },
+        }
+      }
+
+      // From healing_spring: stage already incremented, just move to pre_battle
+      if (run.phase === 'healing_spring') {
+        return {
+          jungleRun: {
+            ...run,
+            phase: 'pre_battle' as const,
+          },
+        }
+      }
+
+      if (run.phase !== 'stage_cleared') return s
+      const nextStage = run.currentStage + 1
+
+      // Apply Rally Cry healing at stage start
+      const boonEffects = calculateBoonEffects(run.activeBoons)
+      let updatedSquad = applyStageStartHealing(run.squad, boonEffects.stageStartHeal)
+
+      // Check for Healing Springs
+      if (isHealingSpring(run.currentStage)) {
+        updatedSquad = applyHealingSpring(updatedSquad)
+        return {
+          jungleRun: {
+            ...run,
+            phase: 'healing_spring' as const,
+            currentStage: nextStage,
+            squad: updatedSquad,
+          },
+        }
+      }
+
+      return {
+        jungleRun: {
+          ...run,
+          phase: 'pre_battle' as const,
+          currentStage: nextStage,
+          squad: updatedSquad,
+        },
+      }
+    })
+    get().save()
+  },
+
+  startJungleBattle: ()=> {
+    set(s => {
+      if (!s.jungleRun || s.jungleRun.phase !== 'pre_battle') return s
+      return { jungleRun: { ...s.jungleRun, phase: 'in_battle' as const } }
+    })
+  },
+
+  abandonJungleRun: ()=> {
+    set(s => {
+      if (!s.jungleRun) return s
+      // Transition to run_failed so the defeat recap modal shows
+      return {
+        jungleRun: {
+          ...s.jungleRun,
+          phase: 'run_failed' as const,
+        },
+      }
+    })
+    get().save()
+  },
+
+  finishJungleRun: ()=> {
+    set(s => {
+      if (!s.jungleRun) return s
+      const run = s.jungleRun
+      const score = calculateScore(run)
+      const runDuration = Date.now() - run.startedAt
+      const isComplete = run.phase === 'run_complete'
+
+      // Derive boss kills and flawless count from this run
+      const runBossStages = run.stageResults.map(r => r.stageNumber).filter(n => n === 10 || n === 20)
+      const runFlawlessCount = run.stageResults.filter(r => r.wasFlawless).length
+
+      const newStats: JungleStats = {
+        ...s.jungleStats,
+        totalRunsCompleted: isComplete ? s.jungleStats.totalRunsCompleted + 1 : s.jungleStats.totalRunsCompleted,
+        bestScore: Math.max(s.jungleStats.bestScore, score.totalScore),
+        bestStage: Math.max(s.jungleStats.bestStage, run.currentStage),
+        totalCoinsEarned: s.jungleStats.totalCoinsEarned + score.coinsEarned,
+        fastestCompletionMs: isComplete
+          ? (s.jungleStats.fastestCompletionMs === null
+            ? runDuration
+            : Math.min(s.jungleStats.fastestCompletionMs, runDuration))
+          : s.jungleStats.fastestCompletionMs,
+        bossesDefeated: [...new Set([...(s.jungleStats.bossesDefeated ?? []), ...runBossStages])],
+        maxFlawlessStages: Math.max(s.jungleStats.maxFlawlessStages ?? 0, runFlawlessCount),
+      }
+
+      // Check for newly unlocked medals
+      const newMedals = getNewlyUnlockedMedals(run, s.jungleStats, score.totalScore, s.unlockedJungleMedals)
+
+      return {
+        jungleRun: null,
+        jungleStats: newStats,
+        coins: s.coins + score.coinsEarned,
+        unlockedJungleMedals: [...s.unlockedJungleMedals, ...newMedals.map(m => m.id)],
+      }
+    })
+    get().save()
+
+    // Upload to jungle leaderboard
+    const state = get()
+    const profile = state.getCurrentProfile()
+    if (profile?.cloudCode) {
+      uploadJungleLeaderboardStats(profile.cloudCode, profile.name, {
+        bestScore: state.jungleStats.bestScore,
+        highestStage: state.jungleStats.bestStage,
+        totalClears: state.jungleStats.totalRunsCompleted,
+        fastestClearMs: state.jungleStats.fastestCompletionMs,
+      }).catch(() => {})
+    }
+  },
+
+  unlockJunglePass: ()=> {
+    set({ junglePassUnlocked: true, junglePassPending: false })
+    get().save()
+  },
+
+  setJunglePassPending: (pending)=> set({ junglePassPending: pending }),
+
+  checkPaymentStatus: async ()=> {
+    const s = get()
+    if (s.junglePassUnlocked) return true
+
+    const profilesData = getProfilesData()
+    const profileId = profilesData.activeProfileId
+    if (!profileId) return false
+
+    try {
+      const snapshot = await fbGet(fbRef(database, `payments/${profileId}`))
+      if (!snapshot.exists()) return false
+
+      const payments = snapshot.val() as Record<string, { product?: string; status?: string }>
+      const hasJunglePass = Object.values(payments).some(
+        (p) => p.product === 'jungle-pass' && p.status === 'succeeded'
+      )
+
+      if (hasJunglePass) {
+        set({ junglePassUnlocked: true, junglePassPending: false })
+        get().save()
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  },
+
+  dismissJungleAnnouncement: ()=> {
+    set({ jungleAnnouncementShown: true })
+    get().save()
+  },
+
+  markJungleTabVisited: ()=> {
+    set({ jungleTabVisited: true })
+    get().save()
+  },
 }))
 
 // Debounced auto-save: only saves when state actually changes

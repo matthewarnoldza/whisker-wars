@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { fetchLeaderboard, LEADERBOARD_CATEGORIES, type LeaderboardEntry, type LeaderboardCategory } from '../../utils/leaderboard'
+import { fetchJungleLeaderboard, JUNGLE_LEADERBOARD_CATEGORIES, type JungleLeaderboardEntry, type JungleLeaderboardCategory } from '../../utils/jungleLeaderboard'
+import JunglePurchaseModal from '../components/JunglePurchaseModal'
 
 export default function StatsView() {
   const stats = useGame(s => s.stats)
@@ -11,11 +13,18 @@ export default function StatsView() {
   const difficultyLevel = useGame(s => s.difficultyLevel)
   const achievements = useGame(s => s.achievements)
   const getCurrentProfile = useGame(s => s.getCurrentProfile)
+  const junglePassUnlocked = useGame(s => s.junglePassUnlocked)
 
-  const [tab, setTab] = useState<'stats' | 'leaderboard'>('stats')
+  const [tab, setTab] = useState<'stats' | 'leaderboard' | 'jungle'>('stats')
   const [leaderboardCategory, setLeaderboardCategory] = useState<LeaderboardCategory>('totalWins')
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+
+  // Jungle leaderboard state
+  const [jungleCategory, setJungleCategory] = useState<JungleLeaderboardCategory>('bestScore')
+  const [jungleData, setJungleData] = useState<JungleLeaderboardEntry[]>([])
+  const [jungleLoading, setJungleLoading] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
 
   const profile = getCurrentProfile()
 
@@ -26,11 +35,20 @@ export default function StatsView() {
     setLeaderboardLoading(false)
   }, [])
 
+  const loadJungleLeaderboard = useCallback(async (category: JungleLeaderboardCategory) => {
+    setJungleLoading(true)
+    const entries = await fetchJungleLeaderboard(category, 50)
+    setJungleData(entries)
+    setJungleLoading(false)
+  }, [])
+
   useEffect(() => {
     if (tab === 'leaderboard') {
       loadLeaderboard(leaderboardCategory)
+    } else if (tab === 'jungle') {
+      loadJungleLeaderboard(jungleCategory)
     }
-  }, [tab, leaderboardCategory, loadLeaderboard])
+  }, [tab, leaderboardCategory, jungleCategory, loadLeaderboard, loadJungleLeaderboard])
 
   // Calculate derived stats
   const winRate = useMemo(() => {
@@ -100,6 +118,15 @@ export default function StatsView() {
 
   const categoryMeta = LEADERBOARD_CATEGORIES.find(c => c.key === leaderboardCategory)!
 
+  // Jungle leaderboard rank & meta
+  const myJungleRank = useMemo(() => {
+    if (!profile?.cloudCode) return null
+    const idx = jungleData.findIndex(e => e.cloudCode === profile.cloudCode)
+    return idx >= 0 ? idx + 1 : null
+  }, [jungleData, profile])
+
+  const jungleCategoryMeta = JUNGLE_LEADERBOARD_CATEGORIES.find(c => c.key === jungleCategory)!
+
   const StatCard = ({ icon, label, value, subtitle }: { icon: string, label: string, value: string | number, subtitle?: string }) => (
     <motion.div
       className="premium-card p-4 rounded-xl"
@@ -154,10 +181,20 @@ export default function StatsView() {
           >
             Leaderboards
           </button>
+          <button
+            onClick={() => setTab('jungle')}
+            className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
+              tab === 'jungle'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            Jungle
+          </button>
         </div>
 
         <AnimatePresence mode="wait">
-          {tab === 'stats' ? (
+          {tab === 'stats' && (
             <motion.div
               key="stats"
               initial={{ opacity: 0, x: -20 }}
@@ -289,7 +326,8 @@ export default function StatsView() {
                 </div>
               </div>
             </motion.div>
-          ) : (
+          )}
+          {tab === 'leaderboard' && (
             <motion.div
               key="leaderboard"
               initial={{ opacity: 0, x: 20 }}
@@ -397,7 +435,143 @@ export default function StatsView() {
               </div>
             </motion.div>
           )}
+          {tab === 'jungle' && (
+            <motion.div
+              key="jungle"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              {/* Unlock CTA for non-purchasers */}
+              {!junglePassUnlocked && (
+                <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-600/40 to-teal-600/40 border border-emerald-500/40 mb-6">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="flex-1 text-center sm:text-left">
+                      <p className="text-white font-bold text-lg">Jungle of Talons Expansion</p>
+                      <p className="text-emerald-200/70 text-sm mt-1">
+                        20-stage roguelite challenge with boss battles, boons, and exclusive rewards. Can you top the leaderboard?
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowPurchaseModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black text-sm rounded-lg shadow-[0_0_16px_rgba(52,211,153,0.3)] hover:shadow-[0_0_24px_rgba(52,211,153,0.5)] transition-all whitespace-nowrap"
+                    >
+                      Unlock Expansion
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Cloud code notice */}
+              {!profile?.cloudCode && junglePassUnlocked && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-500/50 mb-6">
+                  <p className="text-white text-center font-semibold">
+                    <span className="text-lg mr-2">☁️</span>
+                    Enable Cloud Save in your profile to appear on the leaderboard!
+                  </p>
+                </div>
+              )}
+
+              {/* Category Selector */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {JUNGLE_LEADERBOARD_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.key}
+                    onClick={() => setJungleCategory(cat.key)}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-1.5 ${
+                      jungleCategory === cat.key
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>{cat.icon}</span> {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* My Rank */}
+              {myJungleRank !== null && (
+                <div className="premium-card p-4 rounded-xl mb-6 border border-emerald-500/30">
+                  <div className="flex items-center gap-3">
+                    <div className="text-4xl">🌿</div>
+                    <div>
+                      <p className="text-sm text-slate-400 uppercase tracking-wide font-semibold">Your Rank</p>
+                      <p className="text-3xl font-black text-emerald-400">#{myJungleRank}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Jungle Leaderboard Table */}
+              <div className="premium-card rounded-xl overflow-hidden">
+                <div className="p-4 bg-gradient-to-r from-emerald-900/80 to-teal-900/80 border-b border-emerald-700/50">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <span className="text-2xl">{jungleCategoryMeta.icon}</span> {jungleCategoryMeta.label} Leaderboard
+                  </h2>
+                </div>
+
+                {jungleLoading ? (
+                  <div className="p-12 text-center">
+                    <div className="inline-block w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-slate-400">Loading leaderboard...</p>
+                  </div>
+                ) : jungleData.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="text-4xl mb-3">🌿</p>
+                    <p className="text-slate-400 text-lg">No jungle warriors yet. Be the first!</p>
+                    <p className="text-slate-500 text-sm mt-1">Complete jungle runs with Cloud Save enabled</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-800">
+                    {jungleData.map((entry, idx) => {
+                      const rank = idx + 1
+                      const isMe = profile?.cloudCode === entry.cloudCode
+                      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+                      return (
+                        <motion.div
+                          key={entry.cloudCode}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.02 }}
+                          className={`flex items-center gap-4 px-4 py-3 ${
+                            isMe ? 'bg-emerald-500/10 border-l-4 border-emerald-500' : ''
+                          }`}
+                        >
+                          <div className="w-10 text-center">
+                            {medal ? (
+                              <span className="text-2xl">{medal}</span>
+                            ) : (
+                              <span className="text-lg font-bold text-slate-500">#{rank}</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-bold truncate ${isMe ? 'text-emerald-400' : 'text-white'}`}>
+                              {entry.name}
+                              {isMe && <span className="text-xs ml-2 text-emerald-400/70">(You)</span>}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-emerald-400">
+                              {jungleCategoryMeta.format(entry[jungleCategory === 'fastestClear' ? 'fastestClearMs' : jungleCategory])}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
+
+        {/* Purchase Modal */}
+        {showPurchaseModal && (
+          <JunglePurchaseModal
+            onClose={() => setShowPurchaseModal(false)}
+            onUnlocked={() => setShowPurchaseModal(false)}
+          />
+        )}
 
       </motion.div>
     </div>

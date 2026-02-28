@@ -5,7 +5,7 @@ declare global {
     gtag: (
       command: 'event' | 'config' | 'set',
       eventNameOrConfig: string,
-      params?: Record<string, string | number | boolean | undefined>
+      params?: Record<string, unknown>
     ) => void
   }
 }
@@ -243,4 +243,58 @@ export function trackTutorialCompleted(): void {
 
 export function trackTutorialSkipped(slideReached: number): void {
   trackEvent('tutorial_skipped', { slide_reached: slideReached })
+}
+
+// ── Jungle of Talons ──
+
+export function trackJungleRunStart(squadSize: number): void {
+  trackEvent('jungle_run_start', { squad_size: squadSize })
+}
+
+export function trackJungleStageComplete(stage: number, birdName: string): void {
+  trackEvent('jungle_stage_complete', { stage, bird_name: birdName })
+}
+
+export function trackJungleBoonSelected(boonName: string, boonRarity: string): void {
+  trackEvent('jungle_boon_selected', { boon_name: boonName, boon_rarity: boonRarity })
+}
+
+export function trackJungleBossDefeated(bossName: string, stage: number): void {
+  trackEvent('jungle_boss_defeated', { boss_name: bossName, stage })
+}
+
+export function trackJungleRunComplete(score: number, stagesCleared: number): void {
+  trackEvent('jungle_run_complete', { score, stages_cleared: stagesCleared })
+}
+
+export function trackJungleRunFailed(stage: number, score: number): void {
+  trackEvent('jungle_run_failed', { stage, score })
+}
+
+export function trackJunglePurchaseStart(): void {
+  trackEvent('jungle_purchase_start')
+  // GA4 recommended event — appears as Lead in reports
+  trackEvent('generate_lead', {
+    currency: 'ZAR',
+    value: 120,
+  })
+}
+
+export function trackJunglePurchaseComplete(transactionId: string): void {
+  trackEvent('jungle_purchase_complete', { transaction_id: transactionId })
+  // GA4 recommended ecommerce event — appears as Sale with R120 revenue
+  try {
+    if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+      window.gtag('event', 'purchase', {
+        transaction_id: transactionId,
+        value: 120,
+        currency: 'ZAR',
+        items: [{ item_id: 'jungle-pass', item_name: 'Jungle of Talons Expansion', price: 120, quantity: 1 }],
+      })
+    }
+  } catch { /* silently swallow */ }
+}
+
+export function trackJunglePurchaseFailed(reason: string): void {
+  trackEvent('jungle_purchase_failed', { reason })
 }

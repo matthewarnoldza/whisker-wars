@@ -1,18 +1,21 @@
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useGame } from '../game/store'
 import { BAITS } from '../game/data'
 import type { View } from '../game/store'
 import BaitingArea from './views/BaitingArea'
-import Collection from './views/Collection'
-import BattleArena from './views/BattleArena'
-import StatsView from './views/StatsView'
-import TrainingArena from './views/TrainingArena'
 import Inventory from './views/Inventory'
 import GuidePage from './views/GuidePage'
 import PrivacyPolicy from './views/PrivacyPolicy'
 import TermsOfService from './views/TermsOfService'
-import AnimatedBackground from './components/AnimatedBackground'
+
+const Collection = React.lazy(() => import('./views/Collection'))
+const BattleArena = React.lazy(() => import('./views/BattleArena'))
+const TrainingArena = React.lazy(() => import('./views/TrainingArena'))
+const StatsView = React.lazy(() => import('./views/StatsView'))
+const JungleRunView = React.lazy(() => import('./views/JungleRunView'))
+import JungleBackground from './components/JungleBackground'
+import JungleAnnouncementModal from './components/JungleAnnouncementModal'
 import Modal from './components/Modal'
 import ProfileSelector from './components/ProfileSelector'
 import WelcomeTutorialModal from './components/WelcomeTutorialModal'
@@ -35,6 +38,30 @@ import {
   trackTutorialCompleted,
   trackProfileSwitched,
 } from '../utils/analytics'
+
+const VALID_VIEWS: Set<string> = new Set<string>([
+  'bait', 'collection', 'inventory', 'battle', 'training', 'jungle', 'stats', 'guide', 'privacy', 'terms',
+])
+
+const NAV_TABS: { id: string; label: string; svgPath: string; gradient: string; isJungle?: true }[] = [
+  { id: 'bait', label: 'Bait', svgPath: 'M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z', gradient: 'from-blue-500 to-cyan-500' },
+  { id: 'collection', label: 'Collection', svgPath: 'M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z', gradient: 'from-purple-500 to-pink-500' },
+  { id: 'inventory', label: 'Inventory', svgPath: 'M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z', gradient: 'from-amber-500 to-orange-500' },
+  { id: 'battle', label: 'Battle', svgPath: 'M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z', gradient: 'from-red-500 to-orange-500' },
+  { id: 'training', label: 'Train', svgPath: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2z', gradient: 'from-amber-500 to-yellow-500' },
+  { id: 'jungle', label: 'Jungle', svgPath: 'M6.05 8.05a7 7 0 0 0 9.9 9.9l1.41 1.41a9 9 0 0 1-12.73-12.73l1.42 1.42zM17.95 15.95a7 7 0 0 0-9.9-9.9L6.64 4.64a9 9 0 0 1 12.73 12.73l-1.42-1.42zM12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z', gradient: '', isJungle: true },
+  { id: 'stats', label: 'Stats', svgPath: 'M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z', gradient: 'from-emerald-500 to-teal-500' },
+]
+
+function getVisibleTabs(junglePassUnlocked: boolean) {
+  const jungleEnabled = import.meta.env.VITE_FEATURE_JUNGLE !== 'false'
+  return NAV_TABS.filter(tab => !tab.isJungle || jungleEnabled).map(tab => ({
+    ...tab,
+    gradient: tab.isJungle
+      ? (junglePassUnlocked ? 'from-emerald-600 to-teal-600' : 'from-slate-600 to-slate-500')
+      : tab.gradient,
+  }))
+}
 
 function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const dailyStreak = useGame(s => s.dailyStreak)
@@ -261,25 +288,32 @@ export default function App() {
   const completeTutorial = useGame(s => s.completeTutorial)
   const saveError = useGame(s => s.saveError)
   const clearSaveError = useGame(s => s.clearSaveError)
+  const junglePassUnlocked = useGame(s => s.junglePassUnlocked)
+  const jungleAnnouncementShown = useGame(s => s.jungleAnnouncementShown)
+  const jungleTabVisited = useGame(s => s.jungleTabVisited)
+  const dogIndex = useGame(s => s.dogIndex)
+  const dismissJungleAnnouncement = useGame(s => s.dismissJungleAnnouncement)
 
   const [showDailyReward, setShowDailyReward] = useState(false)
   const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
-  const [showSplash, setShowSplash] = useState(isWeb())
-  const [splashCompleted, setSplashCompleted] = useState(!isWeb())
+  // Skip splash screen when returning from payment
+  const isPaymentReturn = new URLSearchParams(window.location.search).has('payment')
+  const [showSplash, setShowSplash] = useState(isWeb() && !isPaymentReturn)
+  const [splashCompleted, setSplashCompleted] = useState(!isWeb() || isPaymentReturn)
   const [isPublicPage, setIsPublicPage] = useState(false)
   const [showStorageWarning, setShowStorageWarning] = useState(false)
   const [showSaveCodeModal, setShowSaveCodeModal] = useState(false)
   const [showFrenzyPopup, setShowFrenzyPopup] = useState(false)
+  const [showJungleAnnouncement, setShowJungleAnnouncement] = useState(false)
 
   // Sync view with URL hash
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) // Remove the #
-      if (hash === 'privacy' || hash === 'terms' || hash === 'bait' || hash === 'collection' || hash === 'inventory' || hash === 'battle' || hash === 'training' || hash === 'stats' || hash === 'guide') {
+      if (VALID_VIEWS.has(hash)) {
         setView(hash as View)
-        // Check if viewing public pages (privacy/terms)
         setIsPublicPage(hash === 'privacy' || hash === 'terms')
       }
     }
@@ -292,8 +326,23 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setView])
 
+  // Handle payment return — Yoco strips hash fragments, so we use ?view= param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const viewParam = params.get('view')
+
+    if (viewParam && VALID_VIEWS.has(viewParam)) {
+      setView(viewParam as View)
+      window.location.hash = viewParam
+    }
+  }, [setView])
+
   // Update URL when view changes
   useEffect(() => {
+    // Skip if returning from payment — the payment return effect handles routing
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('view')) return
+
     const currentHash = window.location.hash.slice(1)
     if (currentHash !== view) {
       window.location.hash = view
@@ -325,6 +374,13 @@ export default function App() {
       load()
       setProfileLoaded(true)
 
+      // Unlock jungle pass after load() if returning from successful payment
+      const paymentParams = new URLSearchParams(window.location.search)
+      if (paymentParams.get('payment') === 'success' && paymentParams.get('view') === 'jungle') {
+        useGame.setState({ junglePassUnlocked: true, junglePassPending: false })
+        useGame.getState().save()
+      }
+
       // Check if this is a new profile (created within last 10 seconds)
       const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000
 
@@ -348,6 +404,12 @@ export default function App() {
           setTimeout(() => setShowFrenzyPopup(true), delay)
         }
       }
+
+      // Jungle of Talons announcement
+      const jungleState = useGame.getState()
+      if (!jungleState.jungleAnnouncementShown && jungleState.junglePassUnlocked === false && tutorialCompleted && jungleState.dogIndex >= 10) {
+        setTimeout(() => setShowJungleAnnouncement(true), 2000)
+      }
     }
   }, [splashCompleted])
 
@@ -366,22 +428,36 @@ export default function App() {
 
   return (
     <>
-      {/* Animated Background */}
-      <div className="animated-bg" />
+      {/* Background Layer */}
+      {view === 'jungle' && junglePassUnlocked ? (
+        <JungleBackground mode="fullscreen" intensity="low" />
+      ) : (
+        <div className="animated-bg" />
+      )}
 
       <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Premium Header with Background */}
-        <header className="sticky top-0 z-header backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50 shadow-premium overflow-hidden">
+        <header className={`sticky top-0 z-header backdrop-blur-xl border-b shadow-premium overflow-hidden ${
+          view === 'jungle' && junglePassUnlocked
+            ? 'bg-emerald-950/80 border-emerald-700/50'
+            : 'bg-slate-900/80 border-slate-700/50'
+        }`}>
           {/* Background Image with Overlay */}
           <div className="absolute inset-0 pointer-events-none">
-            <img
-              src="/images/header/WW header.png"
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover opacity-30"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
+            {view === 'jungle' && junglePassUnlocked ? (
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-emerald-900/80 to-emerald-950/90" />
+            ) : (
+              <>
+                <img
+                  src="/images/header/WW header.png"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover opacity-30"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
+              </>
+            )}
           </div>
 
           <div className="max-w-7xl mx-auto px-4 py-3 relative">
@@ -407,20 +483,18 @@ export default function App() {
 
                 {/* Navigation Tabs */}
                 <nav className="hidden lg:flex gap-2">
-                  {[
-                    { id: 'bait', label: 'Bait', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
-                    { id: 'collection', label: 'Collection', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
-                    { id: 'inventory', label: 'Inventory', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>, gradient: 'from-amber-500 to-orange-500' },
-                    { id: 'battle', label: 'Battle', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z"/></svg>, gradient: 'from-red-500 to-orange-500' },
-                    { id: 'training', label: 'Train', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/></svg>, gradient: 'from-amber-500 to-yellow-500' },
-                    { id: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>, gradient: 'from-emerald-500 to-teal-500' },
-                  ].map(tab => (
+                  {getVisibleTabs(junglePassUnlocked).map(tab => {
+                    const jungleLocked = tab.isJungle && !junglePassUnlocked
+                    const jungleNewDot = tab.isJungle && junglePassUnlocked && !jungleTabVisited
+                    return (
                     <motion.button
                       key={tab.id}
                       onClick={() => { if (soundEnabled) playSound('buttonClick'); trackTabNavigation(tab.id); setView(tab.id as any) }}
                       className={`relative px-4 py-2 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
                         ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
-                        : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200'
+                        : jungleLocked
+                          ? 'bg-slate-800/50 text-slate-500 border border-slate-700 opacity-75 hover:opacity-100 hover:border-slate-600'
+                          : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200'
                         }`}
                       whileHover={{ y: -1 }}
                       whileTap={{ scale: 0.98 }}
@@ -433,11 +507,16 @@ export default function App() {
                         />
                       )}
                       <span className="relative flex items-center gap-1.5">
-                        {tab.icon}
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d={tab.svgPath}/></svg>
                         <span className="hidden xl:inline">{tab.label}</span>
+                        {jungleLocked && <span className="text-[10px] opacity-70">&#x1F512;</span>}
                       </span>
+                      {jungleNewDot && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-slate-900 animate-pulse" />
+                      )}
                     </motion.button>
-                  ))}
+                    )
+                  })}
                 </nav>
               </div>
 
@@ -498,29 +577,32 @@ export default function App() {
 
             {/* Mobile Navigation */}
             <nav className="flex lg:hidden gap-2 mt-3 pt-3 border-t border-slate-700/50 overflow-x-auto scrollbar-hide">
-              {[
-                { id: 'bait', label: 'Bait', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.38.93 2.55 2.2 2.91-.15 2.22-.97 3.83-1.74 4.93-.92 1.32-1.66 1.92-1.66 1.92l-.02.02c-.35.33-.73.62-1.13.85-1.17.68-2.65 1.01-4.5 1.01h-.5v2h.5c2.11 0 3.98-.43 5.49-1.32.47-.27.91-.59 1.31-.94C10.07 18.28 11.58 20 13 20c.56 0 1.03-.29 1.35-.71.33-.44.46-1.01.38-1.56-.16-1.09-1.04-2.09-1.89-2.88-.5-.46-.97-.85-1.31-1.19.48-.81.98-1.8 1.35-2.93.32-.98.55-2.04.64-3.22C13.93 7.55 15 6.38 15 5c0-1.66-1.34-3-3-3z"/></svg>, gradient: 'from-blue-500 to-cyan-500' },
-                { id: 'collection', label: 'Collection', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>, gradient: 'from-purple-500 to-pink-500' },
-                { id: 'inventory', label: 'Items', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>, gradient: 'from-amber-500 to-orange-500' },
-                { id: 'battle', label: 'Battle', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M6.92 5H5l9 9 1-.94m4.96 6.06l-.84.84a.996.996 0 01-1.41 0l-3.12-3.12-2.68 2.66-1.41-1.41 1.42-1.42L3 7.75V3h4.75l8.92 8.92 1.42-1.42 1.41 1.41-2.66 2.68 3.12 3.12c.36.36.36.94 0 1.35z"/></svg>, gradient: 'from-red-500 to-orange-500' },
-                { id: 'training', label: 'Train', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/></svg>, gradient: 'from-amber-500 to-yellow-500' },
-                { id: 'stats', label: 'Stats', icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>, gradient: 'from-emerald-500 to-teal-500' },
-              ].map(tab => (
+              {getVisibleTabs(junglePassUnlocked).map(tab => {
+                const jungleLocked = tab.isJungle && !junglePassUnlocked
+                const jungleNewDot = tab.isJungle && junglePassUnlocked && !jungleTabVisited
+                const mobileLabel = tab.id === 'inventory' ? 'Items' : tab.label
+                return (
                 <motion.button
                   key={tab.id}
                   onClick={() => { if (soundEnabled) playSound('buttonClick'); trackTabNavigation(tab.id); setView(tab.id as any) }}
                   className={`relative flex-1 px-3 py-3 rounded-lg font-bold text-xs tracking-wide transition-all overflow-hidden ${view === tab.id
                     ? 'bg-gradient-to-r ' + tab.gradient + ' text-white shadow-lg'
-                    : 'bg-slate-800/50 text-slate-400 border border-slate-700'
+                    : jungleLocked
+                      ? 'bg-slate-800/50 text-slate-500 border border-slate-700 opacity-75'
+                      : 'bg-slate-800/50 text-slate-400 border border-slate-700'
                     }`}
                   whileTap={{ scale: 0.98 }}
                 >
                   <span className="relative flex flex-col items-center justify-center gap-1">
-                    {tab.icon}
-                    <span className="text-[10px]">{tab.label}</span>
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d={tab.svgPath}/></svg>
+                    <span className="text-[10px]">{mobileLabel}{jungleLocked ? ' \u{1F512}' : ''}</span>
                   </span>
+                  {jungleNewDot && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  )}
                 </motion.button>
-              ))}
+                )
+              })}
             </nav>
           </div>
         </header>
@@ -537,15 +619,18 @@ export default function App() {
             variants={pageVariants}
           >
             <ErrorBoundary>
-              {view === 'bait' && <BaitingArea baits={BAITS} />}
-              {view === 'collection' && <Collection />}
-              {view === 'inventory' && <Inventory />}
-              {view === 'battle' && <BattleArena />}
-              {view === 'training' && <TrainingArena />}
-              {view === 'stats' && <StatsView />}
-              {view === 'guide' && <GuidePage />}
-              {view === 'privacy' && <PrivacyPolicy />}
-              {view === 'terms' && <TermsOfService />}
+              <Suspense fallback={<div className="text-center py-12 text-slate-500">Loading...</div>}>
+                {view === 'bait' && <BaitingArea baits={BAITS} />}
+                {view === 'collection' && <Collection />}
+                {view === 'inventory' && <Inventory />}
+                {view === 'battle' && <BattleArena />}
+                {view === 'training' && <TrainingArena />}
+                {view === 'jungle' && <JungleRunView />}
+                {view === 'stats' && <StatsView />}
+                {view === 'guide' && <GuidePage />}
+                {view === 'privacy' && <PrivacyPolicy />}
+                {view === 'terms' && <TermsOfService />}
+              </Suspense>
             </ErrorBoundary>
           </motion.div>
         </main>
@@ -610,6 +695,14 @@ export default function App() {
           completeTutorial()
         }}
       />
+
+      {/* Jungle of Talons Announcement Modal */}
+      {showJungleAnnouncement && (
+        <JungleAnnouncementModal
+          onExplore={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement(); setView('jungle') }}
+          onDismiss={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement() }}
+        />
+      )}
 
       {/* Splash Screen for Web Only */}
       <AnimatePresence>

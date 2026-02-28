@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParticleSystem from './ParticleSystem'
 import { useState, useEffect } from 'react'
@@ -56,7 +57,7 @@ export default function StoneCelebrationModal({ stone, isOpen, onClose }: StoneC
 
   const colors = ELEMENT_COLORS[stone.element] || ELEMENT_COLORS.FIRE
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -151,6 +152,7 @@ export default function StoneCelebrationModal({ stone, isOpen, onClose }: StoneC
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

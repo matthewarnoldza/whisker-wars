@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParticleSystem from './ParticleSystem'
 import { useGame } from '../../game/store'
@@ -67,7 +68,7 @@ export default function FrenzyFridayModal({ isOpen, onClose, onFightNow }: Frenz
     }
   }, [isOpen])
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -214,6 +215,7 @@ export default function FrenzyFridayModal({ isOpen, onClose, onFightNow }: Frenz
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

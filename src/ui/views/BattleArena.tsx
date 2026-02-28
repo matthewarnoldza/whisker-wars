@@ -340,10 +340,15 @@ export default function BattleArena() {
       return
     }
 
-    // Apply Crystal Guardian armor reduction
+    // Natural 20 doubles damage
     let finalDmg = baseDmg
+    if (v === 20) {
+      finalDmg = Math.floor(finalDmg * 2)
+    }
+
+    // Apply Crystal Guardian armor reduction
     if (dogArmor > 0) {
-      finalDmg = Math.max(1, baseDmg - dogArmor)
+      finalDmg = Math.max(1, finalDmg - dogArmor)
       if (finalDmg < baseDmg) {
         addLog(`🛡️ ${dog.name}'s crystal armor absorbs ${baseDmg - finalDmg} damage!`, 'info')
       }

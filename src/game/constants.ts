@@ -87,7 +87,7 @@ export const FRENZY_STREAK_LENGTH = FRENZY_STREAK_REWARDS.length
 export const JUNGLE_TOTAL_STAGES = 20
 export const JUNGLE_BOSS_STAGES = [10, 20] as const
 export const JUNGLE_HEALING_SPRING_STAGES = [7, 14] as const
-export const JUNGLE_HEALING_SPRING_FRACTION = 0.15
+export const JUNGLE_HEALING_SPRING_FRACTION = 0.25
 
 export const JUNGLE_STAGE_SCALING_FACTOR = 0.065
 export const JUNGLE_SQUAD_SIZE = 3
@@ -111,8 +111,8 @@ export const JUNGLE_BOON_SCORE_RARE = 30
 export const JUNGLE_BOON_SCORE_LEGENDARY = 100
 
 // Coins
-export const JUNGLE_COINS_PER_STAGE = 20
-export const JUNGLE_COINS_PER_BOSS_KILL = 100
+export const JUNGLE_COINS_PER_STAGE = 50
+export const JUNGLE_COINS_PER_BOSS_KILL = 250
 
 // Bird ability cooldown
 export const BIRD_ABILITY_COOLDOWN = 3

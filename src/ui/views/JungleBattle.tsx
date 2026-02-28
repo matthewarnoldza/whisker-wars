@@ -683,6 +683,7 @@ export default function JungleBattle({
       updateCatHpLocal(targetCat.instanceId, newCatHp)
       setDamageTakenThisBattle(prev => prev + actualDmg)
 
+      if (soundEnabled) playSound('birdAttack')
       if (strike > 0) {
         addLog(`Enraged strike ${strike + 1} hits ${targetCat.name} for ${actualDmg}!`, 'damage')
       } else {

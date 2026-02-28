@@ -397,11 +397,9 @@ export default function JungleRunView() {
   const startJungleBattle = useGame(s => s.startJungleBattle)
 
   const [showBossIntro, setShowBossIntro] = useState(false)
-  const [healingCountdown, setHealingCountdown] = useState(false)
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [purchaseModalInitialState, setPurchaseModalInitialState] = useState<'preview' | 'confirming'>('preview')
-  const healingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Mark tab as visited
   useEffect(() => {
@@ -432,24 +430,6 @@ export default function JungleRunView() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Auto-advance from healing spring after 2 seconds
-  useEffect(() => {
-    if (jungleRun?.phase !== 'healing_spring') {
-      setHealingCountdown(false)
-      healingTimerRef.current = null
-      return
-    }
-    setHealingCountdown(true)
-    healingTimerRef.current = setTimeout(() => {
-      advanceJungleStage()
-      setHealingCountdown(false)
-      healingTimerRef.current = null
-    }, 2000)
-    return () => {
-      if (healingTimerRef.current) clearTimeout(healingTimerRef.current)
-    }
-  }, [jungleRun?.phase, advanceJungleStage])
 
   // Auto-advance from stage_cleared
   useEffect(() => {
@@ -508,17 +488,22 @@ export default function JungleRunView() {
     return calculateBoonEffects(jungleRun.activeBoons ?? [])
   }, [jungleRun?.activeBoons])
 
+  const usedBirdIds = useMemo(() => {
+    if (!jungleRun) return new Set<string>()
+    return new Set(jungleRun.stageResults.map(r => r.birdId))
+  }, [jungleRun?.stageResults])
+
   const currentBird = useMemo(() => {
     if (!jungleRun || jungleRun.phase !== 'in_battle') return null
-    const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random())
+    const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random(), usedBirdIds)
     return scaleBirdForStage(bird, jungleRun.currentStage)
-  }, [jungleRun?.phase, jungleRun?.currentStage])
+  }, [jungleRun?.phase, jungleRun?.currentStage, usedBirdIds])
 
   const bossBird = useMemo(() => {
     if (!jungleRun || !isBossStage(jungleRun.currentStage)) return null
-    const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random())
+    const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random(), usedBirdIds)
     return scaleBirdForStage(bird, jungleRun.currentStage)
-  }, [jungleRun?.currentStage])
+  }, [jungleRun?.currentStage, usedBirdIds])
 
   const phase = jungleRun?.phase ?? 'idle'
 
@@ -765,8 +750,7 @@ export default function JungleRunView() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-8 space-y-5 cursor-pointer"
-            onClick={() => { if (healingTimerRef.current) { clearTimeout(healingTimerRef.current); healingTimerRef.current = null } advanceJungleStage(); setHealingCountdown(false) }}
+            className="text-center py-8 space-y-5"
           >
             <motion.div
               animate={{ y: [0, -10, 0], scale: [1, 1.03, 1] }}
@@ -779,7 +763,7 @@ export default function JungleRunView() {
               />
             </motion.div>
             <h2 className="text-3xl font-black text-cyan-400">Healing Spring</h2>
-            <p className="text-slate-300 text-base">Your squad rests and recovers 15% max HP</p>
+            <p className="text-slate-300 text-base">Your cats have drunk from the magical pool and recovered 25% HP!</p>
             <div className="flex justify-center gap-6 mt-4">
               {jungleRun.squad.map(cat => (
                 <div key={cat.instanceId} className="text-center">
@@ -790,12 +774,17 @@ export default function JungleRunView() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
                   >
-                    {cat.knockedOut ? 'KO' : `+${Math.floor(cat.maxHp * 0.15)} HP`}
+                    {cat.knockedOut ? 'KO' : `+${Math.floor(cat.maxHp * 0.25)} HP`}
                   </motion.div>
                 </div>
               ))}
             </div>
-            <p className="text-slate-400 text-sm mt-4 animate-pulse">Tap to continue</p>
+            <button
+              onClick={() => advanceJungleStage()}
+              className="mt-6 px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black text-lg rounded-xl transition-colors"
+            >
+              CONTINUE RUN
+            </button>
           </motion.div>
         )}
 

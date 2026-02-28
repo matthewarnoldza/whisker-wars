@@ -12,6 +12,7 @@ const SFX_FILES: Record<string, string> = {
   equipDrop: '/sounds/loot.mp3',
   buttonClick: '/sounds/click.mp3',
   catCaught: '/sounds/catch.mp3',
+  birdAttack: '/sounds/bird.mp3',
 }
 
 // Preload all SFX by fetching them once (warms the browser HTTP cache)

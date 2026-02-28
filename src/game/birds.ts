@@ -94,6 +94,19 @@ export const BIRDS: Bird[] = [
     imageUrl: '/images/birds/Toxic Toucan.png',
   },
 
+  {
+    id: 'bramble-wren', name: 'Bramble Wren',
+    baseHP: 40, baseATK: 7, DEF: 1, speed: 4,
+    tier: 1, stageRange: [1, 4], isBoss: false,
+    ability: {
+      name: 'Thorn Barrage',
+      description: 'Flings thorns at all cats for 25% ATK',
+      effect: 'aoe',
+      params: { aoeFraction: 0.25, cooldown: 3 },
+    },
+    imageUrl: '/images/birds/Bramble Wren.png',
+  },
+
   // Tier 2 (stages 4-9)
   {
     id: 'mirror-macaw', name: 'Mirror Macaw',
@@ -118,6 +131,19 @@ export const BIRDS: Bird[] = [
       params: { debuffMultiplier: 0.7, debuffTurns: 2, cooldown: 4 },
     },
     imageUrl: '/images/birds/Screech Owl.png',
+  },
+
+  {
+    id: 'dusk-parakeet', name: 'Dusk Parakeet',
+    baseHP: 55, baseATK: 6, DEF: 1, speed: 3,
+    tier: 2, stageRange: [3, 8], isBoss: false,
+    ability: {
+      name: 'Twilight Haze',
+      description: 'Dims the light, reducing all cat ATK by 25% for 2 turns',
+      effect: 'debuff_atk',
+      params: { debuffMultiplier: 0.75, debuffTurns: 2, cooldown: 4 },
+    },
+    imageUrl: '/images/birds/Dusk Parakeet.png',
   },
 
   // Tier 3 (stages 7-14)
@@ -146,6 +172,19 @@ export const BIRDS: Bird[] = [
     imageUrl: '/images/birds/Phoenix Finch.png',
   },
 
+  {
+    id: 'coral-ibis', name: 'Coral Ibis',
+    baseHP: 70, baseATK: 9, DEF: 2, speed: 3,
+    tier: 3, stageRange: [9, 15], isBoss: false,
+    ability: {
+      name: 'Tide Surge',
+      description: 'Channels healing waters, recovering 10% max HP',
+      effect: 'heal_self',
+      params: { healFraction: 0.10, cooldown: 4 },
+    },
+    imageUrl: '/images/birds/Coral Ibis.png',
+  },
+
   // Tier 4 (stages 11-19)
   {
     id: 'shadow-swift', name: 'Shadow Swift',
@@ -172,6 +211,19 @@ export const BIRDS: Bird[] = [
     imageUrl: '/images/birds/Inferno Hawk.png',
   },
 
+  {
+    id: 'obsidian-harrier', name: 'Obsidian Harrier',
+    baseHP: 100, baseATK: 13, DEF: 3, speed: 5,
+    tier: 4, stageRange: [13, 19], isBoss: false,
+    ability: {
+      name: 'Darkstrike',
+      description: 'Burns target with dark flame for 5 dmg/turn for 2 turns',
+      effect: 'dot_burn',
+      params: { dotDamage: 5, dotTurns: 2, cooldown: 3 },
+    },
+    imageUrl: '/images/birds/Obsidian Harrier.png',
+  },
+
   // Tier 5 (stages 16-20)
   {
     id: 'storm-condor', name: 'Storm Condor',
@@ -184,6 +236,19 @@ export const BIRDS: Bird[] = [
       params: { aoeFraction: 0.4, cooldown: 3 },
     },
     imageUrl: '/images/birds/Storm Condor.png',
+  },
+
+  {
+    id: 'gale-cassowary', name: 'Gale Cassowary',
+    baseHP: 120, baseATK: 14, DEF: 4, speed: 3,
+    tier: 5, stageRange: [15, 20], isBoss: false,
+    ability: {
+      name: 'Hurricane Wing',
+      description: 'AoE 35% ATK damage to all cats',
+      effect: 'aoe',
+      params: { aoeFraction: 0.35, cooldown: 3 },
+    },
+    imageUrl: '/images/birds/Gale Cassowary.png',
   },
 
   // ===== BOSSES =====
@@ -237,15 +302,26 @@ export function getBossForStage(stage: number): Bird | null {
   return null
 }
 
-export function selectBirdForStage(stage: number, random: () => number): Bird {
+export function selectBirdForStage(
+  stage: number,
+  random: () => number,
+  usedBirdIds?: Set<string>,
+): Bird {
   // Boss stages always return the boss
   const boss = getBossForStage(stage)
   if (boss) return boss
 
   // Filter eligible birds by stage range (exclude bosses)
-  const eligible = BIRDS.filter(
+  let eligible = BIRDS.filter(
     b => !b.isBoss && stage >= b.stageRange[0] && stage <= b.stageRange[1]
   )
+
+  // Exclude already-used birds (prefer unique encounters per run)
+  if (usedBirdIds && usedBirdIds.size > 0) {
+    const fresh = eligible.filter(b => !usedBirdIds.has(b.id))
+    if (fresh.length > 0) eligible = fresh
+    // If all eligible birds are used, allow repeats as fallback
+  }
 
   // Fallback to highest-tier non-boss bird if nothing matches
   if (eligible.length === 0) {

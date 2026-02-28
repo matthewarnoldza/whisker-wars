@@ -92,3 +92,30 @@ export function checkRewardUnlocked(
       return (stats.maxFlawlessStages ?? 0) >= reward.requirement.value
   }
 }
+
+/**
+ * Compute which medals would be newly unlocked by the current run.
+ * Projects stats forward (since finishJungleRun hasn't run yet when the modal shows).
+ */
+export function getNewlyUnlockedMedals(
+  runState: { phase: string; currentStage: number; stageResults: { stageNumber: number; wasFlawless: boolean }[] },
+  currentStats: { totalRunsCompleted: number; bestStage: number; bestScore: number; bossesDefeated: number[]; maxFlawlessStages: number },
+  runScore: number,
+  alreadyUnlocked: string[],
+): JungleReward[] {
+  const isComplete = runState.phase === 'run_complete'
+  const stageNumbers = runState.stageResults.map(r => r.stageNumber)
+  const flawlessCount = runState.stageResults.filter(r => r.wasFlawless).length
+
+  // Project what stats will be after finishJungleRun
+  const projectedStats = {
+    totalRunsCompleted: isComplete ? currentStats.totalRunsCompleted + 1 : currentStats.totalRunsCompleted,
+    bestStage: Math.max(currentStats.bestStage, runState.currentStage),
+    bestScore: Math.max(currentStats.bestScore, runScore),
+    bossesDefeated: [...new Set([...currentStats.bossesDefeated, ...stageNumbers.filter(s => s === 10 || s === 20)])],
+    maxFlawlessStages: Math.max(currentStats.maxFlawlessStages, flawlessCount),
+  }
+
+  const alreadySet = new Set(alreadyUnlocked)
+  return JUNGLE_REWARDS.filter(r => !alreadySet.has(r.id) && checkRewardUnlocked(r, projectedStats))
+}

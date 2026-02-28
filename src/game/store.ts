@@ -12,6 +12,7 @@ import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH, JUNGLE_SQUAD_SIZE, RELEASE
 import type { JungleRunState, JungleStats, JungleStageResult } from './jungleRun'
 import { createJungleRun, createInitialJungleStats, calculateScore, applyHealingSpring, applyStageStartHealing, applyBoonStatsToSquad, isValidTransition } from './jungleRun'
 import { generateBoonOffering, applyBoon, calculateBoonEffects, createPRNG, generateSeed } from './boons'
+import { getNewlyUnlockedMedals } from './jungleRewards'
 import { isHealingSpring } from './birds'
 import {
   trackBaitPurchased,
@@ -105,6 +106,7 @@ interface GameState {
   junglePassPending: boolean
   jungleRun: JungleRunState | null
   jungleStats: JungleStats
+  unlockedJungleMedals: string[]
   jungleAnnouncementShown: boolean
   jungleTabVisited: boolean
   setView: (v:View)=>void
@@ -305,6 +307,7 @@ const getInitialGameState = () => ({
   junglePassPending: false,
   jungleRun: null as JungleRunState | null,
   jungleStats: createInitialJungleStats(),
+  unlockedJungleMedals: [] as string[],
   jungleAnnouncementShown: false,
   jungleTabVisited: false,
 })
@@ -983,6 +986,7 @@ export const useGame = create<GameState>((set, get) => ({
       junglePassUnlocked: s.junglePassUnlocked,
       jungleRun: s.jungleRun,
       jungleStats: s.jungleStats,
+      unlockedJungleMedals: s.unlockedJungleMedals,
       jungleAnnouncementShown: s.jungleAnnouncementShown,
       jungleTabVisited: s.jungleTabVisited,
     })
@@ -1131,7 +1135,13 @@ export const useGame = create<GameState>((set, get) => ({
           bossRevived: d.jungleRun.bossRevived ?? {},
           startedAt: d.jungleRun.startedAt ?? Date.now(),
         } : null,
-        jungleStats: d.jungleStats ?? createInitialJungleStats(),
+        jungleStats: {
+          ...createInitialJungleStats(),
+          ...(d.jungleStats ?? {}),
+          bossesDefeated: d.jungleStats?.bossesDefeated ?? [],
+          maxFlawlessStages: d.jungleStats?.maxFlawlessStages ?? 0,
+        },
+        unlockedJungleMedals: d.unlockedJungleMedals ?? [],
         jungleAnnouncementShown: d.jungleAnnouncementShown ?? false,
         jungleTabVisited: d.jungleTabVisited ?? false,
       })
@@ -1508,6 +1518,10 @@ export const useGame = create<GameState>((set, get) => ({
       const runDuration = Date.now() - run.startedAt
       const isComplete = run.phase === 'run_complete'
 
+      // Derive boss kills and flawless count from this run
+      const runBossStages = run.stageResults.map(r => r.stageNumber).filter(n => n === 10 || n === 20)
+      const runFlawlessCount = run.stageResults.filter(r => r.wasFlawless).length
+
       const newStats: JungleStats = {
         ...s.jungleStats,
         totalRunsCompleted: isComplete ? s.jungleStats.totalRunsCompleted + 1 : s.jungleStats.totalRunsCompleted,
@@ -1519,12 +1533,18 @@ export const useGame = create<GameState>((set, get) => ({
             ? runDuration
             : Math.min(s.jungleStats.fastestCompletionMs, runDuration))
           : s.jungleStats.fastestCompletionMs,
+        bossesDefeated: [...new Set([...(s.jungleStats.bossesDefeated ?? []), ...runBossStages])],
+        maxFlawlessStages: Math.max(s.jungleStats.maxFlawlessStages ?? 0, runFlawlessCount),
       }
+
+      // Check for newly unlocked medals
+      const newMedals = getNewlyUnlockedMedals(run, s.jungleStats, score.totalScore, s.unlockedJungleMedals)
 
       return {
         jungleRun: null,
         jungleStats: newStats,
         coins: s.coins + score.coinsEarned,
+        unlockedJungleMedals: [...s.unlockedJungleMedals, ...newMedals.map(m => m.id)],
       }
     })
     get().save()

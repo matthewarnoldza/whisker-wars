@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { JungleRunScore, JungleRunState } from '../../game/jungleRun'
 import { getBoonById } from '../../game/boons'
+import { useGame } from '../../game/store'
+import { getNewlyUnlockedMedals } from '../../game/jungleRewards'
 
 interface JungleDefeatModalProps {
   score: JungleRunScore
@@ -10,6 +13,14 @@ interface JungleDefeatModalProps {
 }
 
 export default function JungleDefeatModal({ score, runState, stageReached, onClose }: JungleDefeatModalProps) {
+  const jungleStats = useGame(s => s.jungleStats)
+  const unlockedJungleMedals = useGame(s => s.unlockedJungleMedals)
+
+  const newMedals = useMemo(() =>
+    getNewlyUnlockedMedals(runState, jungleStats, score.totalScore, unlockedJungleMedals),
+    [runState, jungleStats, score.totalScore, unlockedJungleMedals],
+  )
+
   const elapsedMs = runState.stageResults.length > 0
     ? runState.stageResults[runState.stageResults.length - 1].endTime - runState.startedAt
     : 0
@@ -99,6 +110,40 @@ export default function JungleDefeatModal({ score, runState, stageReached, onClo
               </div>
             </div>
           </motion.div>
+
+          {/* Medals Earned */}
+          {newMedals.length > 0 && (
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              className="bg-amber-900/20 border border-amber-500/15 rounded-2xl p-5 mb-4"
+            >
+              <div className="text-xs text-amber-300/50 uppercase tracking-wider font-bold mb-3">Medals Earned</div>
+              <div className="space-y-3">
+                {newMedals.map((medal, i) => (
+                  <motion.div
+                    key={medal.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.65 + i * 0.15, type: 'spring', damping: 15 }}
+                    className="flex items-center gap-3"
+                  >
+                    <img
+                      src={medal.imageUrl}
+                      alt={medal.name}
+                      className="w-10 h-10 rounded-lg border border-amber-500/25 shadow-[0_0_8px_rgba(251,191,36,0.15)]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-black text-amber-300/80">{medal.name}</div>
+                      <div className="text-xs text-slate-400">{medal.description}</div>
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-400/40 uppercase shrink-0">{medal.type}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Coins + Time */}
           <motion.div

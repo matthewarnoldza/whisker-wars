@@ -29,6 +29,7 @@ export interface CloudSaveData {
   junglePassUnlocked?: boolean
   jungleRun?: JungleRunState | null
   jungleStats?: JungleStats
+  unlockedJungleMedals?: string[]
   jungleAnnouncementShown?: boolean
   jungleTabVisited?: boolean
 }

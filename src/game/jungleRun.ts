@@ -100,6 +100,8 @@ export interface JungleStats {
   bestStage: number
   totalCoinsEarned: number
   fastestCompletionMs: number | null
+  bossesDefeated: number[]
+  maxFlawlessStages: number
 }
 
 // ===== Phase Transitions =====
@@ -130,6 +132,8 @@ export function createInitialJungleStats(): JungleStats {
     bestStage: 0,
     totalCoinsEarned: 0,
     fastestCompletionMs: null,
+    bossesDefeated: [],
+    maxFlawlessStages: 0,
   }
 }
 

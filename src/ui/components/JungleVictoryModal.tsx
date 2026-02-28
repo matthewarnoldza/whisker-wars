@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { JungleRunScore, JungleRunState } from '../../game/jungleRun'
 import { getBoonById } from '../../game/boons'
+import { useGame } from '../../game/store'
+import { getNewlyUnlockedMedals } from '../../game/jungleRewards'
 
 interface JungleVictoryModalProps {
   score: JungleRunScore
@@ -58,6 +60,14 @@ function ConfettiParticles() {
 }
 
 export default function JungleVictoryModal({ score, runState, onClose }: JungleVictoryModalProps) {
+  const jungleStats = useGame(s => s.jungleStats)
+  const unlockedJungleMedals = useGame(s => s.unlockedJungleMedals)
+
+  const newMedals = useMemo(() =>
+    getNewlyUnlockedMedals(runState, jungleStats, score.totalScore, unlockedJungleMedals),
+    [runState, jungleStats, score.totalScore, unlockedJungleMedals],
+  )
+
   const elapsedMs = runState.stageResults.length > 0
     ? runState.stageResults[runState.stageResults.length - 1].endTime - runState.startedAt
     : 0
@@ -140,6 +150,40 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
               </div>
             </div>
           </motion.div>
+
+          {/* Medals Earned */}
+          {newMedals.length > 0 && (
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="bg-amber-900/30 border border-amber-500/30 rounded-2xl p-5 mb-4"
+            >
+              <div className="text-xs text-amber-300/70 uppercase tracking-wider font-bold mb-3">Medals Earned</div>
+              <div className="space-y-3">
+                {newMedals.map((medal, i) => (
+                  <motion.div
+                    key={medal.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.6 + i * 0.15, type: 'spring', damping: 15 }}
+                    className="flex items-center gap-3"
+                  >
+                    <img
+                      src={medal.imageUrl}
+                      alt={medal.name}
+                      className="w-10 h-10 rounded-lg border border-amber-500/40 shadow-[0_0_12px_rgba(251,191,36,0.3)]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-black text-amber-300">{medal.name}</div>
+                      <div className="text-xs text-emerald-200/50">{medal.description}</div>
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-400/60 uppercase shrink-0">{medal.type}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Coins Earned + Time */}
           <motion.div

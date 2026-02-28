@@ -330,17 +330,10 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
-    const paymentStatus = params.get('payment')
 
     if (viewParam && VALID_VIEWS.has(viewParam)) {
       setView(viewParam as View)
       window.location.hash = viewParam
-    }
-
-    // Trust successful payment redirect — unlock jungle pass immediately
-    if (paymentStatus === 'success' && viewParam === 'jungle') {
-      useGame.setState({ junglePassUnlocked: true, junglePassPending: false })
-      useGame.getState().save()
     }
   }, [setView])
 
@@ -380,6 +373,13 @@ export default function App() {
     } else {
       load()
       setProfileLoaded(true)
+
+      // Unlock jungle pass after load() if returning from successful payment
+      const paymentParams = new URLSearchParams(window.location.search)
+      if (paymentParams.get('payment') === 'success' && paymentParams.get('view') === 'jungle') {
+        useGame.setState({ junglePassUnlocked: true, junglePassPending: false })
+        useGame.getState().save()
+      }
 
       // Check if this is a new profile (created within last 10 seconds)
       const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000

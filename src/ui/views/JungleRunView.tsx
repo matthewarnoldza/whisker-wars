@@ -28,7 +28,6 @@ import {
 import { getPaymentReturnStatus, clearPaymentParams } from '../../utils/yocoCheckout'
 import {
   fetchJungleLeaderboard,
-  JUNGLE_LEADERBOARD_CATEGORIES,
   type JungleLeaderboardEntry,
 } from '../../utils/jungleLeaderboard'
 

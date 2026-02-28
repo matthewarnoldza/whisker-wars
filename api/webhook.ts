@@ -4,8 +4,8 @@ import { initializeApp } from 'firebase/app'
 import { getDatabase, ref, set, get } from 'firebase/database'
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyAU_1x_T-LjIULYS4rT345kEBSIARMN1RI',
-  databaseURL: 'https://whiskerwars-default-rtdb.europe-west1.firebasedatabase.app',
+  apiKey: process.env.FIREBASE_API_KEY,
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
 }
 
 let firebaseApp: ReturnType<typeof initializeApp> | null = null

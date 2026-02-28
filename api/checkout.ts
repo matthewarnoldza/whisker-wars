@@ -11,10 +11,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const secretKey = process.env.YOCO_SECRET_KEY
-  const appUrl = process.env.APP_URL || 'http://localhost:5173'
+  const appUrl = process.env.APP_URL
 
-  if (!secretKey) {
-    console.error('YOCO_SECRET_KEY not configured')
+  if (!secretKey || !appUrl) {
+    console.error('Missing required env vars:', { hasSecret: !!secretKey, hasAppUrl: !!appUrl })
     return res.status(500).json({ error: 'Payment service not configured' })
   }
 

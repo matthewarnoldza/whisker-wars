@@ -65,10 +65,6 @@ export const JUNGLE_REWARDS: JungleReward[] = [
   },
 ]
 
-export function getRewardById(id: string): JungleReward | undefined {
-  return JUNGLE_REWARDS.find(r => r.id === id)
-}
-
 export function checkRewardUnlocked(
   reward: JungleReward,
   stats: {

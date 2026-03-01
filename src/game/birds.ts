@@ -3,7 +3,13 @@ import {
   JUNGLE_BOSS_STAGES,
   JUNGLE_HEALING_SPRING_STAGES,
   JUNGLE_STAGE_SCALING_FACTOR,
+  JUNGLE_SQUAD_POWER_BASELINE,
+  JUNGLE_SQUAD_SCALE_FACTOR,
+  JUNGLE_SQUAD_HP_SCALE_CAP,
+  JUNGLE_SQUAD_ATK_SCALE_RATIO,
+  JUNGLE_SQUAD_ATK_SCALE_CAP,
 } from './constants'
+import type { JungleSquadCat } from './jungleRun'
 
 // ===== Bird Ability Types =====
 
@@ -338,4 +344,35 @@ export function isHealingSpring(stage: number): boolean {
 
 export function isBossStage(stage: number): boolean {
   return (JUNGLE_BOSS_STAGES as readonly number[]).includes(stage)
+}
+
+// ===== Squad-Based Scaling =====
+
+export interface SquadScaling {
+  hpMultiplier: number
+  atkMultiplier: number
+}
+
+export function calculateSquadPower(squad: JungleSquadCat[]): number {
+  return squad.reduce((sum, cat) => sum + cat.baseAtk + cat.baseMaxHp, 0)
+}
+
+export function calculateSquadScaling(squadPower: number): SquadScaling {
+  const excessPower = Math.max(0, squadPower - JUNGLE_SQUAD_POWER_BASELINE)
+  const rawScale = Math.sqrt(excessPower) * JUNGLE_SQUAD_SCALE_FACTOR
+  return {
+    hpMultiplier: Math.min(JUNGLE_SQUAD_HP_SCALE_CAP, 1 + rawScale),
+    atkMultiplier: Math.min(JUNGLE_SQUAD_ATK_SCALE_CAP, 1 + rawScale * JUNGLE_SQUAD_ATK_SCALE_RATIO),
+  }
+}
+
+export function scaleBirdForStageWithSquad(bird: Bird, stage: number, squadPower: number): ScaledBird {
+  const stageMultiplier = getStageMultiplier(stage)
+  const squadScaling = calculateSquadScaling(squadPower)
+  return {
+    ...bird,
+    scaledHP: Math.floor(bird.baseHP * stageMultiplier * squadScaling.hpMultiplier),
+    scaledATK: Math.floor(bird.baseATK * stageMultiplier * squadScaling.atkMultiplier),
+    stage,
+  }
 }

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
 import type { OwnedCat } from '../../game/store'
 import type { JungleStageResult } from '../../game/jungleRun'
-import { isBossStage, isHealingSpring, selectBirdForStage, scaleBirdForStage } from '../../game/birds'
+import { isBossStage, isHealingSpring, selectBirdForStage, scaleBirdForStageWithSquad, calculateSquadPower } from '../../game/birds'
 import { getBoonById, calculateBoonEffects, createPRNG } from '../../game/boons'
 import { calculateScore } from '../../game/jungleRun'
 import { JUNGLE_TOTAL_STAGES, JUNGLE_SQUAD_SIZE } from '../../game/constants'
@@ -14,6 +14,7 @@ import JungleVictoryModal from '../components/JungleVictoryModal'
 import JungleDefeatModal from '../components/JungleDefeatModal'
 import JunglePurchaseModal from '../components/JunglePurchaseModal'
 import Modal from '../components/Modal'
+import { RARITY_BORDERS, RARITY_TEXT_COLORS, RARITY_BOX_SHADOWS } from '../constants/rarity'
 import {
   trackJungleRunStart,
   trackJungleStageComplete,
@@ -322,18 +323,38 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
                     ? 'border-emerald-500 bg-emerald-900/30 shadow-neon'
                     : isDisabled
                       ? 'border-slate-800 bg-slate-900/50 opacity-50 cursor-not-allowed'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-emerald-700'
+                      : `${RARITY_BORDERS[cat.rarity] || 'border-slate-700'} bg-slate-800/50 hover:border-emerald-700 ${RARITY_BOX_SHADOWS[cat.rarity] || ''}`
               }`}
               whileHover={!isDisabled && !isKO ? { scale: 1.02 } : {}}
               whileTap={!isDisabled && !isKO ? { scale: 0.98 } : {}}
             >
+              {/* Elite / Ascension badges */}
+              {(cat.isElite || (cat.ascension && cat.ascension > 0)) && (
+                <div className="absolute top-1 left-1 flex items-center gap-0.5 z-10">
+                  {cat.isElite && (
+                    <span className={`text-[10px] leading-none ${cat.eliteTier === 2 ? 'text-cyan-300' : 'text-amber-400'}`}>
+                      {cat.eliteTier === 2 ? '◆' : '★'}
+                    </span>
+                  )}
+                  {cat.ascension && cat.ascension > 0 && (
+                    <span className="text-[10px] leading-none text-amber-300">
+                      {'★'.repeat(cat.ascension)}
+                    </span>
+                  )}
+                </div>
+              )}
               {cat.imageUrl ? (
                 <img src={cat.imageUrl} alt={cat.name} className="w-full aspect-square object-contain rounded-lg mb-1" />
               ) : (
                 <div className="w-full aspect-square bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl">🐱</div>
               )}
-              <div className="text-xs font-bold text-slate-200 truncate">{cat.name}</div>
+              <div className={`text-xs font-bold truncate ${RARITY_TEXT_COLORS[cat.rarity] || 'text-slate-200'}`}>{cat.name}</div>
               <div className="text-[10px] text-slate-500">Lv.{cat.level}</div>
+              <div className="text-[10px] text-slate-500">
+                <span className="text-red-400/70">HP {cat.currentHp}</span>
+                <span className="mx-0.5">·</span>
+                <span className="text-amber-400/70">ATK {cat.currentAttack}</span>
+              </div>
               {isKO && <div className="absolute inset-0 flex items-center justify-center"><span className="text-xs font-bold text-red-400 bg-slate-900/80 px-2 py-1 rounded">KO</span></div>}
               {isSelected && (
                 <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
@@ -487,17 +508,22 @@ export default function JungleRunView() {
     return new Set(jungleRun.stageResults.map(r => r.birdId))
   }, [jungleRun?.stageResults])
 
+  const squadPower = useMemo(() => {
+    if (!jungleRun) return 0
+    return calculateSquadPower(jungleRun.squad)
+  }, [jungleRun?.squad])
+
   const currentBird = useMemo(() => {
     if (!jungleRun || jungleRun.phase !== 'in_battle') return null
     const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random(), usedBirdIds)
-    return scaleBirdForStage(bird, jungleRun.currentStage)
-  }, [jungleRun?.phase, jungleRun?.currentStage, usedBirdIds])
+    return scaleBirdForStageWithSquad(bird, jungleRun.currentStage, squadPower)
+  }, [jungleRun?.phase, jungleRun?.currentStage, usedBirdIds, squadPower])
 
   const bossBird = useMemo(() => {
     if (!jungleRun || !isBossStage(jungleRun.currentStage)) return null
     const bird = selectBirdForStage(jungleRun.currentStage, () => Math.random(), usedBirdIds)
-    return scaleBirdForStage(bird, jungleRun.currentStage)
-  }, [jungleRun?.currentStage, usedBirdIds])
+    return scaleBirdForStageWithSquad(bird, jungleRun.currentStage, squadPower)
+  }, [jungleRun?.currentStage, usedBirdIds, squadPower])
 
   const phase = jungleRun?.phase ?? 'idle'
 

@@ -55,6 +55,7 @@ export async function uploadJungleLeaderboardStats(
       updatedAt: Date.now(),
     }
     await set(ref(database, `jungleLeaderboard/${cloudCode}`), entry)
+    console.log('Jungle leaderboard uploaded for:', cloudCode)
   } catch (error) {
     console.error('Failed to upload jungle leaderboard stats:', error)
   }

@@ -92,6 +92,13 @@ export const JUNGLE_HEALING_SPRING_FRACTION = 0.25
 export const JUNGLE_STAGE_SCALING_FACTOR = 0.065
 export const JUNGLE_SQUAD_SIZE = 3
 
+// Squad-based enemy scaling
+export const JUNGLE_SQUAD_POWER_BASELINE = 120
+export const JUNGLE_SQUAD_SCALE_FACTOR = 0.08
+export const JUNGLE_SQUAD_HP_SCALE_CAP = 3.0
+export const JUNGLE_SQUAD_ATK_SCALE_RATIO = 0.35
+export const JUNGLE_SQUAD_ATK_SCALE_CAP = 1.5
+
 // Boon selection weights
 export const BOON_WEIGHT_COMMON = 0.675
 export const BOON_WEIGHT_RARE = 0.30

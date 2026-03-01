@@ -511,6 +511,7 @@ export const useGame = create<GameState>((set, get) => ({
       owned: s.owned.map(cat => ({ ...cat, currentHp: cat.maxHp }))
     }))
     trackCoinsSpent('heal_all', HEAL_COST)
+    get().save() // Persist immediately — don't rely on 3s debounce
     return true
   },
 
@@ -1027,6 +1028,16 @@ export const useGame = create<GameState>((set, get) => ({
           collectionCompletion: uniqueCats,
           totalMerges: s.stats.totalMerges,
         })
+
+        // Jungle leaderboard sync (same throttle window)
+        if (s.jungleStats.totalRuns > 0) {
+          uploadJungleLeaderboardStats(profile.cloudCode, profile.name, {
+            bestScore: s.jungleStats.bestScore,
+            highestStage: s.jungleStats.bestStage,
+            totalClears: s.jungleStats.totalRunsCompleted,
+            fastestClearMs: s.jungleStats.fastestCompletionMs,
+          })
+        }
       }
 
       // Throttled cloud save sync (at most once per 2 minutes)
@@ -1560,7 +1571,7 @@ export const useGame = create<GameState>((set, get) => ({
         highestStage: state.jungleStats.bestStage,
         totalClears: state.jungleStats.totalRunsCompleted,
         fastestClearMs: state.jungleStats.fastestCompletionMs,
-      }).catch(() => {})
+      })
     }
   },
 

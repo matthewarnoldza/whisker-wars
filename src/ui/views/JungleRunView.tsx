@@ -243,6 +243,13 @@ function LeaderboardPreview() {
 
 function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onConfirm: (ids: [string, string, string]) => void; onCancel: () => void }) {
   const [selected, setSelected] = useState<string[]>([])
+  const PAGE_SIZE = 9
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  const sortedOwned = useMemo(() =>
+    [...owned].sort((a, b) => b.currentAttack - a.currentAttack),
+    [owned]
+  )
 
   const toggleCat = (instanceId: string) => {
     setSelected(prev => {
@@ -306,8 +313,8 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
       )}
 
       {/* Cat grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[40vh] overflow-y-auto custom-scrollbar p-1">
-        {owned.map(cat => {
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 p-1">
+        {sortedOwned.slice(0, visibleCount).map(cat => {
           const isSelected = selected.includes(cat.instanceId)
           const isDisabled = !isSelected && selected.length >= JUNGLE_SQUAD_SIZE
           const isKO = cat.currentHp <= 0
@@ -365,6 +372,18 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
           )
         })}
       </div>
+
+      {/* Show more */}
+      {visibleCount < sortedOwned.length && (
+        <div className="text-center">
+          <button
+            onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+            className="text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+          >
+            Show More ({sortedOwned.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3 justify-center pt-2">

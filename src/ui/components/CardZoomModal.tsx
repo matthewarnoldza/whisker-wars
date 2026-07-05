@@ -5,9 +5,13 @@ import { useGame } from '../../game/store'
 import { MAX_ASCENSION, ASCENSION_COSTS, MAX_CAT_LEVEL } from '../../game/constants'
 import { EQUIPMENT, STONES, getEquipmentBonuses } from '../../game/items'
 import { useHolographicCard } from '../hooks/useHolographicCard'
+import { useDialog } from '../hooks/useDialog'
+import { useMotionSafe } from '../hooks/useMotionSafe'
 import { isWeb } from '../../utils/platform'
 import { useState } from 'react'
-import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
+import { RARITY_GRADIENTS, RARITY_GLOWS, rarityStyle } from '../constants/rarity'
+import { RarityBadge, cx } from './ui'
+import { CloseIcon, SwordIcon, GemIcon, StarIcon, SparkleIcon } from '../icons'
 
 interface CardZoomModalProps {
   cat: OwnedCat | null
@@ -16,6 +20,9 @@ interface CardZoomModalProps {
 }
 
 export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalProps) {
+  const reduce = useMotionSafe()
+  const colorblindMode = useGame(s => s.colorblindMode)
+  const { dialogRef, dialogProps } = useDialog<HTMLDivElement>({ isOpen, onClose })
   const ascendCat = useGame(s => s.ascendCat)
   const coins = useGame(s => s.coins)
   const inventory = useGame(s => s.inventory)
@@ -45,6 +52,8 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
 
   const rarityGradient = RARITY_GRADIENTS[cat.rarity] || RARITY_GRADIENTS['Common']
   const rarityGlow = RARITY_GLOWS[cat.rarity] || RARITY_GLOWS['Common']
+  const holoOn = holographic.isSupported && !reduce
+  const rarityBorder = rarityStyle(cat.rarity).border
 
   return createPortal(
     <AnimatePresence>
@@ -54,24 +63,26 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-zoom flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto"
+          className="fixed inset-0 z-zoom flex items-center justify-center p-4 bg-surface-deep/85 backdrop-blur-md overflow-y-auto"
         >
           <motion.div
-            initial={{ scale: 0.8, opacity: 0, y: 50 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.8, opacity: 0, y: 50 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            ref={dialogRef}
+            {...dialogProps}
+            aria-labelledby="cardzoom-title"
+            initial={reduce ? { opacity: 0 } : { scale: 0.8, opacity: 0, y: 50 }}
+            animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { scale: 0.8, opacity: 0, y: 50 }}
+            transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[700px] my-auto"
+            className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[700px] my-auto focus:outline-none"
           >
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute -top-2 -right-2 z-10 w-10 h-10 rounded-full bg-slate-800 hover:bg-red-600 border border-slate-600 hover:border-red-500 text-slate-400 hover:text-white flex items-center justify-center shadow-2xl hover:scale-110 transition-all"
+              aria-label="Close"
+              className="absolute -top-2 -right-2 z-10 w-10 h-10 rounded-full bg-surface-raised hover:bg-danger-600 border border-surface-border hover:border-danger-500 text-ink-subtle hover:text-white flex items-center justify-center shadow-2xl hover:scale-110 transition-all focus:outline-none focus-visible:shadow-focus-gold"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <CloseIcon size={20} />
             </button>
 
             <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
@@ -80,7 +91,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 ref={holographic.cardRef}
                 className="relative w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px] mx-auto lg:mx-0 lg:flex-shrink-0 holographic-card"
                 style={holographic.style}
-                {...(holographic.isSupported ? (isWeb() ? {
+                {...(holoOn ? (isWeb() ? {
                   onMouseMove: holographic.handlers.onMouseMove,
                   onMouseLeave: holographic.handlers.onMouseLeave
                 } : {
@@ -92,14 +103,14 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             {/* Card Container */}
             <div className={`relative w-full rounded-2xl overflow-hidden shadow-2xl ${rarityGlow}`}>
               {/* Holographic Overlay */}
-              {holographic.isSupported && (
+              {holoOn && (
                 <div
                   className={`holographic-overlay full ${holographic.isActive ? 'active' : ''} rarity-${cat.rarity.toLowerCase()}`}
                 />
               )}
 
               {/* Mythical Particles */}
-              {cat.rarity === 'Mythical' && !isElite && (
+              {cat.rarity === "Mythical" && !isElite && !reduce && (
                 <>
                   <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full mythical-particle" style={{ animationDelay: '0s', zIndex: 30 }} />
                   <div className="absolute top-8 right-6 w-2 h-2 bg-red-400 rounded-full mythical-particle" style={{ animationDelay: '0.5s', zIndex: 30 }} />
@@ -109,7 +120,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               )}
 
               {/* Elite Particles */}
-              {isElite && (
+              {isElite && !reduce && (
                 <>
                   <div className="absolute top-6 left-6 w-2 h-2 bg-yellow-400 rounded-full elite-particle" style={{ animationDelay: '0s', zIndex: 30 }} />
                   <div className="absolute top-10 right-8 w-2 h-2 bg-cyan-400 rounded-full elite-particle" style={{ animationDelay: '0.4s', zIndex: 30 }} />
@@ -133,7 +144,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950" />
+                  <div className="w-full h-full bg-gradient-to-br from-surface-raised via-surface to-surface-deep" />
                 )}
 
                 {/* Gradient Overlays - only at top and bottom */}
@@ -145,8 +156,8 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               <div className="absolute inset-0 z-10 flex flex-col justify-between p-4 sm:p-6">
                 {/* Top: Name Only */}
                 <div className="flex flex-col items-center gap-1.5">
-                  <div className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-gradient-to-br ${rarityGradient} shadow-2xl border-2 sm:border-3 border-white/40 backdrop-blur-sm`}>
-                    <h3 className="font-black text-xl sm:text-2xl tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase">
+                  <div className={`px-4 sm:px-6 py-2 sm:py-3 rounded-btn bg-gradient-to-br ${rarityGradient} shadow-2xl border-2 sm:border-[3px] border-white/40 backdrop-blur-sm`}>
+                    <h3 id="cardzoom-title" className="font-heading font-black text-xl sm:text-2xl tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase">
                       {cat.name}
                     </h3>
                   </div>
@@ -157,10 +168,10 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                   {/* Ability */}
                   {cat.ability && (
                     <div className="px-3 sm:px-4 py-2 sm:py-3 bg-black/80 backdrop-blur-md rounded-xl border-2 sm:border-3 border-white/30 shadow-2xl">
-                      <div className="text-sm sm:text-base font-black text-gold-400 tracking-wider uppercase text-center leading-tight drop-shadow-lg mb-1">
+                      <div className="font-heading text-sm sm:text-base font-black text-accent-300 tracking-wider uppercase text-center leading-tight drop-shadow-lg mb-1">
                         {cat.ability.name}
                       </div>
-                      <p className="text-xs sm:text-sm text-slate-200 leading-snug text-center">
+                      <p className="text-xs sm:text-sm text-ink-muted leading-snug text-center">
                         {cat.ability.description}
                       </p>
                     </div>
@@ -172,34 +183,32 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             {/* Elite Badge - Below Card */}
             {isElite && (
               <div className="mt-3 sm:mt-4 flex items-center justify-center">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-400 border-2 border-white/50 shadow-xl elite-badge-shimmer">
-                  <span className="text-base text-slate-900">&#x2726;</span>
-                  <span className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-btn bg-gradient-to-r from-yellow-500 to-amber-400 border-2 border-white/50 shadow-xl elite-badge-shimmer">
+                  <SparkleIcon className="text-surface-deep" size={16} />
+                  <span className="font-heading text-sm font-black text-surface-deep uppercase tracking-wider">
                     {eliteTier >= 2 ? 'PRISMATIC' : 'ELITE'}
                   </span>
-                  <span className="text-base text-slate-900">&#x2726;</span>
+                  <SparkleIcon className="text-surface-deep" size={16} />
                 </div>
               </div>
             )}
 
-            {/* Breed and Rarity - Below Card */}
+            {/* Breed and Rarity - Below Card (rarity carries a colorblind-safe shape) */}
             <div className={`${isElite ? 'mt-2' : 'mt-3 sm:mt-4'} flex items-center justify-center gap-2`}>
-              <div className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gradient-to-br from-slate-800/90 to-slate-900/95 backdrop-blur-md border-2 border-slate-600/50 shadow-xl flex items-center justify-center">
-                <span className="text-sm sm:text-base text-slate-200 uppercase tracking-widest font-bold">
+              <div className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-btn bg-surface-raised/90 backdrop-blur-md border-2 border-surface-border shadow-xl flex items-center justify-center">
+                <span className="text-sm sm:text-base text-ink-muted uppercase tracking-widest font-bold">
                   {cat.breed}
                 </span>
               </div>
-              <div className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gradient-to-br from-amber-800/80 to-amber-900/90 backdrop-blur-md border-2 border-gold-500/50 shadow-xl flex items-center justify-center">
-                <span className="text-sm sm:text-base text-gold-400 uppercase tracking-widest font-bold">
-                  {cat.rarity}
-                </span>
+              <div className={cx('flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-btn bg-surface-raised/90 backdrop-blur-md border-2 shadow-xl flex items-center justify-center', rarityBorder)}>
+                <RarityBadge rarity={cat.rarity} size={18} colorblindMode={colorblindMode} />
               </div>
             </div>
               </div>
 
               {/* Right: Stats & Equipment Panel */}
               <div className="w-full lg:flex-1 mt-2 lg:mt-0">
-                <div className="lg:bg-slate-800/60 lg:backdrop-blur-sm lg:rounded-2xl lg:p-4 lg:border lg:border-slate-700/50">
+                <div className="lg:bg-surface-raised/60 lg:backdrop-blur-sm lg:rounded-2xl lg:p-4 lg:border lg:border-surface-border">
             {/* Stats */}
             <div className="mt-2 sm:mt-3 lg:mt-0 grid grid-cols-4 gap-2 sm:gap-3">
               {/* Attack */}
@@ -221,9 +230,9 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               </div>
 
               {/* Battles */}
-              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-gradient-to-br from-slate-800/80 to-slate-900/90 rounded-xl border border-slate-700/50 shadow-xl">
-                <span className="font-black text-slate-200 text-base sm:text-lg drop-shadow-lg leading-none">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
-                <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-bold tracking-wide uppercase">W/L</span>
+              <div className="flex flex-col items-center gap-1 p-2 sm:p-3 bg-surface-raised rounded-xl border border-surface-border shadow-xl">
+                <span className="font-black text-ink text-base sm:text-lg drop-shadow-lg leading-none">{cat.totalWins || 0}/{cat.totalBattles || 0}</span>
+                <span className="text-[9px] sm:text-[10px] text-ink-subtle font-bold tracking-wide uppercase">W/L</span>
               </div>
             </div>
 
@@ -240,12 +249,13 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                       onClick={(e) => { e.stopPropagation(); setShowEquipMenu(showEquipMenu === slot ? null : slot) }}
                       className={`w-full p-2 rounded-lg border text-center transition-all ${
                         equippedItem
-                          ? 'bg-slate-800/80 border-purple-500/50 hover:border-purple-400'
-                          : 'bg-slate-900/50 border-slate-700 border-dashed hover:border-slate-500'
+                          ? 'bg-surface-raised/80 border-arcane-500/50 hover:border-arcane-400'
+                          : 'bg-surface/50 border-surface-border border-dashed hover:border-ink-faint'
                       }`}
                     >
-                      <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">
-                        {slot === 'weapon' ? '⚔️ Weapon' : '💎 Accessory'}
+                      <div className="flex items-center justify-center gap-1 text-[9px] text-ink-faint uppercase tracking-wider font-bold mb-0.5">
+                        {slot === 'weapon' ? <SwordIcon size={11} /> : <GemIcon size={11} />}
+                        {slot === 'weapon' ? 'Weapon' : 'Accessory'}
                       </div>
                       {equippedItem ? (
                         <div className="flex items-center gap-1.5 justify-center">
@@ -255,27 +265,27 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                             className="w-5 h-5 object-contain"
                             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                           />
-                          <span className="text-[11px] font-bold text-purple-300 truncate">{equippedItem.name}</span>
+                          <span className="text-[11px] font-bold text-arcane-300 truncate">{equippedItem.name}</span>
                         </div>
                       ) : (
-                        <div className="text-[11px] text-slate-600">Empty</div>
+                        <div className="text-[11px] text-ink-faint">Empty</div>
                       )}
                       {equippedItem && (
-                        <div className="text-[9px] text-slate-400 mt-0.5">{equippedItem.description}</div>
+                        <div className="text-[9px] text-ink-subtle mt-0.5">{equippedItem.description}</div>
                       )}
                     </button>
 
                     {/* Equip dropdown */}
                     {showEquipMenu === slot && (
                       <div
-                        className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-dropdown max-h-40 overflow-y-auto"
+                        className="absolute bottom-full left-0 right-0 mb-1 bg-surface-overlay border border-surface-border rounded-xl shadow-2xl z-dropdown max-h-40 overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {equippedItem && (
                           <button
                             type="button"
                             onClick={() => { unequipItem(cat.instanceId, slot); setShowEquipMenu(null) }}
-                            className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-slate-700 border-b border-slate-700"
+                            className="w-full px-3 py-2 text-left text-xs text-danger-400 hover:bg-surface-raised border-b border-surface-border"
                           >
                             Unequip {equippedItem.name}
                           </button>
@@ -285,14 +295,14 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                             key={item.id}
                             type="button"
                             onClick={() => { equipItem(cat.instanceId, item.id); setShowEquipMenu(null) }}
-                            className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-700 flex justify-between items-center"
+                            className="w-full px-3 py-2 text-left text-xs text-ink hover:bg-surface-raised flex justify-between items-center"
                           >
                             <span className="font-bold">{item.name}</span>
-                            <span className="text-slate-400">{item.description} (x{inventory[item.id]})</span>
+                            <span className="text-ink-subtle">{item.description} (x{inventory[item.id]})</span>
                           </button>
                         ))}
                         {EQUIPMENT.filter(e => e.slot === slot && (inventory[e.id] || 0) > 0).length === 0 && !equippedItem && (
-                          <div className="px-3 py-2 text-xs text-slate-500">No items available</div>
+                          <div className="px-3 py-2 text-xs text-ink-faint">No items available</div>
                         )}
                       </div>
                     )}
@@ -308,12 +318,12 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                 onClick={(e) => { e.stopPropagation(); setShowStoneMenu(!showStoneMenu) }}
                 className={`w-full p-2 rounded-lg border text-center transition-all ${
                   cat.equipment?.stone
-                    ? 'bg-slate-800/80 border-emerald-500/50 hover:border-emerald-400'
-                    : 'bg-slate-900/50 border-slate-700 border-dashed hover:border-slate-500'
+                    ? 'bg-surface-raised/80 border-emerald-500/50 hover:border-emerald-400'
+                    : 'bg-surface/50 border-surface-border border-dashed hover:border-ink-faint'
                 }`}
               >
-                <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">
-                  💎 Stone
+                <div className="flex items-center justify-center gap-1 text-[9px] text-ink-faint uppercase tracking-wider font-bold mb-0.5">
+                  <GemIcon size={11} /> Stone
                 </div>
                 {(() => {
                   const stoneId = cat.equipment?.stone
@@ -321,10 +331,10 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                   return stone ? (
                     <>
                       <div className="text-[11px] font-bold text-emerald-300 truncate">{stone.name}</div>
-                      <div className="text-[9px] text-slate-400 mt-0.5">{stone.effect}</div>
+                      <div className="text-[9px] text-ink-subtle mt-0.5">{stone.effect}</div>
                     </>
                   ) : (
-                    <div className="text-[11px] text-slate-600">Empty</div>
+                    <div className="text-[11px] text-ink-faint">Empty</div>
                   )
                 })()}
               </button>
@@ -332,14 +342,14 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
               {/* Stone equip dropdown */}
               {showStoneMenu && (
                 <div
-                  className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-dropdown max-h-40 overflow-y-auto"
+                  className="absolute bottom-full left-0 right-0 mb-1 bg-surface-overlay border border-surface-border rounded-xl shadow-2xl z-dropdown max-h-40 overflow-y-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {cat.equipment?.stone && (
                     <button
                       type="button"
                       onClick={() => { unequipStone(cat.instanceId); setShowStoneMenu(false) }}
-                      className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-slate-700 border-b border-slate-700"
+                      className="w-full px-3 py-2 text-left text-xs text-danger-400 hover:bg-surface-raised border-b border-surface-border"
                     >
                       Unequip {STONES.find(s => s.id === cat.equipment!.stone)?.name}
                     </button>
@@ -349,14 +359,14 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                       key={stone.id}
                       type="button"
                       onClick={() => { equipStone(cat.instanceId, stone.id); setShowStoneMenu(false) }}
-                      className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-700 flex justify-between items-center"
+                      className="w-full px-3 py-2 text-left text-xs text-ink hover:bg-surface-raised flex justify-between items-center"
                     >
                       <span className="font-bold">{stone.name}</span>
-                      <span className="text-slate-400">{stone.effect} (x{inventory[stone.id]})</span>
+                      <span className="text-ink-subtle">{stone.effect} (x{inventory[stone.id]})</span>
                     </button>
                   ))}
                   {STONES.filter(s => (inventory[s.id] || 0) > 0).length === 0 && !cat.equipment?.stone && (
-                    <div className="px-3 py-2 text-xs text-slate-500">No stones available</div>
+                    <div className="px-3 py-2 text-xs text-ink-faint">No stones available</div>
                   )}
                 </div>
               )}
@@ -366,12 +376,11 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             {ascension > 0 && (
               <div className="mt-2 sm:mt-3 flex items-center justify-center gap-1">
                 {Array.from({ length: MAX_ASCENSION }).map((_, i) => (
-                  <span
+                  <StarIcon
                     key={i}
-                    className={`text-lg ${i < ascension ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]' : 'text-slate-700'}`}
-                  >
-                    ★
-                  </span>
+                    size={18}
+                    className={i < ascension ? 'text-amber-400 [filter:drop-shadow(0_0_6px_rgba(251,191,36,0.8))]' : 'text-surface-border'}
+                  />
                 ))}
                 <span className="text-[10px] text-amber-300 font-bold ml-1 uppercase tracking-wider">
                   Ascension {ascension}
@@ -391,15 +400,16 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
                   }
                 }}
                 disabled={!canAffordAscend}
-                className={`mt-2 sm:mt-3 w-full px-4 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all ${
+                className={cx(
+                  'mt-2 sm:mt-3 w-full px-4 py-3 rounded-btn font-heading font-black text-sm uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 focus:outline-none focus-visible:shadow-focus-gold',
                   canAffordAscend
-                    ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-900 shadow-lg hover:shadow-xl'
-                    : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                }`}
-                whileHover={canAffordAscend ? { scale: 1.03 } : {}}
-                whileTap={canAffordAscend ? { scale: 0.97 } : {}}
+                    ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-surface-deep shadow-lg hover:shadow-xl'
+                    : 'bg-surface-raised text-ink-faint cursor-not-allowed',
+                )}
+                whileHover={canAffordAscend && !reduce ? { scale: 1.03 } : undefined}
+                whileTap={canAffordAscend && !reduce ? { scale: 0.97 } : undefined}
               >
-                ★ Ascend ({ascensionCost} coins)
+                <StarIcon size={16} /> Ascend ({ascensionCost} coins)
               </motion.button>
             )}
 
@@ -407,7 +417,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             {ascension >= MAX_ASCENSION && (
               <div className="mt-2 sm:mt-3 flex items-center justify-center">
                 <div className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 border border-white/40">
-                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">Max Ascension</span>
+                  <span className="font-heading text-xs font-black text-surface-deep uppercase tracking-wider">Max Ascension</span>
                 </div>
               </div>
             )}
@@ -417,7 +427,7 @@ export default function CardZoomModal({ cat, isOpen, onClose }: CardZoomModalPro
             </div>
             {/* Hint Text */}
             <div className="mt-3 text-center">
-              <p className="text-slate-400 text-xs sm:text-sm">Click anywhere to close</p>
+              <p className="text-ink-subtle text-xs sm:text-sm">Press Escape or tap outside to close</p>
             </div>
           </motion.div>
         </motion.div>

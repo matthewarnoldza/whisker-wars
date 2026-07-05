@@ -2,35 +2,61 @@
 /**
  * Image optimization script for Whisker Wars
  *
- * Resizes large PNGs to max 800px wide (sufficient for game cards)
- * and creates WebP versions for modern browsers.
+ * Converts every PNG under public/images (EXCEPT public/images/logos, which is
+ * left untouched because the favicon references a PNG there) into a resized
+ * WebP, then deletes the source PNG.
+ *
+ * Sizing rules (never upscales):
+ *   - backgrounds/  -> fit within a 1920x1920 box (longest edge <= 1920px)
+ *   - everything else -> fit within an 832x1280 box (character / event art)
+ *
+ * Encoding: WebP quality 80.
+ *
+ * Idempotent: if a target .webp already exists it is skipped, and any leftover
+ * source .png is removed. Safe to re-run and safe to run on future art drops.
  *
  * Usage:
- *   npm install sharp --save-dev   # one-time setup
  *   node scripts/optimize-images.mjs
- *
- * After running, update <img> tags to use <picture> with WebP sources.
  */
 
-import { readdir, stat } from 'fs/promises'
-import { join, extname } from 'path'
+import { readdir, stat, rm, access } from 'fs/promises'
+import { join, extname, relative, sep } from 'path'
 
 const IMAGE_DIR = 'public/images'
-const MAX_WIDTH = 800
+const SKIP_DIRS = new Set(['logos'])
 const QUALITY = 80
+const CHAR_BOX = { w: 832, h: 1280 }
+const BG_LONGEST_EDGE = 1920
 
-async function getFiles(dir) {
+async function getPngFiles(dir) {
   const entries = await readdir(dir, { withFileTypes: true })
   const files = []
   for (const entry of entries) {
     const fullPath = join(dir, entry.name)
     if (entry.isDirectory()) {
-      files.push(...await getFiles(fullPath))
-    } else if (['.png', '.jpg', '.jpeg'].includes(extname(entry.name).toLowerCase())) {
+      // Skip the logos directory entirely (relative to IMAGE_DIR top level)
+      if (dir === IMAGE_DIR && SKIP_DIRS.has(entry.name)) continue
+      files.push(...(await getPngFiles(fullPath)))
+    } else if (extname(entry.name).toLowerCase() === '.png') {
       files.push(fullPath)
     }
   }
   return files
+}
+
+async function exists(p) {
+  try {
+    await access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Top-level category under public/images (e.g. "cats", "events") for grouping.
+function categoryOf(file) {
+  const rel = relative(IMAGE_DIR, file)
+  return rel.split(sep)[0] || '(root)'
 }
 
 async function run() {
@@ -42,45 +68,74 @@ async function run() {
     process.exit(1)
   }
 
-  const files = await getFiles(IMAGE_DIR)
-  console.log(`Found ${files.length} images to optimize`)
+  const files = await getPngFiles(IMAGE_DIR)
+  console.log(`Found ${files.length} PNG(s) to process (excluding ${[...SKIP_DIRS].join(', ')})\n`)
+
+  // stats[category] = { beforeBytes, afterBytes, converted, skipped }
+  const stats = {}
+  const bump = (cat) => (stats[cat] ??= { beforeBytes: 0, afterBytes: 0, converted: 0, skipped: 0 })
 
   let totalBefore = 0
   let totalAfter = 0
+  let converted = 0
+  let skipped = 0
 
-  for (const file of files) {
-    const info = await stat(file)
-    totalBefore += info.size
+  for (const pngPath of files) {
+    const cat = categoryOf(pngPath)
+    const s = bump(cat)
+    const webpPath = pngPath.replace(/\.png$/i, '.webp')
 
-    const img = sharp(file)
-    const meta = await img.metadata()
-
-    // Resize if wider than MAX_WIDTH
-    if (meta.width && meta.width > MAX_WIDTH) {
-      await img
-        .resize(MAX_WIDTH, null, { withoutEnlargement: true })
-        .png({ quality: QUALITY, compressionLevel: 9 })
-        .toFile(file + '.tmp')
-
-      const { rename } = await import('fs/promises')
-      await rename(file + '.tmp', file)
-      console.log(`  Resized: ${file} (${meta.width}→${MAX_WIDTH}px)`)
+    // Idempotent: a WebP already exists -> skip encoding, clean up stray PNG.
+    if (await exists(webpPath)) {
+      const webpInfo = await stat(webpPath)
+      s.afterBytes += webpInfo.size
+      s.skipped += 1
+      totalAfter += webpInfo.size
+      skipped += 1
+      await rm(pngPath, { force: true })
+      continue
     }
 
-    // Create WebP version
-    const webpPath = file.replace(/\.(png|jpg|jpeg)$/i, '.webp')
-    await sharp(file)
-      .resize(MAX_WIDTH, null, { withoutEnlargement: true })
-      .webp({ quality: QUALITY })
-      .toFile(webpPath)
+    const info = await stat(pngPath)
+    s.beforeBytes += info.size
+    totalBefore += info.size
+
+    const isBackground = cat === 'backgrounds'
+    const resizeOpts = isBackground
+      ? { width: BG_LONGEST_EDGE, height: BG_LONGEST_EDGE, fit: 'inside', withoutEnlargement: true }
+      : { width: CHAR_BOX.w, height: CHAR_BOX.h, fit: 'inside', withoutEnlargement: true }
+
+    await sharp(pngPath).resize(resizeOpts).webp({ quality: QUALITY }).toFile(webpPath)
 
     const webpInfo = await stat(webpPath)
+    s.afterBytes += webpInfo.size
+    s.converted += 1
     totalAfter += webpInfo.size
-    console.log(`  WebP: ${webpPath} (${(info.size / 1024).toFixed(0)}KB → ${(webpInfo.size / 1024).toFixed(0)}KB)`)
+    converted += 1
+
+    await rm(pngPath, { force: true })
+    console.log(
+      `  ${relative(IMAGE_DIR, pngPath)}: ${(info.size / 1024).toFixed(0)}KB -> ${(webpInfo.size / 1024).toFixed(0)}KB`
+    )
   }
 
-  console.log(`\nTotal: ${(totalBefore / 1024 / 1024).toFixed(1)}MB → ${(totalAfter / 1024 / 1024).toFixed(1)}MB`)
-  console.log('Done! Update your components to use <picture> with WebP sources.')
+  const mb = (b) => (b / 1024 / 1024).toFixed(1)
+  console.log('\nPer-directory summary (before PNG -> after WebP):')
+  for (const cat of Object.keys(stats).sort()) {
+    const { beforeBytes, afterBytes, converted: c, skipped: sk } = stats[cat]
+    console.log(
+      `  ${cat.padEnd(14)} ${mb(beforeBytes).padStart(6)}MB -> ${mb(afterBytes).padStart(6)}MB  ` +
+        `(${c} converted${sk ? `, ${sk} already webp` : ''})`
+    )
+  }
+  console.log(
+    `\nTotals: ${mb(totalBefore)}MB PNG -> ${mb(totalAfter)}MB WebP  ` +
+      `(${converted} converted, ${skipped} skipped)`
+  )
+  console.log('Done.')
 }
 
-run().catch(console.error)
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

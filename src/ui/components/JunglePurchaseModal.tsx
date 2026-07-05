@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
 import { createYocoCheckout } from '../../utils/yocoCheckout'
+import { useDialog } from '../hooks/useDialog'
+import { useMotionSafe } from '../hooks/useMotionSafe'
+import { CheckIcon, CrownIcon } from '../icons'
 
 interface JunglePurchaseModalProps {
   onClose: () => void
@@ -50,6 +53,12 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
   const [state, setState] = useState<PurchaseState>(initialState)
   const [error, setError] = useState<string | null>(null)
   const setJunglePassPending = useGame(s => s.setJunglePassPending)
+  const reduce = useMotionSafe()
+  // Escape mirrors the backdrop: only dismissable from the preview state,
+  // never mid-payment. Flow/Yoco wiring below is untouched.
+  const { dialogRef, dialogProps } = useDialog<HTMLDivElement>({
+    onClose: state === 'preview' ? onClose : undefined,
+  })
 
   const handlePurchaseClick = async () => {
     setState('loading')
@@ -98,11 +107,14 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
         className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-lg flex items-center justify-center touch-none overflow-hidden p-4"
       >
         <motion.div
-          initial={{ scale: 0.85, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: 'spring', damping: 22, stiffness: 220 }}
-          className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-emerald-950 border border-emerald-500/20 p-4 shadow-[0_0_60px_rgba(16,185,129,0.1)]"
+          ref={dialogRef}
+          {...dialogProps}
+          aria-label="Jungle of Talons"
+          initial={reduce ? { opacity: 0 } : { scale: 0.85, opacity: 0 }}
+          animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+          exit={reduce ? { opacity: 0 } : { scale: 0.9, opacity: 0 }}
+          transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 22, stiffness: 220 }}
+          className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-emerald-950 border border-emerald-500/20 p-4 shadow-[0_0_60px_rgba(16,185,129,0.1)] focus:outline-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ===== PREVIEW STATE ===== */}
@@ -117,7 +129,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
                 <div className="py-5 flex items-center justify-center">
                   <div className="text-center">
                     <h2
-                      className="text-2xl font-black text-emerald-400 tracking-wider"
+                      className="font-heading text-2xl font-black uppercase text-emerald-400 tracking-wider"
                       style={{ textShadow: '0 0 30px rgba(52,211,153,0.5)' }}
                     >
                       Jungle of Talons
@@ -148,13 +160,9 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
                     transition={{ delay: 0.1 + i * 0.06 }}
                     className="flex items-center gap-2.5 bg-emerald-900/50 border border-emerald-500/10 rounded-lg px-3 py-2"
                   >
-                    <div className="text-emerald-400 shrink-0">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                      </svg>
-                    </div>
+                    <CheckIcon className="text-emerald-400 shrink-0" size={14} />
                     <div>
-                      <h4 className="text-slate-100 text-xs font-black">{feature.title}</h4>
+                      <h4 className="text-ink text-xs font-black">{feature.title}</h4>
                       <p className="text-emerald-200/50 text-[11px] leading-tight">{feature.description}</p>
                     </div>
                   </motion.div>
@@ -163,13 +171,13 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
 
               {/* Price + CTA */}
               <div className="text-center mb-3">
-                <div className="text-2xl font-black text-slate-100 mb-0.5">R65</div>
+                <div className="text-2xl font-black text-ink mb-0.5 tabular-nums">R65</div>
                 <p className="text-emerald-200/40 text-[11px] mb-3">One-time purchase</p>
                 <motion.button
                   onClick={handlePurchaseClick}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-emerald-950 font-black text-base rounded-xl shadow-[0_0_30px_rgba(52,211,153,0.3)] transition-all"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-emerald-950 font-heading font-black uppercase tracking-wide text-base rounded-xl shadow-[0_0_30px_rgba(52,211,153,0.3)] transition-all focus:outline-none focus-visible:shadow-focus-gold"
+                  whileHover={reduce ? undefined : { scale: 1.03 }}
+                  whileTap={reduce ? undefined : { scale: 0.97 }}
                 >
                   Unlock Jungle of Talons
                 </motion.button>
@@ -185,7 +193,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
               </div>
               <button
                 onClick={onClose}
-                className="w-full text-center text-slate-500 hover:text-slate-300 text-xs py-1 transition-colors font-bold"
+                className="w-full text-center text-ink-faint hover:text-ink-muted text-xs py-1 transition-colors font-bold focus:outline-none focus-visible:text-ink"
               >
                 Close
               </button>
@@ -205,7 +213,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full mx-auto mb-4"
               />
-              <p className="text-slate-100 font-bold text-base">Preparing secure checkout...</p>
+              <p className="text-ink font-bold text-base">Preparing secure checkout...</p>
               <p className="text-emerald-200/40 text-sm mt-1.5">You'll be redirected to complete payment</p>
             </motion.div>
           )}
@@ -223,7 +231,7 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full mx-auto mb-4"
               />
-              <p className="text-slate-100 font-bold text-base">Payment received!</p>
+              <p className="text-ink font-bold text-base">Payment received!</p>
               <p className="text-emerald-200/50 text-sm mt-1.5">Confirming your purchase...</p>
             </motion.div>
           )}
@@ -236,29 +244,27 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
               exit={{ opacity: 0 }}
               className="text-center py-8 relative"
             >
-              <EmeraldParticles />
+              {!reduce && <EmeraldParticles />}
 
               {/* Crown Icon */}
               <motion.div
-                initial={{ y: -60, opacity: 0, scale: 0.3 }}
+                initial={reduce ? false : { y: -60, opacity: 0, scale: 0.3 }}
                 animate={{ y: 0, opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', damping: 12, stiffness: 120, delay: 0.2 }}
+                transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 12, stiffness: 120, delay: 0.2 }}
                 className="mb-3"
               >
-                <svg className="w-12 h-12 text-amber-400 mx-auto" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
-                </svg>
+                <CrownIcon className="text-amber-400 mx-auto" size={48} />
               </motion.div>
 
               {/* UNLOCKED Text */}
               <motion.h2
-                initial={{ scale: 0.3, opacity: 0 }}
+                initial={reduce ? false : { scale: 0.3, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', damping: 14, stiffness: 100, delay: 0.4 }}
-                className="text-4xl font-black text-emerald-400 tracking-wider mb-1.5"
+                transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 14, stiffness: 100, delay: 0.4 }}
+                className="font-heading text-4xl font-black uppercase text-emerald-400 tracking-wider mb-1.5"
                 style={{ textShadow: '0 0 40px rgba(52,211,153,0.6)' }}
               >
-                UNLOCKED!
+                Unlocked!
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0 }}
@@ -277,9 +283,9 @@ export default function JunglePurchaseModal({ onClose, onUnlocked, initialState 
               >
                 <motion.button
                   onClick={handleEnterJungle}
-                  className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-emerald-950 font-black text-base rounded-xl shadow-[0_0_30px_rgba(52,211,153,0.4)] transition-all"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-emerald-950 font-heading font-black uppercase tracking-wide text-base rounded-xl shadow-[0_0_30px_rgba(52,211,153,0.4)] transition-all focus:outline-none focus-visible:shadow-focus-gold"
+                  whileHover={reduce ? undefined : { scale: 1.05 }}
+                  whileTap={reduce ? undefined : { scale: 0.95 }}
                 >
                   Enter the Jungle
                 </motion.button>

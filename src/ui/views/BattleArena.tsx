@@ -1,23 +1,30 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import GameCard from '../components/GameCard'
+import GameCard, { type CardFx, type CardFxKind } from '../components/GameCard'
+import DamageNumber, { type DamageNumberData, type DamageKind } from '../components/DamageNumber'
+import { useScreenShake } from '../hooks/useScreenShake'
 import D20Dice from '../components/D20Dice'
 import StatBar from '../components/StatBar'
 import ParticleSystem from '../components/ParticleSystem'
 import BattleLogPanel, { type BattleLog } from '../components/BattleLogPanel'
+import { Button, StatPill } from '../components/ui'
+import {
+  SwordsIcon, GemIcon, SparkleIcon, HeartIcon, SwordIcon, LockIcon,
+  CheckIcon, AlienIcon, EventIcon, SkullIcon, DiceIcon, SpeakerMutedIcon,
+} from '../icons'
 import BattleVictoryModal from '../components/BattleVictoryModal'
 import BattleDefeatModal from '../components/BattleDefeatModal'
 import StoneCelebrationModal from '../components/StoneCelebrationModal'
 import { useGame } from '../../game/store'
 import { DOGS } from '../../game/data'
-import { rollD20 } from '../../game/dice'
-import { resolveDefense } from '../../game/abilityResolver'
-import { BATTLE_BASE_COINS, BATTLE_COINS_PER_DOG, BATTLE_BASE_XP, BATTLE_XP_PER_DOG, getDifficultyMultiplier, BATTLE_LOG_MAX_ENTRIES, FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from '../../game/constants'
-import { EQUIPMENT, rollEquipmentDrop, STONES, rollStoneDrop } from '../../game/items'
-import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, getActiveElement, getScaledFrenzyDog, FRENZY_STONES, type GameEvent, type FrenzyElement } from '../../game/events'
-import { resolveStoneEffect } from '../../game/stoneResolver'
+import { BATTLE_LOG_MAX_ENTRIES, FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from '../../game/constants'
+import { rollEquipmentDrop, STONES, rollStoneDrop } from '../../game/items'
+import { getActiveEvents, getActiveCoinMultiplier, getEventPeriodKey, getActiveElement, getScaledFrenzyDog, type GameEvent } from '../../game/events'
+import { createBattle, resolveAction, computeBattleRewards } from '../../game/battle'
+import type { BattleAction, BattleEvent, BattleState } from '../../game/battle'
+import { createPRNG, generateSeed } from '../../game/boons'
 import { playSound } from '../../utils/sound'
-import { motion, AnimatePresence } from 'framer-motion'
-import { shakeVariants, attackVariants, victoryVariants, damageVariants } from '../animations'
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
+import { lungeVariants, useJuiceEnabled } from '../animations'
 import {
   trackBattleStart,
   trackBattleWon,
@@ -65,52 +72,78 @@ export default function BattleArena() {
   const [bossRushDogIndex, setBossRushDogIndex] = useState(0)
   const [bossRushHighest, setBossRushHighest] = useState(0)
 
-  const [dogHp, setDogHp] = useState(DOGS[battleDogIndex].health)
+  const dog = eventBattle ? eventBattle.eventDog : DOGS[battleDogIndex]
+
+  // ===== Combat engine wiring =====
+  // The pure deterministic battle lives in battleRef; React state below mirrors
+  // only what the JSX renders. All combat maths/randomness runs in the engine,
+  // seeded per battle by rngRef so replays are reproducible.
+  const battleRef = useRef<BattleState>(
+    createBattle({
+      dog: { id: dog.id, name: dog.name, attack: dog.attack, health: dog.health },
+      cats: party,
+      frontierDogId: DOGS[battleDogIndex]?.id ?? '',
+      eventDogId: eventBattle?.eventDog?.id,
+      rewards: { battleDogIndex, difficultyLevel, coinMultiplier, isRepeatEventBoss: false },
+    }),
+  )
+  const rngRef = useRef<() => number>(createPRNG(generateSeed(`${dog.id}:${battleDogIndex}:init`)))
+  const isResolvingRef = useRef(false) // single in-flight lock (fixes double-act bug)
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
+  const mountedRef = useRef(true)
+
+  const [dogHp, setDogHp] = useState(dog.health)
   const [turn, setTurn] = useState<'player' | 'enemy'>('player')
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null)
   const [dice, setDice] = useState(1)
   const [rolling, setRolling] = useState(false)
   const [log, setLog] = useState<BattleLog[]>([])
   const [battleEnded, setBattleEnded] = useState(false)
-  const [damageNumbers, setDamageNumbers] = useState<{ id: number; value: number; x: number; y: number }[]>([])
+  const [damageNumbers, setDamageNumbers] = useState<DamageNumberData[]>([])
   const [particleActive, setParticleActive] = useState(false)
-  const [shaking, setShaking] = useState(false)
   const [attackingId, setAttackingId] = useState<string | null>(null)
+
+  // ===== Combat juice: stage shake, anchored numbers, per-card hit fx =====
+  const juiceEnabled = useJuiceEnabled()
+  const { controls: shakeControls, shake } = useScreenShake()
+  const diceControls = useAnimationControls()
+  const [cardFx, setCardFx] = useState<Record<string, CardFx>>({})
+  // Live card DOM elements keyed by combatant id ('dog' | cat instanceId) — used
+  // to anchor damage numbers at the struck card's actual on-screen rect.
+  const cardEls = useRef<Map<string, HTMLElement>>(new Map())
+  const refCbCache = useRef<Map<string, (el: HTMLElement | null) => void>>(new Map())
+  const registerCard = (id: string) => {
+    let cb = refCbCache.current.get(id)
+    if (!cb) {
+      cb = (el: HTMLElement | null) => {
+        if (el) cardEls.current.set(id, el)
+        else cardEls.current.delete(id)
+      }
+      refCbCache.current.set(id, cb)
+    }
+    return cb
+  }
+  const getRect = (id: string) => cardEls.current.get(id)?.getBoundingClientRect()
+  const triggerFx = (id: string, kind: CardFxKind, dx = 0, dy = 0) => {
+    setCardFx(f => ({ ...f, [id]: { key: Date.now() + Math.random(), kind, dx, dy } }))
+  }
+  // Running baseline (EMA) of typical hit size — damage numbers scale vs this.
+  const damageBaselineRef = useRef(0)
   const [showDefeatModal, setShowDefeatModal] = useState(false)
   const [showVictoryModal, setShowVictoryModal] = useState(false)
   const [showStoneCelebration, setShowStoneCelebration] = useState(false)
   const [droppedStone, setDroppedStone] = useState<typeof STONES[number] | null>(null)
   const [pendingVictoryAction, setPendingVictoryAction] = useState<(() => void) | null>(null)
   const [victoryRewards, setVictoryRewards] = useState<{ coins: number; xp: number; equipDrop?: string; stoneDrop?: string }>({ coins: 0, xp: 0 })
-  const [silenced, setSilenced] = useState(false) // Omega Fenrir ability
-  const [frozenCatId, setFrozenCatId] = useState<string | null>(null) // Frost Wolf ability
-  const [dogDodgeChance, setDogDodgeChance] = useState(0) // Shadow Stalker ability
-  const [dogArmor, setDogArmor] = useState(0) // Crystal Guardian ability
-  const [dotEffects, setDotEffects] = useState<{ catId: string; turnsLeft: number; dmgPerTurn: number; type: string }[]>([]) // poison/burn
+  const [silenced, setSilenced] = useState(false) // Omega Fenrir ability (mirror for the ability button)
   const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({}) // catInstanceId -> turns remaining
-  const [atkDebuffs, setAtkDebuffs] = useState<Record<string, { multiplier: number; turnsLeft: number }>>({}) // Star Barks: Acidmaw Ravager ATK reduction
-  const [dogReflect, setDogReflect] = useState(0) // Star Barks: The Assimilator / Cosmic Queen reflect %
-  const [dogAbilityCooldown, setDogAbilityCooldown] = useState(0) // Dog ability cooldown (same as cat ABILITY_COOLDOWN)
+  const [stoneActivated, setStoneActivated] = useState<Record<string, boolean>>({}) // one-shot stone use per cat
   const [showAlienStory, setShowAlienStory] = useState(false) // Star Barks unlock modal
-  // Read fresh HP from the Zustand store (avoids stale closure values)
-  const isAllPartyDead = () => {
-    const fresh = useGame.getState().owned
-    return fresh
-      .filter(o => selectedForBattle.includes(o.instanceId))
-      .every(c => c.currentHp <= 0)
-  }
 
   const ABILITY_COOLDOWN = 3 // Turns between active ability uses
-  // Stone activation state
-  const [stoneActivated, setStoneActivated] = useState<Record<string, boolean>>({})
-  const [rockShieldCatId, setRockShieldCatId] = useState<string | null>(null)
-  const [stoneBurnOnDog, setStoneBurnOnDog] = useState<{ dmgPerTurn: number; turnsLeft: number } | null>(null)
-  const [stoneFreezeOnDog, setStoneFreezeOnDog] = useState(false)
   const mobileLogRef = useRef<HTMLDivElement>(null)
   const desktopLogRef = useRef<HTMLDivElement>(null)
   const hasAutoShownAlienPopup = useRef(false)
-
-  const dog = eventBattle ? eventBattle.eventDog : DOGS[battleDogIndex]
 
   // Elite Aura: +1 ATK per living elite cat in party
   const eliteAuraBonus = useMemo(() => {
@@ -126,9 +159,278 @@ export default function BattleArena() {
     return STONES.find(s => s.id === stoneId) ?? null
   }, [selectedCatId, party, stoneActivated])
 
-  // Reset battle when dog changes
+  // ===== Timer plumbing (all timeouts tracked + cancelled on unmount — fixes leak) =====
+  const trackedTimeout = (fn: () => void, ms: number): ReturnType<typeof setTimeout> => {
+    const id = setTimeout(() => {
+      timersRef.current.delete(id)
+      fn()
+    }, ms)
+    timersRef.current.add(id)
+    return id
+  }
+  const sleep = (ms: number) => new Promise<void>(resolve => { trackedTimeout(resolve, ms) })
+
   useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      timersRef.current.forEach(clearTimeout)
+      timersRef.current.clear()
+    }
+  }, [])
+
+  // ===== Rendering helpers =====
+  const addLog = (t: string, type?: 'damage' | 'heal' | 'crit' | 'info') => {
+    setLog(l => {
+      const next = [...l, { text: t, type }]
+      return next.length > BATTLE_LOG_MAX_ENTRIES ? next.slice(-BATTLE_LOG_MAX_ENTRIES) : next
+    })
+  }
+
+  // Fallback anchor when a card element isn't registered yet (defensive).
+  const fallbackPos = (targetId: string) => {
+    if (targetId === 'dog') return { x: window.innerWidth / 2, y: 140 }
+    const idx = party.findIndex(c => c.instanceId === targetId)
+    return { x: (window.innerWidth / 3) * (idx + 0.5), y: window.innerHeight - 200 }
+  }
+
+  // Spawn an anchored floating combat number at the struck card's live rect.
+  const spawnNumber = (targetId: string, text: string, kind: DamageKind, magnitude?: number) => {
+    const rect = getRect(targetId)
+    const base = rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.36 }
+      : fallbackPos(targetId)
+    const x = base.x + (Math.random() * 32 - 16) // ±16px jitter so multi-hits don't stack
+    let fontRem = 1.3
+    if (magnitude !== undefined) {
+      const b = damageBaselineRef.current
+      const rel = b > 0 ? magnitude / b : 1
+      fontRem = Math.min(2.2, Math.max(1.0, 0.9 + rel * 0.8))
+      if (kind === 'crit') fontRem = Math.min(2.5, fontRem + 0.35)
+    }
+    if (kind === 'poison' || kind === 'burn') fontRem = 0.95
+    if (kind === 'miss') fontRem = 1.15
+    if (kind === 'heal') fontRem = 1.35
+    const id = Date.now() + Math.random()
+    setDamageNumbers(prev => [...prev, { id, text, kind, x, y: base.y, fontRem }])
+    trackedTimeout(() => {
+      setDamageNumbers(prev => prev.filter(d => d.id !== id))
+    }, 1250)
+  }
+
+  const triggerParticle = () => {
+    setParticleActive(true)
+    trackedTimeout(() => setParticleActive(false), 100)
+  }
+
+  const applyHp = (targetId: string, hp: number) => {
+    if (targetId === 'dog') setDogHp(hp)
+    else updateCatHp(targetId, hp)
+  }
+
+  // ===== Event playback: replays engine output with the legacy animation timing =====
+  const playEvents = async (events: BattleEvent[]) => {
+    const soundOn = () => useGame.getState().soundEnabled
+    for (const ev of events) {
+      if (!mountedRef.current) return
+      switch (ev.type) {
+        case 'Log':
+          addLog(ev.text, ev.logType)
+          break
+        case 'DiceRolled':
+          setRolling(true)
+          if (soundOn()) playSound('diceRoll')
+          await sleep(600)
+          if (!mountedRef.current) return
+          setDice(ev.value)
+          setRolling(false)
+          // Dice juice: nat 20 → gold flash pop; nat 1 → dull thud shake.
+          if (juiceEnabled) {
+            if (ev.value === 20) {
+              void diceControls.start({
+                scale: [1, 1.25, 1],
+                filter: [
+                  'drop-shadow(0 0 0px rgba(255,197,61,0))',
+                  'drop-shadow(0 0 18px rgba(255,197,61,0.95))',
+                  'drop-shadow(0 0 0px rgba(255,197,61,0))',
+                ],
+                transition: { duration: 0.6 },
+              })
+            } else if (ev.value === 1) {
+              void diceControls.start({ x: [0, -4, 4, -3, 2, 0], transition: { duration: 0.3 } })
+            }
+          }
+          break
+        case 'Sound':
+          if (soundOn()) playSound(ev.name)
+          break
+        case 'DamageDealt': {
+          // Hitstop: freeze the rhythm briefly before the hit lands (crits linger).
+          if (juiceEnabled && (ev.impact || ev.isCrit)) {
+            await sleep(ev.isCrit ? 110 : 60)
+            if (!mountedRef.current) return
+          }
+          applyHp(ev.targetId, ev.resultingHp)
+          if (ev.showNumber) {
+            const b = damageBaselineRef.current
+            damageBaselineRef.current = b === 0 ? ev.amount : b * 0.7 + ev.amount * 0.3
+            spawnNumber(ev.targetId, `-${ev.amount}`, ev.isCrit ? 'crit' : 'normal', ev.amount)
+          }
+          // Recoil away from attacker: enemy (top) knocked up, cats (bottom) knocked down.
+          const dy = ev.targetId === 'dog' ? -7 : 7
+          triggerFx(ev.targetId, ev.isCrit ? 'crit' : 'hit', 0, dy)
+          if (ev.impact || ev.isCrit) {
+            shake(ev.isCrit ? 'heavy' : 'light', juiceEnabled)
+            triggerParticle()
+          }
+          break
+        }
+        case 'Dodged':
+          triggerFx(ev.targetId, 'dodge', 18)
+          spawnNumber(ev.targetId, 'MISS', 'miss')
+          break
+        case 'Healed':
+          applyHp(ev.targetId, ev.resultingHp)
+          triggerFx(ev.targetId, 'heal')
+          if (ev.amount > 0) spawnNumber(ev.targetId, `+${ev.amount}`, 'heal')
+          break
+        case 'DotTick': {
+          applyHp(ev.targetId, ev.resultingHp)
+          const dk: DamageKind = ev.dotType === 'burn' ? 'burn' : 'poison'
+          if (ev.amount > 0) spawnNumber(ev.targetId, `-${ev.amount}`, dk)
+          break
+        }
+        case 'DotApplied':
+          triggerFx(ev.targetId, ev.dotType === 'burn' ? 'burn' : 'poison')
+          break
+        case 'AbilityTriggered':
+          triggerFx(ev.casterId, 'ability')
+          break
+        case 'ScreenShake':
+          shake('heavy', juiceEnabled)
+          break
+        case 'StoneConsumed':
+          consumeStone(ev.catId) // persist the one-use stone removal to the store
+          break
+        // CombatantDefeated / BattleEnded: no direct visual side-effect here.
+        default:
+          break
+      }
+    }
+  }
+
+  const syncFromBattle = (b: BattleState) => {
+    setDogHp(b.dog.hp)
+    setTurn(b.turn)
+    setSilenced(b.silenced)
+    setAbilityCooldowns({ ...b.abilityCooldowns })
+    setStoneActivated({ ...b.stoneActivated })
+  }
+
+  // Resolve one action, play its events, mirror engine state into React.
+  const resolveAndPlay = async (action: BattleAction): Promise<{ rewards?: { coins: number; xp: number }; aborted: boolean }> => {
+    const { state: next, events } = resolveAction(battleRef.current, action, rngRef.current)
+    battleRef.current = next
+    const ended = events.find(e => e.type === 'BattleEnded') as Extract<BattleEvent, { type: 'BattleEnded' }> | undefined
+    await playEvents(events)
+    if (!mountedRef.current) return { aborted: true }
+    syncFromBattle(next)
+    return { rewards: ended?.rewards, aborted: false }
+  }
+
+  const scheduleEnemyTurn = () => {
+    trackedTimeout(() => { void runAction({ type: 'ENEMY_TURN' }) }, 1500)
+  }
+
+  // Single-entry action orchestrator. The isResolving lock guarantees no
+  // overlapping dispatches (fixes the rapid-click double-act bug).
+  const runAction = async (action: BattleAction) => {
+    if (isResolvingRef.current) return
+    if (battleRef.current.outcome !== 'ongoing') return
+    isResolvingRef.current = true
+    try {
+      const actorId = action.type === 'ENEMY_TURN' ? 'dog' : 'attackerId' in action ? action.attackerId : null
+      if (actorId) setAttackingId(actorId)
+
+      let res = await resolveAndPlay(action)
+      if (res.aborted) return
+
+      // Entering the player's turn after an enemy turn: run the start-of-turn
+      // DoT / debuff / stone-burn ticks as an engine action (not a fragile
+      // useEffect keyed on stale closures — fixes the DoT bug).
+      if (
+        action.type === 'ENEMY_TURN' &&
+        battleRef.current.outcome === 'ongoing' &&
+        battleRef.current.turn === 'player'
+      ) {
+        const tickRes = await resolveAndPlay({ type: 'START_PLAYER_TURN' })
+        if (tickRes.aborted) return
+        res = tickRes
+      }
+
+      setAttackingId(null)
+      const b = battleRef.current
+      if (b.outcome === 'victory') {
+        setBattleEnded(true)
+        handleVictory(res.rewards)
+        return
+      }
+      if (b.outcome === 'defeat') {
+        setBattleEnded(true)
+        handleDefeat()
+        return
+      }
+      if (b.turn === 'enemy') scheduleEnemyTurn()
+    } finally {
+      isResolvingRef.current = false
+    }
+  }
+
+  // ===== Player action entry points (called by the JSX buttons) =====
+  const handleAttack = () => {
+    if (!selectedCatId || turn !== 'player' || battleEnded) return
+    void runAction({ type: 'PLAYER_ATTACK', attackerId: selectedCatId })
+  }
+
+  const handleStoneAttack = () => {
+    if (!selectedCatId || turn !== 'player' || battleEnded) return
+    void runAction({ type: 'PLAYER_STONE_ATTACK', attackerId: selectedCatId })
+  }
+
+  const handleActiveAbility = (catId: string) => {
+    if (turn !== 'player' || rolling || battleEnded) return
+    void runAction({ type: 'PLAYER_ABILITY', attackerId: catId })
+  }
+
+  // ===== Battle lifecycle =====
+  // Reset / build a fresh battle when the dog (or event) changes.
+  useEffect(() => {
+    battleRef.current = createBattle({
+      dog: { id: dog.id, name: dog.name, attack: dog.attack, health: dog.health },
+      cats: party,
+      frontierDogId: DOGS[battleDogIndex]?.id ?? '',
+      eventDogId: eventBattle?.eventDog?.id,
+      rewards: {
+        battleDogIndex,
+        difficultyLevel,
+        coinMultiplier,
+        isRepeatEventBoss: !!(eventBattle && completedEventRewards.includes(getEventPeriodKey(eventBattle))),
+      },
+    })
+    rngRef.current = createPRNG(generateSeed(`${dog.id}:${battleDogIndex}:${Date.now()}:${Math.random()}`))
+    isResolvingRef.current = false
+
     setDogHp(dog.health)
+    setTurn('player')
+    setBattleEnded(false)
+    setSelectedCatId(null)
+    setSilenced(false)
+    setAttackingId(null)
+    setStoneActivated({})
+    const initialCooldowns: Record<string, number> = {}
+    party.forEach(c => { initialCooldowns[c.instanceId] = 0 })
+    setAbilityCooldowns(initialCooldowns)
+
     const initialLog: BattleLog[] = [{ text: `⚔️ A wild ${dog.name} appears!`, type: 'info' }]
     if (eliteAuraBonus > 0) {
       initialLog.push({ text: `✨ Elite Aura: +${eliteAuraBonus} ATK to all party members!`, type: 'info' })
@@ -137,34 +439,11 @@ export default function BattleArena() {
       initialLog.push({ text: `🎪 Event bonus: x${coinMultiplier} coins!`, type: 'info' })
     }
     setLog(initialLog)
-    setTurn('player')
-    setBattleEnded(false)
-    setSelectedCatId(null)
-    setSilenced(false)
-    setFrozenCatId(null)
-    setDogDodgeChance(0)
-    setDogArmor(0)
-    setDotEffects([])
-    setAtkDebuffs({})
-    setDogReflect(0)
-    setDogAbilityCooldown(0)
-    setStoneActivated({})
-    setRockShieldCatId(null)
-    setStoneBurnOnDog(null)
-    setStoneFreezeOnDog(false)
-    // Initialize ability cooldowns (start ready)
-    const initialCooldowns: Record<string, number> = {}
-    party.forEach(c => { initialCooldowns[c.instanceId] = 0 })
-    setAbilityCooldowns(initialCooldowns)
-    // Set passive dog abilities
-    if (DOGS[battleDogIndex]?.id === 'shadow-stalker') setDogDodgeChance(0.30)
-    if (DOGS[battleDogIndex]?.id === 'crystal-guardian') setDogArmor(4)
-    if (DOGS[battleDogIndex]?.id === 'nebula-stalker') setDogDodgeChance(0.40)
-    // Frenzy dog passives
-    if (eventBattle?.eventDog?.id === 'obsidian-shade') setDogDodgeChance(0.20)
+
     if (party.length > 0) {
       trackBattleStart(party.length, party.map(c => c.name).join(','), dog.name, difficultyLevel)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battleDogIndex, eventBattle])
 
   // Auto-show Star Barks popup when player qualifies (beat Eternal Overlord or beyond)
@@ -177,880 +456,20 @@ export default function BattleArena() {
 
   // Auto-scroll log to bottom when updated
   useEffect(() => {
-    // Scroll mobile battle log
     if (mobileLogRef.current) {
       mobileLogRef.current.scrollTop = mobileLogRef.current.scrollHeight
     }
-    // Scroll desktop battle log
     if (desktopLogRef.current) {
       desktopLogRef.current.scrollTop = desktopLogRef.current.scrollHeight
     }
   }, [log])
 
-  // Process DOT effects (poison/burn) at start of player turn
-  useEffect(() => {
-    if (turn === 'player' && !battleEnded && dotEffects.length > 0) {
-      dotEffects.forEach(dot => {
-        const cat = party.find(c => c.instanceId === dot.catId)
-        if (cat && cat.currentHp > 0) {
-          const newHp = Math.max(0, cat.currentHp - dot.dmgPerTurn)
-          updateCatHp(dot.catId, newHp)
-          const icon = dot.type === 'poison' ? '🟢' : '🔥'
-          addLog(`${icon} ${cat.name} takes ${dot.dmgPerTurn} ${dot.type} damage!`, 'damage')
-        }
-      })
-      // Decrement turns and remove expired effects
-      setDotEffects(prev => prev
-        .map(d => ({ ...d, turnsLeft: d.turnsLeft - 1 }))
-        .filter(d => d.turnsLeft > 0)
-      )
-      // Check if DOT killed all cats
-      if (isAllPartyDead()) {
-        handleDefeat()
-      }
-    }
-  }, [turn])
-
-  // Tick down ATK debuffs at start of player turn
-  useEffect(() => {
-    if (turn === 'player' && !battleEnded && Object.keys(atkDebuffs).length > 0) {
-      setAtkDebuffs(prev => {
-        const next: Record<string, { multiplier: number; turnsLeft: number }> = {}
-        for (const [id, debuff] of Object.entries(prev)) {
-          const remaining = debuff.turnsLeft - 1
-          if (remaining > 0) {
-            next[id] = { ...debuff, turnsLeft: remaining }
-          } else {
-            const cat = party.find(c => c.instanceId === id)
-            if (cat) addLog(`💪 ${cat.name}'s attack power is restored!`, 'info')
-          }
-        }
-        return next
-      })
-    }
-  }, [turn])
-
-  // Process stone burn DOT on dog at start of player turn
-  useEffect(() => {
-    if (turn === 'player' && !battleEnded && stoneBurnOnDog) {
-      const burnDmg = stoneBurnOnDog.dmgPerTurn
-      const newHp = Math.max(0, dogHp - burnDmg)
-      setDogHp(newHp)
-      addLog(`🔥 Burn deals ${burnDmg} damage to ${dog.name}!`, 'damage')
-      if (stoneBurnOnDog.turnsLeft <= 1) {
-        addLog(`🔥 Burn on ${dog.name} wears off.`, 'info')
-        setStoneBurnOnDog(null)
-      } else {
-        setStoneBurnOnDog({ ...stoneBurnOnDog, turnsLeft: stoneBurnOnDog.turnsLeft - 1 })
-      }
-      if (newHp <= 0) {
-        handleVictory()
-      }
-    }
-  }, [turn])
-
-  // Enemy Turn Logic
-  useEffect(() => {
-    if (turn === 'enemy' && !battleEnded && dogHp > 0) {
-      const timer = setTimeout(() => handleDogTurn(), 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [turn, battleEnded, dogHp])
-
-  const addLog = (t: string, type?: 'damage' | 'heal' | 'crit' | 'info') => {
-    setLog(l => [...l, { text: t, type }])
-    // Keep log manageable (show last 20 messages)
-    if (log.length > 20) setLog(l => l.slice(-20))
-  }
-
-  const showDamage = (value: number, x: number, y: number) => {
-    const id = Date.now()
-    setDamageNumbers(prev => [...prev, { id, value, x, y }])
-    setTimeout(() => {
-      setDamageNumbers(prev => prev.filter(d => d.id !== id))
-    }, 1000)
-  }
-
-  const roll = async () => {
-    setRolling(true)
-    if (soundEnabled) playSound('diceRoll')
-    await new Promise(r => setTimeout(r, 600))
-    const v = rollD20()
-    setDice(v)
-    setRolling(false)
-    return v
-  }
-
-  const handleAttack = async () => {
-    if (!selectedCatId || turn !== 'player' || battleEnded) return
-
-    const cat = party.find(c => c.instanceId === selectedCatId)
-    if (!cat || cat.currentHp <= 0) return
-
-    // Frost Wolf freeze check — frozen cat skips their turn
-    if (frozenCatId === cat.instanceId) {
-      addLog(`❄️ ${cat.name} is frozen and can't attack!`, 'damage')
-      setFrozenCatId(null)
-      setAttackingId(null)
-      setTurn('enemy')
-      return
-    }
-
-    setAttackingId(cat.instanceId)
-    addLog(`${cat.name} attacks!`, 'info')
-
-    const v = await roll()
-
-    // Special D20 and D1 rolls
-    if (v === 20) {
-      addLog(`🎲 NATURAL 20! ⚡ LEGENDARY STRIKE! ⚡`, 'crit')
-      addLog(`✨ MAXIMUM POWER UNLEASHED! ✨`, 'crit')
-    } else if (v === 1) {
-      addLog(`🎲 CRITICAL FAIL! 💥 Attack MISSES! 💥`, 'damage')
-      addLog(`${cat.name} stumbles and deals NO damage!`, 'damage')
-      setAttackingId(null)
-      setTurn('enemy')
-      return
-    }
-
-    // Equipment ATK bonus
-    const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
-      + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
-
-    // Base damage with Elite Aura bonus + equipment (apply ATK debuff if active)
-    const debuff = atkDebuffs[cat.instanceId]
-    const effectiveAtk = debuff && debuff.turnsLeft > 0 ? Math.floor(cat.currentAttack * debuff.multiplier) : cat.currentAttack
-    const baseDmg = effectiveAtk + eliteAuraBonus + equipAtk + Math.floor(v / 5)
-
-    // Check if silenced (Omega Fenrir ability) — silence wears off after one turn
-    if (silenced) setSilenced(false)
-
-    // Shadow Stalker / Nebula Stalker dodge check
-    if (dogDodgeChance > 0 && Math.random() < dogDodgeChance) {
-      addLog(`👻 ${dog.name} dodges the attack!`, 'info')
-      // Nebula Stalker counter-attacks on dodge
-      if (dog.id === 'nebula-stalker') {
-        const counterDmg = Math.floor(dog.attack * 0.5)
-        const newHp = Math.max(0, cat.currentHp - counterDmg)
-        updateCatHp(cat.instanceId, newHp)
-        addLog(`🌌 Phase Counter! ${dog.name} strikes back for ${counterDmg}!`, 'crit')
-      }
-      setAttackingId(null)
-      setTurn('enemy')
-      return
-    }
-
-    // Natural 20 doubles damage
-    let finalDmg = baseDmg
-    if (v === 20) {
-      finalDmg = Math.floor(finalDmg * 2)
-    }
-
-    // Apply Crystal Guardian armor reduction
-    if (dogArmor > 0) {
-      finalDmg = Math.max(1, finalDmg - dogArmor)
-      if (finalDmg < baseDmg) {
-        addLog(`🛡️ ${dog.name}'s crystal armor absorbs ${baseDmg - finalDmg} damage!`, 'info')
-      }
-    }
-
-    // Apply damage and check victory
-    const newDogHp = Math.max(0, dogHp - finalDmg)
-    setDogHp(newDogHp)
-    showDamage(finalDmg, window.innerWidth / 2, 100)
-
-    setShaking(true)
-    setTimeout(() => setShaking(false), 400)
-    setParticleActive(true)
-    setTimeout(() => setParticleActive(false), 100)
-
-    addLog(`Hit for ${finalDmg} damage.`, 'damage')
-    if (soundEnabled) playSound('attack')
-
-    if (newDogHp <= 0) { handleVictory(); return }
-
-    // Decrement cooldowns for the acting cat
-    setAbilityCooldowns(prev => ({
-      ...prev,
-      [cat.instanceId]: Math.max(0, (prev[cat.instanceId] ?? ABILITY_COOLDOWN) - 1),
-    }))
-
-    setAttackingId(null)
-    setTurn('enemy')
-  }
-
-  const handleStoneAttack = async () => {
-    if (!selectedCatId || turn !== 'player' || battleEnded) return
-
-    const cat = party.find(c => c.instanceId === selectedCatId)
-    if (!cat || cat.currentHp <= 0) return
-    if (!cat.equipment?.stone || stoneActivated[cat.instanceId]) return
-
-    const stoneId = cat.equipment.stone
-    const stone = STONES.find(s => s.id === stoneId)
-    if (!stone) return
-
-    // Frozen cat can't attack
-    if (frozenCatId === cat.instanceId) {
-      addLog(`❄️ ${cat.name} is frozen and can't attack!`, 'damage')
-      setFrozenCatId(null)
-      setTurn('enemy')
-      return
-    }
-
-    setAttackingId(cat.instanceId)
-    addLog(`💎 ${cat.name} channels ${stone.name}!`, 'crit')
-
-    const v = await roll()
-
-    // Critical fail — stone consumed, no effect
-    if (v === 1) {
-      addLog(`🎲 CRITICAL FAIL! 💥 The stone shatters uselessly!`, 'damage')
-      consumeStone(cat.instanceId)
-      setStoneActivated(prev => ({ ...prev, [cat.instanceId]: true }))
-      setAttackingId(null)
-      setTurn('enemy')
-      return
-    }
-
-    if (v === 20) {
-      addLog(`🎲 NATURAL 20! ⚡ LEGENDARY STONE STRIKE! ⚡`, 'crit')
-    }
-
-    // Equipment ATK bonus
-    const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
-      + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
-
-    const baseDmg = cat.currentAttack + eliteAuraBonus + equipAtk + Math.floor(v / 5)
-
-    // Resolve stone effect
-    const element = stone.element as FrenzyElement
-    const result = resolveStoneEffect(element, cat, baseDmg)
-
-    // Log stone effect messages
-    result.logMessages.forEach(msg => addLog(msg.text, msg.type))
-
-    // Apply burn on dog
-    if (result.burnApplied) {
-      setStoneBurnOnDog({ dmgPerTurn: result.burnApplied.dmgPerTurn, turnsLeft: result.burnApplied.turns })
-    }
-
-    // Apply freeze on dog
-    if (result.freezeApplied) {
-      setStoneFreezeOnDog(true)
-    }
-
-    // Apply rock shield on cat
-    if (result.rockShieldApplied) {
-      setRockShieldCatId(cat.instanceId)
-    }
-
-    // Apply lifesteal
-    if (result.healAmount > 0 && result.healTargetId) {
-      const healTarget = party.find(c => c.instanceId === result.healTargetId)
-      if (healTarget) {
-        const newHp = Math.min(healTarget.maxHp, healTarget.currentHp + result.healAmount)
-        updateCatHp(result.healTargetId, newHp)
-      }
-    }
-
-    // Shadow Stalker / Obsidian Shade dodge check
-    if (dogDodgeChance > 0 && Math.random() < dogDodgeChance) {
-      addLog(`👻 ${dog.name} dodges the stone attack!`, 'info')
-      consumeStone(cat.instanceId)
-      setStoneActivated(prev => ({ ...prev, [cat.instanceId]: true }))
-      setAttackingId(null)
-      setTurn('enemy')
-      return
-    }
-
-    // Apply armor reduction
-    let finalDmg = result.damage
-    if (dogArmor > 0) {
-      finalDmg = Math.max(1, result.damage - dogArmor)
-      if (finalDmg < result.damage) {
-        addLog(`🛡️ ${dog.name}'s armor absorbs ${result.damage - finalDmg} damage!`, 'info')
-      }
-    }
-
-    // Apply damage
-    let newDogHp = Math.max(0, dogHp - finalDmg)
-    setDogHp(newDogHp)
-    showDamage(finalDmg, window.innerWidth / 2, 100)
-
-    setShaking(true)
-    setTimeout(() => setShaking(false), 400)
-    setParticleActive(true)
-    setTimeout(() => setParticleActive(false), 100)
-
-    // Double strike (Lightning) — second hit
-    if (result.doubleStrike && newDogHp > 0) {
-      const secondDmg = Math.max(1, baseDmg - dogArmor)
-      addLog(`⚡ Second strike hits for ${secondDmg}!`, 'crit')
-      newDogHp = Math.max(0, newDogHp - secondDmg)
-      setDogHp(newDogHp)
-      showDamage(secondDmg, window.innerWidth / 2 + 30, 120)
-    }
-
-    // Consume stone and mark activated
-    consumeStone(cat.instanceId)
-    setStoneActivated(prev => ({ ...prev, [cat.instanceId]: true }))
-
-    if (newDogHp <= 0) {
-      handleVictory()
-      return
-    }
-
-    setAttackingId(null)
-    setTurn('enemy')
-  }
-
-  const handleActiveAbility = (catId: string) => {
-    if (turn !== 'player' || rolling || battleEnded) return
-    // Silence blocks active abilities and is consumed
-    if (silenced) {
-      addLog(`🔇 Silenced! ${party.find(c => c.instanceId === catId)?.name || 'Cat'} can't use abilities!`, 'damage')
-      setSilenced(false)
-      return
-    }
-    const cat = party.find(c => c.instanceId === catId)
-    if (!cat || cat.currentHp <= 0) return
-    if ((abilityCooldowns[catId] ?? ABILITY_COOLDOWN) > 0) return
-
-    setAttackingId(catId)
-
-    // Equipment ATK bonus
-    const equipAtk = ((cat.equipment?.weapon ? EQUIPMENT.find(e => e.id === cat.equipment!.weapon)?.atkBonus : 0) || 0)
-      + ((cat.equipment?.accessory ? EQUIPMENT.find(e => e.id === cat.equipment!.accessory)?.atkBonus : 0) || 0)
-
-    const abilityDebuff = atkDebuffs[catId]
-    const abilityEffectiveAtk = abilityDebuff && abilityDebuff.turnsLeft > 0 ? Math.floor(cat.currentAttack * abilityDebuff.multiplier) : cat.currentAttack
-    const baseAtk = abilityEffectiveAtk + eliteAuraBonus + equipAtk
-    const effect = cat.ability.effect
-
-    addLog(`✨ ${cat.name} activates ${cat.ability.name}!`, 'crit')
-    if (soundEnabled) playSound('abilityTrigger')
-
-    let dmg = 0
-    if (effect === 'crit') {
-      dmg = Math.floor(baseAtk * 2)
-      addLog(`💥 Critical Strike deals ${dmg} damage!`, 'crit')
-    } else if (effect === 'bleed') {
-      dmg = baseAtk + 8
-      addLog(`🔥 Burning Strike deals ${dmg} damage!`, 'crit')
-    } else if (effect === 'heal') {
-      const healAmt = Math.floor(cat.maxHp * 0.4)
-      party.forEach(c => {
-        if (c.currentHp > 0) updateCatHp(c.instanceId, Math.min(c.maxHp, c.currentHp + healAmt))
-      })
-      addLog(`💚 Heals all cats for ${healAmt} HP!`, 'heal')
-    } else if (effect === 'lifesteal') {
-      dmg = baseAtk
-      const stolen = Math.floor(dmg * 0.75)
-      updateCatHp(cat.instanceId, Math.min(cat.maxHp, cat.currentHp + stolen))
-      addLog(`🩸 Drains ${stolen} HP from enemy! Deals ${dmg} damage.`, 'heal')
-    } else if (effect === 'stun') {
-      dmg = Math.floor(baseAtk * 0.5)
-      addLog(`💥 Stun Strike deals ${dmg} damage and stuns!`, 'crit')
-      // Skip dog's next turn by setting turn back to player after a delay
-    } else if (effect === 'shield') {
-      addLog(`🛡️ Shield Wall! Party takes 50% less damage next turn.`, 'info')
-      // Could be tracked with state, but for simplicity: set dogArmor temporarily
-    } else if (effect === 'armor') {
-      dmg = baseAtk
-      addLog(`🛡️ Fortified Strike deals ${dmg} damage!`, 'crit')
-    } else if (effect === 'speed') {
-      dmg = baseAtk
-      addLog(`⚡ Lightning Strike deals ${dmg} damage! Attacks again!`, 'crit')
-    }
-
-    if (dmg > 0) {
-      const newDogHp = Math.max(0, dogHp - dmg)
-      setDogHp(newDogHp)
-      setShaking(true)
-      setParticleActive(true)
-      setTimeout(() => { setShaking(false); setParticleActive(false) }, 400)
-
-      if (newDogHp <= 0) { handleVictory(); return }
-    }
-
-    // Reset cooldown
-    setAbilityCooldowns(prev => ({ ...prev, [catId]: ABILITY_COOLDOWN }))
-
-    setAttackingId(null)
-
-    // Speed effect: player goes again
-    if (effect === 'speed') return
-    // Stun effect: skip dog turn
-    if (effect === 'stun') return
-
-    setTurn('enemy')
-  }
-
-  const handleDogTurn = async () => {
-    // Stone freeze check — frozen dog skips turn
-    if (stoneFreezeOnDog) {
-      setStoneFreezeOnDog(false)
-      addLog(`❄️ ${dog.name} is frozen solid! Skips turn!`, 'crit')
-      setTurn('player')
-      return
-    }
-
-    setAttackingId('dog')
-    addLog(`${dog.name} attacks!`, 'info')
-
-    const v = await roll()
-    let dmg = dog.attack + Math.floor(v / 6)
-
-    // Choose a random alive cat to hit
-    const targets = party.filter(c => c.currentHp > 0)
-    if (!targets.length) {
-      handleDefeat()
-      return
-    }
-
-    const dogAbilityReady = dogAbilityCooldown <= 0
-
-    // === DOG ABILITY: Eternal Overlord - Apocalypse Aura ===
-    if (dogAbilityReady && dog.id === 'eternal-overlord') {
-      addLog(`☠️ Apocalypse Aura damages all cats!`, 'damage')
-      targets.forEach(cat => {
-        const newHp = Math.max(0, cat.currentHp - 2)
-        updateCatHp(cat.instanceId, newHp)
-      })
-    }
-
-    // === DOG ABILITY: Echo Howler - Sonic Howl (AoE) ===
-    if (dogAbilityReady && dog.id === 'echo-howler') {
-      const aoeDmg = Math.floor(dmg * 0.5)
-      addLog(`📢 Sonic Howl hits ALL cats for ${aoeDmg} damage!`, 'damage')
-      targets.forEach(cat => {
-        const newHp = Math.max(0, cat.currentHp - aoeDmg)
-        updateCatHp(cat.instanceId, newHp)
-      })
-      setShaking(true)
-      setTimeout(() => setShaking(false), 400)
-      setDogAbilityCooldown(ABILITY_COOLDOWN)
-      setAttackingId(null)
-      const allDead = targets.every(c => c.currentHp - aoeDmg <= 0)
-      if (allDead) { handleDefeat() } else { setTurn('player') }
-      return
-    }
-
-    // === DOG ABILITY: Tentacle Paws - Multi-target ===
-    if (dogAbilityReady && dog.id === 'tentacle-paws') {
-      const multiDmg = Math.floor(dmg * 0.6)
-      addLog(`🐙 Tentacle Grab hits all cats for ${multiDmg} each!`, 'damage')
-      targets.forEach(cat => {
-        const defense = resolveDefense(cat, multiDmg, silenced)
-        defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
-        const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
-        updateCatHp(cat.instanceId, newHp)
-      })
-      setDogAbilityCooldown(ABILITY_COOLDOWN)
-      setAttackingId(null)
-      if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
-      return
-    }
-
-    // === FRENZY DOG: Granite Colossus - Tectonic Slam (AoE + armor) ===
-    if (dogAbilityReady && dog.id === 'granite-colossus') {
-      const aoeDmg = Math.floor(dmg * 0.4)
-      addLog(`🪨 Tectonic Slam hits ALL cats for ${aoeDmg}!`, 'damage')
-      targets.forEach(cat => {
-        const defense = resolveDefense(cat, aoeDmg, silenced)
-        defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
-        const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
-        updateCatHp(cat.instanceId, newHp)
-      })
-      setDogArmor(a => a + 3)
-      addLog(`🛡️ ${dog.name} gains 3 armor!`, 'info')
-      setDogAbilityCooldown(ABILITY_COOLDOWN)
-      setAttackingId(null)
-      if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
-      return
-    }
-
-    // === DOG ABILITY: Infernal Cerberus - Triple Hellfire ===
-    if (dogAbilityReady && dog.id === 'infernal-cerberus') {
-      addLog(`🔥🔥🔥 Triple Hellfire! 3 attacks!`, 'crit')
-      for (let strike = 0; strike < 3; strike++) {
-        // Read fresh HP from store each strike (previous strikes update store)
-        const freshOwned = useGame.getState().owned
-        const alive = freshOwned.filter(o => selectedForBattle.includes(o.instanceId) && o.currentHp > 0)
-        if (!alive.length) break
-        const target = alive[Math.floor(Math.random() * alive.length)]
-        const strikeDmg = Math.floor(dmg * 0.6)
-        const defense = resolveDefense(target, strikeDmg, silenced)
-        defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
-        const newHp = Math.max(0, target.currentHp - defense.actualDamage)
-        updateCatHp(target.instanceId, newHp)
-        addLog(`🔥 Strike ${strike + 1} hits ${target.name} for ${defense.actualDamage}!`, 'damage')
-      }
-      setDogAbilityCooldown(ABILITY_COOLDOWN)
-      setAttackingId(null)
-      if (isAllPartyDead()) { handleDefeat() } else { setTurn('player') }
-      return
-    }
-
-    const t = targets[Math.floor(Math.random() * targets.length)]
-
-    // Rock shield check — absorbs one hit completely
-    if (rockShieldCatId === t.instanceId) {
-      setRockShieldCatId(null)
-      addLog(`🪨 Rock Shield absorbs the hit on ${t.name}!`, 'info')
-      setAttackingId(null)
-      setTurn('player')
-      return
-    }
-
-    // === DOG ABILITY: Void Walker / Void Reaver - bypass defenses ===
-    let actualDamage: number
-    if (dogAbilityReady && (dog.id === 'void-walker' || dog.id === 'void-reaver')) {
-      actualDamage = dmg
-      addLog(`🌀 ${dog.id === 'void-reaver' ? 'Dimensional Rift' : 'Void Strike'} bypasses ${t.name}'s defenses!`, 'crit')
-    } else {
-      // Apply defensive abilities
-      const defense = resolveDefense(t, dmg, silenced)
-      actualDamage = defense.actualDamage
-      defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
-    }
-
-    const tIsElite = t.isElite === true
-    const tEliteTier = t.eliteTier || 0
-
-    // === DOG ABILITY: Eternal Overlord - Damage Reflect ===
-    if (dogAbilityReady && dog.id === 'eternal-overlord') {
-      const reflectDmg = Math.floor(actualDamage * 0.2)
-      if (reflectDmg > 0) {
-        addLog(`🔄 Apocalypse Aura reflects ${reflectDmg} damage!`, 'damage')
-        const reflectHp = Math.max(0, t.currentHp - reflectDmg)
-        updateCatHp(t.instanceId, reflectHp)
-      }
-    }
-
-    // === STAR BARKS: Dynamic damage reflect (Assimilator / Cosmic Queen) ===
-    if (dogReflect > 0) {
-      const reflDmg = Math.floor(actualDamage * dogReflect)
-      if (reflDmg > 0) {
-        addLog(`🔄 Reflected ${reflDmg} damage back to ${t.name}!`, 'damage')
-        const reflHp = Math.max(0, t.currentHp - reflDmg)
-        updateCatHp(t.instanceId, reflHp)
-      }
-      setDogReflect(0) // Reflect consumed after one trigger
-    }
-
-    let newHp = Math.max(0, t.currentHp - actualDamage)
-
-    // Stellar Resilience - Elite cats have a chance to survive lethal blow
-    if (newHp <= 0 && tIsElite) {
-      const surviveChance = tEliteTier >= 2 ? 0.25 : 0.15
-      if (Math.random() < surviveChance) {
-        newHp = 1
-        addLog(`✨ ${t.name}'s Stellar Resilience triggers! Survives with 1 HP!`, 'heal')
-      }
-    }
-
-    updateCatHp(t.instanceId, newHp)
-
-    const targetIndex = party.findIndex(c => c.instanceId === t.instanceId)
-    const xPos = (window.innerWidth / 3) * (targetIndex + 0.5)
-    showDamage(actualDamage, xPos, window.innerHeight - 200)
-
-    addLog(`${dog.name} hits ${t.name} for ${actualDamage}!`, 'damage')
-
-    // Dog ability effects (gated behind cooldown)
-    if (dogAbilityReady) {
-
-    // === DOG ABILITY: Slime Hound - Toxic Bite (Poison DOT) ===
-    if (dog.id === 'slime-hound') {
-      addLog(`🟢 Toxic Bite poisons ${t.name}!`, 'damage')
-      setDotEffects(prev => [...prev.filter(d => !(d.catId === t.instanceId && d.type === 'poison')),
-        { catId: t.instanceId, turnsLeft: 3, dmgPerTurn: 2, type: 'poison' }
-      ])
-    }
-
-    // === DOG ABILITY: Magma Beast - Lava Burst (Burn DOT) ===
-    if (dog.id === 'magma-beast') {
-      addLog(`🔥 Lava Burst ignites ${t.name}!`, 'damage')
-      setDotEffects(prev => [...prev.filter(d => !(d.catId === t.instanceId && d.type === 'burn')),
-        { catId: t.instanceId, turnsLeft: 3, dmgPerTurn: 3, type: 'burn' }
-      ])
-    }
-
-    // === FRENZY DOG: Ember Drake - Inferno Breath (Burn DOT) ===
-    if (dog.id === 'ember-drake') {
-      addLog(`🔥 Inferno Breath burns ${t.name}!`, 'damage')
-      setDotEffects(prev => [...prev.filter(d => !(d.catId === t.instanceId && d.type === 'burn')),
-        { catId: t.instanceId, turnsLeft: 2, dmgPerTurn: 4, type: 'burn' }
-      ])
-    }
-
-    // === DOG ABILITY: Frost Wolf - Ice Breath (Freeze) ===
-    if (dog.id === 'frost-wolf') {
-      const freezeTarget = targets[Math.floor(Math.random() * targets.length)]
-      setFrozenCatId(freezeTarget.instanceId)
-      addLog(`❄️ Ice Breath freezes ${freezeTarget.name}! They'll skip next turn!`, 'crit')
-    }
-
-    // === FRENZY DOG: Glacial Howler - Permafrost Howl (Freeze) ===
-    if (dog.id === 'glacial-howler') {
-      const freezeTarget = targets[Math.floor(Math.random() * targets.length)]
-      setFrozenCatId(freezeTarget.instanceId)
-      addLog(`❄️ Permafrost Howl freezes ${freezeTarget.name}! They'll skip next turn!`, 'crit')
-    }
-
-    // === DOG ABILITY: Thunder Hound - Lightning Strike (Chain) ===
-    if (dog.id === 'thunder-hound') {
-      const otherTargets = targets.filter(c => c.instanceId !== t.instanceId && c.currentHp > 0)
-      if (otherTargets.length > 0) {
-        const chainTarget = otherTargets[Math.floor(Math.random() * otherTargets.length)]
-        const chainDmg = Math.floor(actualDamage * 0.5)
-        const chainHp = Math.max(0, chainTarget.currentHp - chainDmg)
-        updateCatHp(chainTarget.instanceId, chainHp)
-        addLog(`⚡ Lightning chains to ${chainTarget.name} for ${chainDmg}!`, 'damage')
-      }
-    }
-
-    // === FRENZY DOG: Voltfang Warden - Chain Lightning ===
-    if (dog.id === 'voltfang-warden') {
-      const otherTargets = targets.filter(c => c.instanceId !== t.instanceId && c.currentHp > 0)
-      if (otherTargets.length > 0) {
-        const chainTarget = otherTargets[Math.floor(Math.random() * otherTargets.length)]
-        const chainDmg = Math.floor(actualDamage * 0.6)
-        const chainHp = Math.max(0, chainTarget.currentHp - chainDmg)
-        updateCatHp(chainTarget.instanceId, chainHp)
-        addLog(`⚡ Chain Lightning arcs to ${chainTarget.name} for ${chainDmg}!`, 'damage')
-      }
-    }
-
-    // === DOG ABILITY: Chaos Demon - Random effect ===
-    if (dog.id === 'chaos-demon') {
-      const chaosRoll = Math.random()
-      if (chaosRoll < 0.25) {
-        // Heal self
-        const chaosHeal = Math.floor(dog.health * 0.1)
-        setDogHp(h => Math.min(dog.health, h + chaosHeal))
-        addLog(`🎭 Chaotic Energy heals ${dog.name} for ${chaosHeal}!`, 'heal')
-      } else if (chaosRoll < 0.5) {
-        // Damage all cats
-        const chaosDmg = Math.floor(dmg * 0.3)
-        addLog(`🎭 Chaotic Energy damages all cats for ${chaosDmg}!`, 'damage')
-        targets.forEach(cat => {
-          const hp = Math.max(0, cat.currentHp - chaosDmg)
-          updateCatHp(cat.instanceId, hp)
-        })
-      } else if (chaosRoll < 0.75) {
-        // Silence
-        setSilenced(true)
-        addLog(`🎭 Chaotic Energy silences cat abilities!`, 'crit')
-      } else {
-        // Extra damage to target
-        const bonusDmg = Math.floor(dmg * 0.5)
-        const bonusHp = Math.max(0, t.currentHp - bonusDmg)
-        updateCatHp(t.instanceId, bonusHp)
-        addLog(`🎭 Chaotic Energy deals ${bonusDmg} bonus damage to ${t.name}!`, 'damage')
-      }
-    }
-
-    // === DOG ABILITY: Void Emperor - Reality Tear (heal self) ===
-    if (dog.id === 'void-emperor') {
-      const voidHeal = Math.floor(actualDamage * 0.3)
-      setDogHp(h => Math.min(dog.health, h + voidHeal))
-      addLog(`🌑 Reality Tear heals ${dog.name} for ${voidHeal} HP!`, 'heal')
-    }
-
-    // === DOG ABILITY: Abyssal Devourer - Soul Drain ===
-    if (dog.id === 'abyssal-devourer') {
-      const healAmount = Math.floor(actualDamage * 0.25)
-      setDogHp(h => Math.min(dog.health, h + healAmount))
-      addLog(`💀 Soul Drain heals ${dog.name} for ${healAmount} HP!`, 'heal')
-    }
-
-    // === FRENZY DOG: Obsidian Shade - Soul Siphon (lifesteal) ===
-    if (dog.id === 'obsidian-shade') {
-      const siphonHeal = Math.floor(actualDamage * 0.3)
-      setDogHp(h => Math.min(dog.health, h + siphonHeal))
-      addLog(`🌑 Soul Siphon heals ${dog.name} for ${siphonHeal} HP!`, 'heal')
-    }
-
-    // === DOG ABILITY: Omega Fenrir - Ragnarok Howl ===
-    if (dog.id === 'omega-fenrir') {
-      setSilenced(true)
-      addLog(`🐺 Ragnarok Howl! Cat abilities silenced next turn!`, 'crit')
-    }
-
-    // === STAR BARKS: Xenospore Hound - Toxic Spores (poison ALL cats) ===
-    if (dog.id === 'xenospore-hound') {
-      const alive = party.filter(c => c.currentHp > 0)
-      alive.forEach(cat => {
-        setDotEffects(prev => [...prev, { catId: cat.instanceId, turnsLeft: 2, dmgPerTurn: 2, type: 'poison' }])
-      })
-      addLog(`🟢 Toxic Spores! All cats are poisoned! (2 dmg/turn for 2 turns)`, 'crit')
-    }
-
-    // === STAR BARKS: Acidmaw Ravager - Corrosive Bite (ATK debuff) ===
-    if (dog.id === 'acidmaw-ravager') {
-      setAtkDebuffs(prev => ({ ...prev, [t.instanceId]: { multiplier: 0.8, turnsLeft: 2 } }))
-      addLog(`🧪 Corrosive Bite! ${t.name}'s attack reduced by 20% for 2 turns!`, 'crit')
-    }
-
-    // === STAR BARKS: Hiveling Alpha - Swarm Strike (4 random hits) ===
-    if (dog.id === 'hiveling-alpha') {
-      const alive = party.filter(c => c.currentHp > 0)
-      for (let s = 0; s < 3; s++) { // 3 additional hits (4 total with main attack)
-        const swarmTarget = alive[Math.floor(Math.random() * alive.length)]
-        if (swarmTarget && swarmTarget.currentHp > 0) {
-          const swarmDmg = Math.floor(dmg * 0.4)
-          const defense = resolveDefense(swarmTarget, swarmDmg, silenced)
-          defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
-          const newHp = Math.max(0, swarmTarget.currentHp - defense.actualDamage)
-          updateCatHp(swarmTarget.instanceId, newHp)
-          addLog(`🐝 Swarm hit ${swarmTarget.name} for ${defense.actualDamage}!`, 'damage')
-        }
-      }
-    }
-
-    // === STAR BARKS: Nebula Stalker - Phase Shift (dodge + counter on dodge) ===
-    if (dog.id === 'nebula-stalker') {
-      setDogDodgeChance(0.4)
-      addLog(`🌌 Phase Shift! Nebula Stalker phases in and out of reality! (40% dodge + counter)`, 'crit')
-    }
-
-    // === STAR BARKS: Parasyte Warden - Neural Hijack (friendly fire) ===
-    if (dog.id === 'parasyte-warden') {
-      const alive = party.filter(c => c.currentHp > 0)
-      if (alive.length > 1) {
-        const hijacked = alive.find(c => c.instanceId === t.instanceId) || alive[0]
-        const allies = alive.filter(c => c.instanceId !== hijacked.instanceId)
-        const victim = allies[Math.floor(Math.random() * allies.length)]
-        if (victim) {
-          const hijackDmg = Math.floor(hijacked.currentAttack * 0.3)
-          const newHp = Math.max(0, victim.currentHp - hijackDmg)
-          updateCatHp(victim.instanceId, newHp)
-          addLog(`🧠 Neural Hijack! ${hijacked.name} attacks ${victim.name} for ${hijackDmg}!`, 'crit')
-        }
-      }
-    }
-
-    // === STAR BARKS: Plasmic Behemoth - Plasma Barrage (AOE + burn) ===
-    if (dog.id === 'plasmic-behemoth') {
-      const alive = party.filter(c => c.currentHp > 0)
-      const aoeDmg = Math.floor(dmg * 0.5)
-      alive.forEach(cat => {
-        if (cat.instanceId !== t.instanceId) { // main target already hit
-          const defense = resolveDefense(cat, aoeDmg, silenced)
-          defense.logMessages.forEach(msg => addLog(msg.text, msg.type))
-          const newHp = Math.max(0, cat.currentHp - defense.actualDamage)
-          updateCatHp(cat.instanceId, newHp)
-        }
-      })
-      addLog(`💥 Plasma Barrage hits all cats!`, 'crit')
-      // Burn a random alive cat
-      const burnTarget = alive[Math.floor(Math.random() * alive.length)]
-      if (burnTarget) {
-        setDotEffects(prev => [...prev, { catId: burnTarget.instanceId, turnsLeft: 2, dmgPerTurn: 4, type: 'burn' }])
-        addLog(`🔥 ${burnTarget.name} is burning! (4 dmg/turn for 2 turns)`, 'damage')
-      }
-    }
-
-    // === STAR BARKS: Void Reaver - Dimensional Rift (ignore defense + lifesteal) ===
-    if (dog.id === 'void-reaver') {
-      const riftHeal = Math.floor(actualDamage * 0.3)
-      setDogHp(h => Math.min(dog.health, h + riftHeal))
-      addLog(`🕳️ Dimensional Rift! Ignores defenses and drains ${riftHeal} HP!`, 'crit')
-    }
-
-    // === STAR BARKS: The Assimilator - Genetic Override (copy + reflect) ===
-    if (dog.id === 'the-assimilator') {
-      // Copy active cat's ability effect against party
-      const effect = t.ability.effect
-      if (effect === 'heal') {
-        const assimHeal = Math.floor(dog.health * 0.15)
-        setDogHp(h => Math.min(dog.health, h + assimHeal))
-        addLog(`🧬 Genetic Override copies ${t.ability.name}! ${dog.name} heals ${assimHeal} HP!`, 'crit')
-      } else if (effect === 'bleed') {
-        setDotEffects(prev => [...prev, { catId: t.instanceId, turnsLeft: 3, dmgPerTurn: 3, type: 'burn' }])
-        addLog(`🧬 Genetic Override copies ${t.ability.name}! ${t.name} is burning!`, 'crit')
-      } else if (effect === 'stun') {
-        setFrozenCatId(t.instanceId)
-        addLog(`🧬 Genetic Override copies ${t.ability.name}! ${t.name} is stunned!`, 'crit')
-      } else {
-        const bonusDmg = Math.floor(dmg * 0.3)
-        const newHp = Math.max(0, t.currentHp - bonusDmg)
-        updateCatHp(t.instanceId, newHp)
-        addLog(`🧬 Genetic Override copies ${t.ability.name}! Deals ${bonusDmg} bonus damage!`, 'crit')
-      }
-      // 25% damage reflect active until next dog turn
-      setDogReflect(0.25)
-      addLog(`🛡️ Genetic Override: 25% damage will be reflected!`, 'info')
-    }
-
-    // === STAR BARKS: The Cosmic Queen - Extinction Protocol (dual random) ===
-    if (dog.id === 'cosmic-queen') {
-      const effects = ['silence', 'aoe', 'burn', 'lifesteal', 'reflect']
-      const picked: string[] = []
-      while (picked.length < 2) {
-        const e = effects[Math.floor(Math.random() * effects.length)]
-        if (!picked.includes(e)) picked.push(e)
-      }
-      picked.forEach(e => {
-        if (e === 'silence') {
-          setSilenced(true)
-          addLog(`👽 Extinction Protocol: Silence! Cat abilities blocked!`, 'crit')
-        } else if (e === 'aoe') {
-          const alive = party.filter(c => c.currentHp > 0)
-          const aoeDmg = Math.floor(dmg * 0.4)
-          alive.forEach(cat => {
-            if (cat.instanceId !== t.instanceId) {
-              const newHp = Math.max(0, cat.currentHp - aoeDmg)
-              updateCatHp(cat.instanceId, newHp)
-            }
-          })
-          addLog(`👽 Extinction Protocol: AOE blast hits all cats for ${aoeDmg}!`, 'crit')
-        } else if (e === 'burn') {
-          setDotEffects(prev => [...prev, { catId: t.instanceId, turnsLeft: 2, dmgPerTurn: 4, type: 'burn' }])
-          addLog(`👽 Extinction Protocol: ${t.name} is scorched! (4 dmg/turn)`, 'crit')
-        } else if (e === 'lifesteal') {
-          const lsHeal = Math.floor(actualDamage * 0.3)
-          setDogHp(h => Math.min(dog.health, h + lsHeal))
-          addLog(`👽 Extinction Protocol: Drains ${lsHeal} HP!`, 'crit')
-        } else if (e === 'reflect') {
-          setDogReflect(0.25)
-          addLog(`👽 Extinction Protocol: Cosmic shield active! 25% damage reflected next turn!`, 'crit')
-        }
-      })
-    }
-
-    } // end dogAbilityReady
-
-    // Manage dog ability cooldown
-    if (dogAbilityReady) {
-      setDogAbilityCooldown(ABILITY_COOLDOWN)
-    } else {
-      setDogAbilityCooldown(c => c - 1)
-    }
-
-    setAttackingId(null)
-
-    // Check defeat using fresh store state (avoids stale closure HP values)
-    if (isAllPartyDead()) {
-      handleDefeat()
-    } else {
-      setTurn('player')
-    }
-  }
-
-  const handleVictory = () => {
-    setBattleEnded(true)
+  const handleVictory = (rewards?: { coins: number; xp: number }) => {
     if (soundEnabled) playSound('victory')
-    // Scale rewards based on difficulty level
-    const difficultyMultiplier = getDifficultyMultiplier(difficultyLevel)
-    // Heavily reduce rewards for repeat seasonal/event boss kills (10% of normal)
     const isRepeatEventBoss = eventBattle && completedEventRewards.includes(getEventPeriodKey(eventBattle))
-    const repeatPenalty = isRepeatEventBoss ? 0.1 : 1.0
-    const xpEarned = Math.floor((BATTLE_BASE_XP + (battleDogIndex * BATTLE_XP_PER_DOG)) * difficultyMultiplier * repeatPenalty)
-    const coinsEarned = Math.floor((BATTLE_BASE_COINS + (battleDogIndex * BATTLE_COINS_PER_DOG)) * difficultyMultiplier * coinMultiplier * repeatPenalty)
+    const { coins: coinsEarned, xp: xpEarned } =
+      rewards ??
+      computeBattleRewards({ battleDogIndex, difficultyLevel, coinMultiplier, isRepeatEventBoss: !!isRepeatEventBoss })
 
     addLog(`🎉 VICTORY!`, 'info')
     if (isRepeatEventBoss) addLog(`Event boss already defeated — reduced rewards`, 'info')
@@ -1089,7 +508,7 @@ export default function BattleArena() {
         if (soundEnabled) playSound('equipDrop')
 
         // Update Frenzy Collector achievement progress
-        setTimeout(() => {
+        trackedTimeout(() => {
           const g = useGame.getState()
           const STONE_IDS = ['emberstone', 'froststone', 'terrastone', 'stormstone', 'voidstone']
           const uniqueStones = STONE_IDS.filter(id => (g.inventory[id] || 0) > 0).length
@@ -1110,24 +529,21 @@ export default function BattleArena() {
       const nextRushIndex = bossRushDogIndex + 1
       setBossRushHighest(Math.max(bossRushHighest, bossRushDogIndex))
       if (nextRushIndex >= DOGS.length) {
-        // Completed all dogs!
         addLog(`🏆 BOSS RUSH COMPLETE! All ${DOGS.length} dogs defeated!`, 'info')
         setBossRushActive(false)
-        setTimeout(() => setShowVictoryModal(true), 1000)
+        trackedTimeout(() => setShowVictoryModal(true), 1000)
       } else {
         addLog(`➡️ Next challenger: ${DOGS[nextRushIndex].name}!`, 'info')
         setBossRushDogIndex(nextRushIndex)
         setBattleDogIndex(nextRushIndex)
-        // Don't show victory modal, auto-continue
       }
       return
     }
 
-    setTimeout(() => setShowVictoryModal(true), 1000)
+    trackedTimeout(() => setShowVictoryModal(true), 1000)
   }
 
   const handleDefeat = () => {
-    setBattleEnded(true)
     if (soundEnabled) playSound('defeat')
     if (bossRushActive) {
       addLog(`💀 Boss Rush ended at dog ${bossRushDogIndex + 1}/${DOGS.length}!`, 'info')
@@ -1136,8 +552,8 @@ export default function BattleArena() {
     addLog(`💀 DEFEAT!`, 'info')
     recordBattleResult(false, 0)
     trackBattleLost(dog.name, difficultyLevel)
-    // Don't auto-heal - player must heal manually for 20 coins
-    setTimeout(() => setShowDefeatModal(true), 1000)
+    // Don't auto-heal - player must heal manually
+    trackedTimeout(() => setShowDefeatModal(true), 1000)
   }
 
   return (
@@ -1151,12 +567,15 @@ export default function BattleArena() {
         >
           <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/60 to-orange-500/60 border border-red-500/50">
             <div className="flex items-center justify-between">
-              <p className="text-white font-bold text-sm sm:text-base flex-1 text-center">
-                <span className="text-lg mr-2">⚔️</span>
+              <p className="text-white font-bold text-sm sm:text-base flex-1 text-center inline-flex items-center justify-center gap-2">
+                <SwordsIcon className="text-lg" aria-hidden />
                 Choose your opponent! Challenge new dogs to progress, or replay defeated ones for rewards.
               </p>
               {storeDogIndex >= DOGS.length && (
-                <motion.button
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="ml-3 whitespace-nowrap"
                   onClick={() => {
                     setBossRushActive(true)
                     setBossRushDogIndex(0)
@@ -1164,12 +583,9 @@ export default function BattleArena() {
                     setBossRushHighest(0)
                     setShowDogSelect(false)
                   }}
-                  className="ml-3 px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-white font-black text-xs uppercase tracking-wider border-2 border-red-400/50 shadow-lg whitespace-nowrap"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                 >
                   Boss Rush
-                </motion.button>
+                </Button>
               )}
             </div>
           </div>
@@ -1184,7 +600,7 @@ export default function BattleArena() {
               whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(16,185,129,0.7)' }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="block text-xl mb-1">👽 INCOMING TRANSMISSION 👽</span>
+              <span className="flex items-center justify-center gap-2 text-xl mb-1"><AlienIcon aria-hidden /> INCOMING TRANSMISSION <AlienIcon aria-hidden /></span>
               <span className="block text-xs sm:text-sm font-semibold text-green-200 tracking-wide">CLICK TO START EXPANSION</span>
             </motion.button>
           )}
@@ -1231,14 +647,14 @@ export default function BattleArena() {
                     {/* Locked overlay */}
                     {isLocked && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-4xl">🔒</span>
+                        <LockIcon className="text-4xl text-slate-400" aria-hidden />
                       </div>
                     )}
 
                     {/* Defeated checkmark */}
                     {isDefeated && (
                       <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-emerald-300">
-                        <span className="text-white text-xs font-black">✓</span>
+                        <CheckIcon className="text-white text-xs" aria-hidden />
                       </div>
                     )}
 
@@ -1266,8 +682,8 @@ export default function BattleArena() {
                     </h4>
                     {!isLocked && (
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-[10px] text-red-400 font-bold">HP {d.health}</span>
-                        <span className="text-[10px] text-amber-400 font-bold">ATK {d.attack}</span>
+                        <StatPill icon={<HeartIcon aria-hidden />} label="HP" value={d.health} tone="health" size="sm" />
+                        <StatPill icon={<SwordIcon aria-hidden />} label="ATK" value={d.attack} tone="attack" size="sm" />
                       </div>
                     )}
                     {!isLocked && d.ability && (
@@ -1283,8 +699,8 @@ export default function BattleArena() {
           {alienUnlocked && (
             <>
               <div className="mt-6 mb-3 text-center py-3 border-t border-green-500/30">
-                <span className="text-green-400 font-black text-sm tracking-widest uppercase">
-                  👽 Star Barks — The Cosmic Queen's Armada 👽
+                <span className="inline-flex items-center gap-2 text-green-400 font-black text-sm tracking-widest uppercase font-heading">
+                  <AlienIcon aria-hidden /> Star Barks — The Cosmic Queen's Armada <AlienIcon aria-hidden />
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -1324,19 +740,19 @@ export default function BattleArena() {
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-green-900/50 to-slate-900 flex items-center justify-center">
-                            <span className="text-4xl">👽</span>
+                            <AlienIcon className="text-4xl text-green-400" aria-hidden />
                           </div>
                         )}
 
                         {isLocked && (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-4xl">🔒</span>
+                            <LockIcon className="text-4xl text-slate-400" aria-hidden />
                           </div>
                         )}
 
                         {isDefeated && (
                           <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-emerald-300">
-                            <span className="text-white text-xs font-black">✓</span>
+                            <CheckIcon className="text-white text-xs" aria-hidden />
                           </div>
                         )}
 
@@ -1348,7 +764,7 @@ export default function BattleArena() {
 
                         {isOverlord && !isLocked && (
                           <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-green-600 border border-green-400">
-                            <span className="text-[10px] font-black text-white uppercase">👽 BOSS</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-white uppercase"><AlienIcon aria-hidden /> BOSS</span>
                           </div>
                         )}
 
@@ -1379,8 +795,8 @@ export default function BattleArena() {
           {/* Event Dogs */}
           {activeEvents.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                <span className="text-xl">🎪</span> Event Battles
+              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2 font-heading tracking-wide">
+                <EventIcon className="text-xl text-arcane-300" aria-hidden /> Event Battles
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {activeEvents.map(event => {
@@ -1432,7 +848,7 @@ export default function BattleArena() {
 
                         {isCompleted && (
                           <div className="absolute top-10 right-2 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-emerald-300">
-                            <span className="text-white text-xs font-black">✓</span>
+                            <CheckIcon className="text-white text-xs" aria-hidden />
                           </div>
                         )}
 
@@ -1442,8 +858,8 @@ export default function BattleArena() {
                       <div className="p-2.5 bg-slate-900/90">
                         <h4 className="font-black text-sm truncate text-white">{event.eventDog.name}</h4>
                         <div className="flex items-center justify-between mt-1">
-                          <span className="text-[10px] text-red-400 font-bold">HP {event.eventDog.health}</span>
-                          <span className="text-[10px] text-amber-400 font-bold">ATK {event.eventDog.attack}</span>
+                          <StatPill icon={<HeartIcon aria-hidden />} label="HP" value={event.eventDog.health} tone="health" size="sm" />
+                          <StatPill icon={<SwordIcon aria-hidden />} label="ATK" value={event.eventDog.attack} tone="attack" size="sm" />
                         </div>
                         <p className="text-[9px] text-purple-300 mt-1 truncate">{event.name}</p>
                       </div>
@@ -1465,28 +881,33 @@ export default function BattleArena() {
         className="p-4 rounded-xl bg-gradient-to-r from-blue-500/60 to-purple-500/60 border border-blue-500/50"
       >
         <div className="flex items-center justify-between">
-          <p className="text-white font-bold text-sm sm:text-base flex-1 text-center">
-            <span className="text-lg mr-2">🎲</span>
+          <p className="text-white font-bold text-sm sm:text-base flex-1 text-center inline-flex items-center justify-center gap-2">
+            <DiceIcon className="text-lg" aria-hidden />
             Roll the D20 dice, then select one of your cats to attack! Each cat has unique abilities. Defeat enemy dogs and bosses!
           </p>
-          <motion.button
+          <Button
+            variant="secondary"
+            size="sm"
+            className="ml-3 whitespace-nowrap"
             onClick={() => { setEventBattle(null); setShowDogSelect(true) }}
-            className="ml-3 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-600 text-slate-300 text-xs font-bold hover:border-slate-400 transition-all whitespace-nowrap"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
           >
             Switch Dog
-          </motion.button>
+          </Button>
         </div>
       </motion.div>
 
+      {/* Stage-shake wrapper — transform-only, decays to rest. Damage numbers
+          (portaled) and modals live OUTSIDE so they aren't dragged by the shake. */}
+      <motion.div animate={shakeControls} style={{ willChange: 'transform' }}>
       {/* MOBILE LAYOUT (< lg) - Compact Layout Matching Mockup */}
       <div className="lg:hidden flex flex-col gap-3 px-2 py-2 pb-6">
         {/* Enemy Section - Card with Health Bar Below */}
         <div className="flex flex-col items-center">
           <motion.div
-            variants={shakeVariants}
-            animate={shaking ? 'shake' : 'idle'}
+            ref={registerCard('dog')}
+            variants={lungeVariants}
+            custom={1}
+            animate={juiceEnabled && attackingId === 'dog' ? 'attack' : 'idle'}
             className="scale-[0.60] origin-center"
           >
             <GameCard
@@ -1495,6 +916,7 @@ export default function BattleArena() {
               animate={false}
               showStats={false}
               holographicMode="full"
+              fx={cardFx['dog']}
             />
           </motion.div>
           {/* Enemy Health Bar - Below Card */}
@@ -1523,9 +945,9 @@ export default function BattleArena() {
         <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
           {/* Dice - Compact mobile size */}
           <div className="w-28 h-28 flex items-center justify-center">
-            <div className="scale-[0.7] origin-center">
+            <motion.div animate={diceControls} className="scale-[0.7] origin-center">
               <D20Dice value={dice} rolling={rolling} />
-            </div>
+            </motion.div>
           </div>
 
           <BattleLogPanel ref={mobileLogRef} logs={log} variant="mobile" />
@@ -1535,40 +957,43 @@ export default function BattleArena() {
         <div className="mt-4 space-y-2">
           {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
             <>
-              <motion.button
+              <Button
+                variant="primary"
+                fullWidth
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={handleAttack}
-                className="w-full px-6 py-5 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-red-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+                className="py-5 text-2xl"
               >
-                ⚔️ ATTACK!
-              </motion.button>
+                <SwordsIcon aria-hidden /> ATTACK!
+              </Button>
               {selectedCatStone && (
-                <motion.button
+                <Button
+                  variant="secondary"
+                  fullWidth
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={handleStoneAttack}
-                  className="w-full px-6 py-4 bg-gradient-to-b from-emerald-500 to-teal-700 text-white font-black text-lg rounded-xl shadow-2xl border-4 border-emerald-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+                  className="py-4 text-lg border-success-500/50 text-success-400"
                 >
-                  💎 ATTACK + {selectedCatStone.name}!
-                </motion.button>
+                  <GemIcon aria-hidden /> ATTACK + {selectedCatStone.name}!
+                </Button>
               )}
               {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && !silenced && (
-                <motion.button
+                <Button
+                  variant="secondary"
+                  fullWidth
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleActiveAbility(selectedCatId)}
-                  className="w-full px-6 py-3 bg-gradient-to-b from-purple-600 to-indigo-800 text-white font-black text-lg rounded-xl shadow-2xl border-4 border-purple-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+                  className="py-3 text-lg border-arcane-400/50 text-arcane-200"
                 >
-                  ✨ {party.find(c => c.instanceId === selectedCatId)?.ability.name || 'ABILITY'}
-                </motion.button>
+                  <SparkleIcon aria-hidden /> {party.find(c => c.instanceId === selectedCatId)?.ability.name || 'ABILITY'}
+                </Button>
               )}
               {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && silenced && (
-                <div className="text-center text-xs text-red-400 font-bold">
-                  🔇 Ability Silenced!
+                <div className="inline-flex items-center justify-center gap-1 text-center text-xs text-danger-400 font-bold">
+                  <SpeakerMutedIcon aria-hidden /> Ability Silenced!
                 </div>
               )}
               {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) > 0 && (
@@ -1599,8 +1024,9 @@ export default function BattleArena() {
             return (
               <motion.div
                 key={cat.instanceId}
-                variants={attackVariants}
-                animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
+                variants={lungeVariants}
+                custom={-1}
+                animate={juiceEnabled && attackingId === cat.instanceId ? 'attack' : 'idle'}
                 onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
                 className={`flex flex-col ${isDead ? 'opacity-40 grayscale' : ''}`}
                 style={{ willChange: 'transform', width: `${cardWidth}px` }}
@@ -1614,6 +1040,7 @@ export default function BattleArena() {
 
                 {/* Card with Selection Highlight */}
                 <motion.div
+                  ref={registerCard(cat.instanceId)}
                   animate={isSelected ? { y: -8, scale: 0.58 } : { y: 0, scale: 0.55 }}
                   transition={{ duration: 0.2 }}
                   className={`origin-top-center -mt-4 ${isSelected && !isDead ? 'ring-4 ring-purple-500/80 rounded-2xl' : ''} relative`}
@@ -1625,11 +1052,12 @@ export default function BattleArena() {
                     showStats={true}
                     animate={false}
                     holographicMode="none"
+                    fx={cardFx[cat.instanceId]}
                   />
                   {/* Dead overlay - now inside card container */}
                   {isDead && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl">
-                      <span className="text-4xl">💀</span>
+                      <SkullIcon className="text-4xl text-ink-muted" aria-hidden />
                     </div>
                   )}
                 </motion.div>
@@ -1639,63 +1067,159 @@ export default function BattleArena() {
         </div>
       </div>
 
-      {/* DESKTOP LAYOUT (>= lg) */}
-      <div className="hidden lg:flex flex-col flex-1">
-        {/* Top Area: Enemy & Battle Log */}
-        <div className="flex-1 flex justify-center items-start pt-8 relative gap-8">
-          {/* Left Side: Dice & Action Button */}
-          <div className="flex flex-col items-center gap-6 mt-4">
+      {/* DESKTOP LAYOUT (>= lg) — full-width 16:9 stage: arena + docked log rail.
+          Enemy commands the upper zone (centered at lg, pushed center-right at
+          xl+); party is arrayed across the lower zone; dice + actions form a
+          bottom-center HUD; the battle log docks as a right rail with its own
+          scroll. Card ref registry + shake wrapper preserved (see below). */}
+      <div className="hidden lg:grid grid-cols-[1fr_auto] gap-6 min-h-[64vh]">
+        {/* ===== Arena ===== */}
+        <div className="relative flex flex-col">
+          {/* Enemy zone — upper, centered (lg) → pushed center-right (xl+) */}
+          <div className="flex justify-center xl:justify-end xl:pr-[6%] 2xl:pr-[10%] pt-2">
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Boss HP Bar - Above Card */}
+              <div className="mb-4 w-full max-w-[240px] px-2">
+                <StatBar current={dogHp} max={dog.health} label="BOSS HP" type="hp" showNumbers={true} />
+              </div>
+
+              <motion.div
+                ref={registerCard('dog')}
+                variants={lungeVariants}
+                custom={1}
+                animate={juiceEnabled && attackingId === 'dog' ? 'attack' : 'idle'}
+                className="relative"
+              >
+                <GameCard
+                  character={dog}
+                  isEnemy={true}
+                  animate={false}
+                  showStats={false}
+                  fx={cardFx['dog']}
+                />
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Party zone — lower, arrayed left-to-right with presence */}
+          <div className="mt-auto flex items-end justify-center xl:justify-start xl:pl-[3%] 2xl:pl-[7%] gap-6 flex-wrap pt-16">
+            {party.map(cat => {
+              const isSelected = selectedCatId === cat.instanceId
+              const isDead = cat.currentHp <= 0
+              return (
+                <motion.div
+                  key={cat.instanceId}
+                  variants={lungeVariants}
+                  custom={-1}
+                  animate={juiceEnabled && attackingId === cat.instanceId ? 'attack' : 'idle'}
+                  className="relative group cursor-pointer"
+                  onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
+                >
+                  {/* Health Bar Above Card */}
+                  <div className="absolute -top-14 left-0 right-0 px-2 z-20">
+                    <StatBar
+                      current={cat.currentHp}
+                      max={cat.maxHp}
+                      type="hp"
+                      showNumbers={true}
+                      label={cat.name}
+                    />
+                  </div>
+
+                  <motion.div
+                    ref={registerCard(cat.instanceId)}
+                    animate={isSelected ? { y: -16, scale: 1.05 } : { y: 0, scale: 1 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  >
+                    <GameCard
+                      character={cat}
+                      selected={isSelected}
+                      disabled={isDead || (turn !== 'player' && !isSelected)}
+                      showStats={true}
+                      fx={cardFx[cat.instanceId]}
+                    />
+                  </motion.div>
+
+                  {/* Active Indicator */}
+                  {isSelected && (
+                    <motion.div
+                      layoutId="active-indicator"
+                      className="absolute -top-28 left-0 right-0 flex justify-center z-30"
+                    >
+                      <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
+                        READY
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )
+            })}
+
+            {party.length === 0 && (
+              <div className="text-center text-slate-400">
+                Go to Collection to select your team!
+              </div>
+            )}
+          </div>
+
+          {/* HUD — dice + turn/action bar, anchored bottom-center */}
+          <div className="mt-8 flex items-center justify-center gap-8">
             {/* Dice */}
-            <div className="flex flex-col items-center gap-2">
+            <motion.div animate={diceControls} className="shrink-0">
+              <D20Dice value={dice} rolling={rolling} />
+            </motion.div>
+
+            {/* Turn indicator + Action Buttons */}
+            <div className="w-72 flex flex-col items-center gap-2">
               {turn === 'player' && !battleEnded && (
-                <div className="text-white font-black animate-pulse font-heading tracking-widest text-sm mb-2 py-1.5 px-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <div className="text-white font-black animate-pulse font-heading tracking-widest text-sm py-1.5 px-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
                   YOUR TURN
                 </div>
               )}
-              <D20Dice value={dice} rolling={rolling} />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="w-64 flex flex-col items-center gap-2 mb-4">
+              {turn === 'enemy' && !battleEnded && (
+                <div className="text-red-400 font-black animate-pulse font-heading tracking-widest text-sm py-1.5 px-4 bg-red-500/10 rounded-xl backdrop-blur-sm border border-red-500/20">
+                  ENEMY TURN...
+                </div>
+              )}
               {turn === 'player' && selectedCatId && !battleEnded && !rolling && (
                 <>
-                  <motion.button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
                     onClick={handleAttack}
-                    className="px-8 py-4 bg-gradient-to-b from-red-600 to-red-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-red-400 font-heading tracking-wider hover:shadow-red-500/50 transition-shadow"
+                    className="px-8 text-xl"
                   >
-                    ATTACK!
-                  </motion.button>
+                    <SwordsIcon aria-hidden /> ATTACK!
+                  </Button>
                   {selectedCatStone && (
-                    <motion.button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                       onClick={handleStoneAttack}
-                      className="px-6 py-2.5 bg-gradient-to-b from-emerald-500 to-teal-700 text-white font-black text-sm rounded-xl shadow-lg border-2 border-emerald-400 tracking-wider hover:shadow-emerald-500/50 transition-shadow"
+                      className="border-success-500/50 text-success-400"
                     >
-                      💎 ATTACK + {selectedCatStone.name}!
-                    </motion.button>
+                      <GemIcon aria-hidden /> ATTACK + {selectedCatStone.name}!
+                    </Button>
                   )}
                   {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && !silenced && (
-                    <motion.button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                       onClick={() => handleActiveAbility(selectedCatId)}
-                      className="px-6 py-2.5 bg-gradient-to-b from-purple-600 to-indigo-800 text-white font-black text-sm rounded-xl shadow-lg border-2 border-purple-400 tracking-wider"
+                      className="border-arcane-400/50 text-arcane-200"
                     >
-                      ✨ {party.find(c => c.instanceId === selectedCatId)?.ability.name}
-                    </motion.button>
+                      <SparkleIcon aria-hidden /> {party.find(c => c.instanceId === selectedCatId)?.ability.name}
+                    </Button>
                   )}
                   {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) === 0 && silenced && (
-                    <div className="text-[10px] text-red-400 font-bold">
-                      🔇 Silenced!
+                    <div className="inline-flex items-center gap-1 text-[10px] text-danger-400 font-bold">
+                      <SpeakerMutedIcon aria-hidden /> Silenced!
                     </div>
                   )}
                   {(abilityCooldowns[selectedCatId] ?? ABILITY_COOLDOWN) > 0 && (
@@ -1712,105 +1236,25 @@ export default function BattleArena() {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Enemy Card - Center */}
-          <div className="relative z-10 flex flex-col items-center">
-            {/* Boss HP Bar - Above Card */}
-            <div className="mb-4 w-full px-2">
-              <StatBar current={dogHp} max={dog.health} label="BOSS HP" type="hp" showNumbers={true} />
-            </div>
-
-            <motion.div
-              variants={shakeVariants}
-              animate={shaking ? 'shake' : 'idle'}
-              className="relative"
-            >
-              <GameCard
-                character={dog}
-                isEnemy={true}
-                animate={false}
-                showStats={false}
-              />
-            </motion.div>
+        {/* ===== Right rail: docked Battle Log (own scroll) ===== */}
+        <aside className="w-64 shrink-0">
+          <div className="sticky top-24 flex flex-col gap-2">
+            <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-ink px-1">
+              Battle Log
+            </h3>
+            <BattleLogPanel ref={desktopLogRef} logs={log} variant="desktop" />
           </div>
-
-          {/* Battle Log - Right Side */}
-          <BattleLogPanel ref={desktopLogRef} logs={log} variant="desktop" />
-        </div>
-
-        {/* Bottom Area: Player Party */}
-        <div className="flex-1 flex justify-center items-end pb-8 gap-4 pt-16 mt-4">
-          {party.map(cat => {
-            const isSelected = selectedCatId === cat.instanceId
-            const isDead = cat.currentHp <= 0
-            return (
-              <motion.div
-                key={cat.instanceId}
-                variants={attackVariants}
-                animate={attackingId === cat.instanceId ? 'attack' : 'idle'}
-                className="relative group cursor-pointer"
-                onClick={() => !isDead && turn === 'player' && setSelectedCatId(cat.instanceId)}
-              >
-                {/* Health Bar Above Card */}
-                <div className="absolute -top-14 left-0 right-0 px-2 z-20">
-                  <StatBar
-                    current={cat.currentHp}
-                    max={cat.maxHp}
-                    type="hp"
-                    showNumbers={true}
-                    label={cat.name}
-                  />
-                </div>
-
-                <motion.div
-                  animate={isSelected ? { y: -16, scale: 1.05 } : { y: 0, scale: 1 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                >
-                  <GameCard
-                    character={cat}
-                    selected={isSelected}
-                    disabled={isDead || (turn !== 'player' && !isSelected)}
-                    showStats={true}
-                  />
-                </motion.div>
-
-                {/* Active Indicator */}
-                {isSelected && (
-                  <motion.div
-                    layoutId="active-indicator"
-                    className="absolute -top-28 left-0 right-0 flex justify-center z-30"
-                  >
-                    <div className="bg-gold-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm shadow-lg border border-gold-300">
-                      READY
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )
-          })}
-
-          {party.length === 0 && (
-            <div className="text-center text-slate-400">
-              Go to Collection to select your team!
-            </div>
-          )}
-        </div>
+        </aside>
       </div>
 
-      {/* Damage Numbers (shared) */}
+      </motion.div>
+
+      {/* Anchored Damage Numbers — portaled to <body>, unaffected by stage shake */}
       <AnimatePresence>
-        {damageNumbers.map(({ id, value, x, y }) => (
-          <motion.div
-            key={id}
-            variants={damageVariants}
-            initial="hidden"
-            animate="show"
-            exit="hidden"
-            className="fixed z-50 text-4xl font-black text-red-500 pointer-events-none font-heading"
-            style={{ left: x, top: y, textShadow: '0 0 10px black' }}
-          >
-            -{value}
-          </motion.div>
+        {damageNumbers.map(data => (
+          <DamageNumber key={data.id} data={data} juiceEnabled={juiceEnabled} />
         ))}
       </AnimatePresence>
 
@@ -1885,7 +1329,7 @@ export default function BattleArena() {
               onClick={e => e.stopPropagation()}
               className="w-full max-w-lg bg-gradient-to-br from-slate-900 via-green-950 to-slate-900 rounded-2xl border-2 border-green-500/50 shadow-[0_0_40px_rgba(16,185,129,0.3)] p-6 sm:p-8 text-center space-y-5"
             >
-              <div className="text-5xl">👽</div>
+              <AlienIcon className="text-5xl text-green-400 mx-auto" aria-hidden />
               <h2 className="text-2xl sm:text-3xl font-black text-green-400 font-heading tracking-wider">
                 STAR BARKS
               </h2>

@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { memo, useEffect, useRef, useState } from 'react';
 
 interface Particle {
@@ -34,17 +34,21 @@ export default memo(function ParticleSystem({
   // Stabilize colors reference to prevent re-triggering on every render
   const colorsRef = useRef(colors);
   colorsRef.current = colors;
+  const prefersReducedMotion = useReducedMotion();
+  // Particles are pure decoration and unbounded `count` from callers can spawn
+  // hundreds of animated nodes; clamp to keep paint/composite cost bounded.
+  const effectiveCount = Math.min(count, 40);
 
   useEffect(() => {
-    if (active) {
+    if (active && !prefersReducedMotion) {
       const c = colorsRef.current;
-      const newParticles: Particle[] = Array.from({ length: count }, (_, i) => ({
+      const newParticles: Particle[] = Array.from({ length: effectiveCount }, (_, i) => ({
         id: Date.now() + i,
         x,
         y,
         size: Math.random() * 6 + 2,
         color: c[Math.floor(Math.random() * c.length)],
-        angle: (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5,
+        angle: (Math.PI * 2 * i) / effectiveCount + (Math.random() - 0.5) * 0.5,
         velocity: Math.random() * spread + spread / 2,
       }));
       setParticles(newParticles);
@@ -55,7 +59,13 @@ export default memo(function ParticleSystem({
 
       return () => clearTimeout(timeout);
     }
-  }, [active, x, y, count, spread, duration]);
+  }, [active, x, y, effectiveCount, spread, duration, prefersReducedMotion]);
+
+  // Particles are purely decorative flourish; skip entirely when the user
+  // prefers reduced motion instead of trying to render a static fallback.
+  if (prefersReducedMotion) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
@@ -70,7 +80,11 @@ export default memo(function ParticleSystem({
               backgroundColor: particle.color,
               left: particle.x,
               top: particle.y,
+              // Static glow set once (not part of `animate`) so it never
+              // triggers a repaint — only transform/opacity are animated
+              // below, which are cheap, GPU-composited properties.
               boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`,
+              willChange: 'transform, opacity',
             }}
             initial={{
               x: 0,

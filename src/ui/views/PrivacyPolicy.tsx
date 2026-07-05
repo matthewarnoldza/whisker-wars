@@ -21,9 +21,9 @@ export default function PrivacyPolicy() {
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-heading">Information We Collect</h2>
-            <h3 className="text-lg font-semibold text-white mb-2">Local Storage Only</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Stored Locally on Your Device</h3>
             <p className="leading-relaxed mb-3">
-              Whisker Wars stores all game data locally on your device. We do not collect, transmit, or store any personal information on external servers. The data stored locally includes:
+              Your core game data is stored locally on your device and is not transmitted to us. This includes:
             </p>
             <ul className="list-disc list-inside space-y-1 ml-4">
               <li>Game progress and statistics</li>
@@ -32,19 +32,26 @@ export default function PrivacyPolicy() {
               <li>Achievements and battle history</li>
               <li>Game preferences and settings</li>
             </ul>
+            <h3 className="text-lg font-semibold text-white mb-2 mt-4">Data Sent to Our Services</h3>
+            <p className="leading-relaxed">
+              If you opt in to cloud saves or the online leaderboards, the relevant gameplay data (such as your save file, chosen display name, and leaderboard scores) is stored using Google Firebase so it can sync across devices and rank you against other players. These features are optional.
+            </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-3 font-heading">Data Security</h2>
             <p className="leading-relaxed">
-              Since all data is stored locally on your device, the security of your game data is protected by your device's security measures. We recommend keeping your device secure with appropriate passwords and security settings.
+              Data stored locally on your device is protected by your device's own security measures, and we recommend keeping your device secured. Data synced to our cloud services is handled through Google Firebase, which encrypts data in transit and at rest.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-white mb-3 font-heading">Third-Party Services</h2>
+            <h2 className="text-xl font-bold text-white mb-3 font-heading">Third-Party Services &amp; Analytics</h2>
+            <p className="leading-relaxed mb-3">
+              The web version of Whisker Wars (played in a browser) loads Google Analytics 4 and the Meta (Facebook) Pixel to understand how the game is used and to measure our marketing. These services may collect usage and device information as described in their own privacy policies.
+            </p>
             <p className="leading-relaxed">
-              Whisker Wars does not integrate with any third-party analytics, advertising, or tracking services. Your gameplay experience is private and not monitored by external parties.
+              The offline itch.io download and the mobile (iOS/Android) app builds do <strong>not</strong> load Google Analytics or the Meta Pixel. Optional cloud saves and leaderboards are provided by Google Firebase across all versions.
             </p>
           </section>
 

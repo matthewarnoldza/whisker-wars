@@ -1,38 +1,19 @@
-import { database, ref, set, get } from './firebase'
-import type { ProfileMeta, OwnedCat, Achievement, GameStats } from '../game/store'
-import type { JungleRunState, JungleStats } from '../game/jungleRun'
+import { getDb } from './firebase'
+import type { ProfileMeta } from '../game/store'
+import type { SaveData } from '../game/saveData'
 
-// Save data structure that gets stored in the cloud
-export interface CloudSaveData {
-  coins: number
-  baits: Record<string, number>
-  owned: OwnedCat[]
-  dogIndex: number
-  difficultyLevel: number
-  favorites: string[]
-  theme: 'light' | 'dark'
-  achievements: Achievement[]
-  stats: GameStats
-  lastDailyReward: number
-  tutorialCompleted: boolean
-  trainingCooldowns: Record<string, number[]>
-  selectedForBattle?: string[]
-  dailyStreak?: number
-  soundEnabled?: boolean
-  musicEnabled?: boolean
-  inventory?: Record<string, number>
-  completedEventRewards?: string[]
-  frenzyStreak?: number
-  lastFrenzyParticipation?: string
-  alienUnlocked?: boolean
-  // Jungle of Talons
-  junglePassUnlocked?: boolean
-  jungleRun?: JungleRunState | null
-  jungleStats?: JungleStats
-  unlockedJungleMedals?: string[]
-  jungleAnnouncementShown?: boolean
-  jungleTabVisited?: boolean
-}
+// The game-state portion of a cloud record is the same versioned SaveData the
+// local save uses (single source of truth), via buildSavePayload. It is kept
+// backward-compatible with the legacy hand-built literals in the Save/Profile UI:
+// those provide the historically-required core fields and may omit the rest, so
+// everything outside that core stays optional here. buildSavePayload's full
+// SaveData is a superset and remains assignable.
+type RequiredCloudField =
+  | 'coins' | 'baits' | 'owned' | 'dogIndex' | 'difficultyLevel' | 'favorites'
+  | 'theme' | 'achievements' | 'stats' | 'lastDailyReward' | 'tutorialCompleted'
+  | 'trainingCooldowns'
+
+export type CloudSaveData = Partial<SaveData> & Pick<SaveData, RequiredCloudField>
 
 export interface CloudSavePayload {
   data: CloudSaveData
@@ -42,6 +23,9 @@ export interface CloudSavePayload {
     lastPlayed: number
   }
   savedAt: number
+  // Secret owner token. Only a client holding the matching token may overwrite
+  // this record. Legacy records saved before this field existed have no token.
+  ownerToken?: string
 }
 
 export interface DownloadResult {
@@ -51,17 +35,79 @@ export interface DownloadResult {
   error?: string
 }
 
-// Generate a readable 8-character code like "CAT-4829" or "MEOW-7281"
+// Cat-themed prefixes kept for charm.
+const CODE_PREFIXES = ['CAT', 'MEOW', 'PAW', 'PURR', 'WHSK', 'KITTY', 'CLAW', 'FUR']
+// Unambiguous alphabet: A-Z minus I and O, plus digits 2-9 (32 chars). With an
+// 8-char random part that gives 32^8 (~1.1 trillion) combinations, making blind
+// enumeration of other players' codes impractical.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+// Generate a code like "PAW-K7M2XR4Q" (cat prefix + 8 random unambiguous chars).
 function generateSaveCode(): string {
-  const prefixes = ['CAT', 'MEOW', 'PAW', 'PURR', 'WHSK', 'KITTY', 'CLAW', 'FUR']
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)]
-  const number = Math.floor(Math.random() * 9000) + 1000 // 1000-9999
-  return `${prefix}-${number}`
+  const prefix = CODE_PREFIXES[Math.floor(Math.random() * CODE_PREFIXES.length)]
+  // crypto RNG for an unguessable random part. 2^32 is an exact multiple of 32,
+  // so `% CODE_ALPHABET.length` introduces no modulo bias.
+  const bytes = new Uint32Array(8)
+  crypto.getRandomValues(bytes)
+  let random = ''
+  for (let i = 0; i < 8; i++) {
+    random += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length]
+  }
+  return `${prefix}-${random}`
+}
+
+// New codes look like PREFIX-XXXXXXXX; legacy codes look like PREFIX-1234.
+const NEW_CODE_RE = /^[A-Z]+-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/
+const LEGACY_CODE_RE = /^[A-Z]+-\d{4}$/
+
+// Validate a save code, accepting BOTH the new and legacy formats.
+export function isValidSaveCode(code: string): boolean {
+  const normalized = code.trim().toUpperCase()
+  return NEW_CODE_RE.test(normalized) || LEGACY_CODE_RE.test(normalized)
+}
+
+// Owner tokens are persisted per-code in localStorage (same namespace the rest of
+// the app uses). They never leave the device except inside the uploaded record.
+const OWNER_TOKEN_PREFIX = 'whiskerwars-owner-token-'
+
+function getOwnerToken(code: string): string | null {
+  try {
+    return localStorage.getItem(`${OWNER_TOKEN_PREFIX}${code}`)
+  } catch {
+    return null
+  }
+}
+
+function setOwnerToken(code: string, token: string): void {
+  try {
+    localStorage.setItem(`${OWNER_TOKEN_PREFIX}${code}`, token)
+  } catch {
+    // Ignore storage errors (e.g. private mode); overwrite protection degrades
+    // gracefully to legacy behaviour rather than blocking saves.
+  }
+}
+
+function buildPayload(
+  saveData: CloudSaveData,
+  profileMeta: ProfileMeta,
+  ownerToken: string
+): CloudSavePayload {
+  return {
+    data: saveData,
+    meta: {
+      name: profileMeta.name,
+      created: profileMeta.created,
+      lastPlayed: profileMeta.lastPlayed
+    },
+    savedAt: Date.now(),
+    ownerToken
+  }
 }
 
 // Check if a code already exists in the database
 async function codeExists(code: string): Promise<boolean> {
   try {
+    const { database, ref, get } = await getDb()
     const snapshot = await get(ref(database, `saves/${code}`))
     return snapshot.exists()
   } catch {
@@ -76,21 +122,35 @@ export async function uploadSave(
   profileMeta: ProfileMeta,
   existingCode?: string
 ): Promise<{ success: boolean; code?: string; error?: string; isNew?: boolean }> {
-  const payload: CloudSavePayload = {
-    data: saveData,
-    meta: {
-      name: profileMeta.name,
-      created: profileMeta.created,
-      lastPlayed: profileMeta.lastPlayed
-    },
-    savedAt: Date.now()
-  }
-
-  // If we have an existing code, update it
+  // If we have an existing code, update it (with overwrite protection).
   if (existingCode) {
+    const normalizedCode = existingCode.trim().toUpperCase()
     try {
-      const normalizedCode = existingCode.trim().toUpperCase()
-      await set(ref(database, `saves/${normalizedCode}`), payload)
+      const { database, ref, set, get } = await getDb()
+      let ownerToken = getOwnerToken(normalizedCode)
+
+      // Read the current record first so we can enforce ownership before writing.
+      const snapshot = await get(ref(database, `saves/${normalizedCode}`))
+      if (snapshot.exists()) {
+        const existing = snapshot.val() as CloudSavePayload
+        const remoteToken = existing?.ownerToken
+        // A record already owned by someone else must not be overwritten.
+        if (remoteToken && remoteToken !== ownerToken) {
+          return {
+            success: false,
+            error: 'This save code belongs to another player, so it cannot be overwritten.'
+          }
+        }
+        // Legacy record with no token: we claim it by writing our token below.
+      }
+
+      // First save from this device for this code: mint and persist a token.
+      if (!ownerToken) {
+        ownerToken = crypto.randomUUID()
+        setOwnerToken(normalizedCode, ownerToken)
+      }
+
+      await set(ref(database, `saves/${normalizedCode}`), buildPayload(saveData, profileMeta, ownerToken))
       return { success: true, code: normalizedCode, isNew: false }
     } catch (error) {
       console.error('Failed to update existing code:', error)
@@ -103,13 +163,16 @@ export async function uploadSave(
     const code = generateSaveCode()
 
     try {
+      const { database, ref, set } = await getDb()
       // Check if code already exists
       const exists = await codeExists(code)
       if (exists) {
         continue // Try another code
       }
 
-      await set(ref(database, `saves/${code}`), payload)
+      const ownerToken = crypto.randomUUID()
+      await set(ref(database, `saves/${code}`), buildPayload(saveData, profileMeta, ownerToken))
+      setOwnerToken(code, ownerToken)
       return { success: true, code, isNew: true }
     } catch (error) {
       // If this specific code failed, try another
@@ -125,12 +188,13 @@ export async function downloadSave(code: string): Promise<DownloadResult> {
   // Normalize the code: uppercase, remove extra spaces
   const normalizedCode = code.trim().toUpperCase()
 
-  // Validate code format
-  if (!/^[A-Z]+-\d{4}$/.test(normalizedCode)) {
-    return { success: false, error: 'Invalid code format. Should look like CAT-1234' }
+  // Validate code format (accepts both new and legacy codes)
+  if (!isValidSaveCode(normalizedCode)) {
+    return { success: false, error: 'Invalid code format. Should look like PAW-K7M2XR4Q' }
   }
 
   try {
+    const { database, ref, get } = await getDb()
     const snapshot = await get(ref(database, `saves/${normalizedCode}`))
 
     if (!snapshot.exists()) {
@@ -142,6 +206,13 @@ export async function downloadSave(code: string): Promise<DownloadResult> {
     // Validate the payload has required fields
     if (!payload.data || !payload.meta) {
       return { success: false, error: 'Save data is corrupted.' }
+    }
+
+    // Whoever holds a valid code is entitled to own it: cache the record's owner
+    // token so this device can later save back to the code (multi-device restore).
+    // This does not change what we return to callers.
+    if (payload.ownerToken) {
+      setOwnerToken(normalizedCode, payload.ownerToken)
     }
 
     return {

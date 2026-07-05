@@ -109,7 +109,8 @@ export function resolveAbility(
 export function resolveDefense(
   cat: OwnedCat,
   incomingDamage: number,
-  silenced: boolean
+  silenced: boolean,
+  rng: () => number = Math.random
 ): { actualDamage: number; logMessages: AbilityResult['logMessages'] } {
   let actualDamage = incomingDamage
   const logMessages: AbilityResult['logMessages'] = []
@@ -120,7 +121,7 @@ export function resolveDefense(
 
   if (cat.ability.effect === 'shield') {
     const shieldChance = isElite ? (eliteTier >= 2 ? 0.60 : 0.50) : 0.35
-    if (Math.random() < shieldChance) {
+    if (rng() < shieldChance) {
       actualDamage = Math.floor(actualDamage * 0.5)
       logMessages.push({ text: `${cat.name}'s shield blocks half the damage! 🛡️`, type: 'info' })
     }

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whisker Wars — Steam-Worthy Level-Up Plan</title>
+<style>
+:root {
+  --bg: #f8fafc; --panel: #ffffff; --text: #0f172a; --muted: #64748b;
+  --border: #e2e8f0; --accent: #7c3aed; --accent-soft: #ede9fe;
+  --critical: #dc2626; --critical-bg: #fee2e2;
+  --warning: #f59e0b; --warning-bg: #fef3c7;
+  --info: #2563eb; --info-bg: #dbeafe;
+  --ok: #10b981; --ok-bg: #d1fae5;
+  --code-bg: #f1f5f9;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1120; --panel: #101a30; --text: #e2e8f0; --muted: #94a3b8;
+    --border: #1e293b; --accent: #a78bfa; --accent-soft: #2e1f52;
+    --critical-bg: #3b1216; --warning-bg: #372a10; --info-bg: #12233f; --ok-bg: #0d2f24;
+    --code-bg: #0f172a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 960px; margin: 0 auto; padding: 32px 24px 96px; }
+h1 { font-size: 1.9rem; margin: 0 0 4px; }
+h2 { font-size: 1.35rem; margin: 48px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+p { margin: 8px 0; }
+a { color: var(--info); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.86em; font-family: ui-monospace, Menlo, monospace; }
+.sub { color: var(--muted); font-size: 0.92rem; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin: 14px 0; }
+.chip { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.4px; vertical-align: middle; }
+.chip.critical { background: var(--critical-bg); color: var(--critical); }
+.chip.warning { background: var(--warning-bg); color: var(--warning); }
+.chip.info { background: var(--info-bg); color: var(--info); }
+.chip.ok { background: var(--ok-bg); color: var(--ok); }
+.chip.neutral { background: var(--code-bg); color: var(--muted); }
+.chip.verified { background: var(--ok-bg); color: var(--ok); }
+.chip.weakened { background: var(--warning-bg); color: var(--warning); }
+
+/* scorecard */
+.scoregrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 16px 0; }
+.score { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.score .grade { font-size: 1.7rem; font-weight: 800; }
+.score .dim { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.score .note { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.g-a { color: var(--ok); } .g-b { color: var(--info); } .g-c { color: var(--warning); } .g-d { color: var(--critical); }
+
+/* fix-now banner */
+.fixnow { border: 2px solid var(--critical); border-radius: 12px; background: var(--critical-bg); padding: 18px 20px; margin: 18px 0; }
+.fixnow h3 { margin-top: 0; color: var(--critical); }
+.fixnow li { margin: 6px 0; }
+
+/* decisions */
+.decision { margin: 26px 0; }
+.optgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 10px; }
+.opt { background: var(--panel); border: 2px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: border-color 0.15s, transform 0.1s; position: relative; }
+.opt:hover { transform: translateY(-1px); border-color: var(--accent); }
+.opt.selected { border-color: var(--accent); background: var(--accent-soft); }
+.opt .t { font-weight: 700; }
+.opt .rec { font-size: 0.7rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+.opt .d { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+.opt .check { position: absolute; top: 10px; right: 12px; font-size: 1.1rem; color: var(--accent); display: none; }
+.opt.selected .check { display: block; }
+
+/* tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+.tab { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 8px 8px 0 0; padding: 8px 14px; cursor: pointer; font-size: 0.88rem; font-weight: 600; }
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tabpanel { display: none; border: 1px solid var(--border); border-radius: 0 10px 10px 10px; background: var(--panel); padding: 16px 18px; }
+.tabpanel.active { display: block; }
+.filters { display: flex; gap: 8px; align-items: center; margin: 14px 0 0; flex-wrap: wrap; }
+.fbtn { border: 1px solid var(--border); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer; font-weight: 600; }
+.fbtn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* findings */
+.finding { border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 8px; margin: 10px 0; background: var(--bg); }
+.finding.critical { border-left-color: var(--critical); }
+.finding.warning { border-left-color: var(--warning); }
+.finding.info { border-left-color: var(--info); }
+.finding summary { padding: 10px 14px; cursor: pointer; font-weight: 650; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; list-style: none; }
+.finding summary::-webkit-details-marker { display: none; }
+.finding summary::after { content: "▸"; margin-left: auto; color: var(--muted); transition: transform 0.15s; }
+.finding[open] summary::after { transform: rotate(90deg); }
+.finding .body { padding: 0 16px 14px; font-size: 0.92rem; }
+.finding .body .lbl { font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-top: 10px; }
+.meta { font-size: 0.78rem; color: var(--muted); }
+
+/* roadmap */
+.phase { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); margin: 14px 0; overflow: hidden; }
+.phase > summary { padding: 14px 18px; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; list-style: none; }
+.phase > summary::-webkit-details-marker { display: none; }
+.phase .ph-body { padding: 0 18px 16px; }
+.phase .goal { color: var(--muted); font-size: 0.9rem; margin-bottom: 8px; }
+.task { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-top: 1px dashed var(--border); font-size: 0.92rem; }
+.task input { margin-top: 5px; accent-color: var(--accent); }
+.task.done label { text-decoration: line-through; color: var(--muted); }
+.task .eff { margin-left: auto; white-space: nowrap; }
+.progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; flex-basis: 120px; }
+.progress > div { height: 100%; background: var(--ok); width: 0%; transition: width 0.2s; }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.risk-t td:first-child { white-space: nowrap; }
+.pillar { display: flex; gap: 14px; align-items: flex-start; }
+.pillar .num { font-size: 1.4rem; font-weight: 800; color: var(--accent); min-width: 32px; }
+.filelist li { margin: 4px 0; font-size: 0.9rem; }
+.footer-note { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🐾 Whisker Wars → Steam-Worthy</h1>
+<p class="sub">Full multi-agent review &amp; improvement plan · 6 specialist reviews · 55 findings, each high-impact claim adversarially verified against the code · 3 July 2026</p>
+
+<h2>TL;DR</h2>
+<div class="panel">
+<p><strong>The game's bones are better than expected — the packaging is what's holding it back.</strong> React fundamentals are solid (correct Zustand selectors, memoized Collection, <code>React.memo</code>'d cards), the core loop is readable, and 16 achievements + full offline play mean Steam integration is closer than it looks. But five things keep it at "entry-level browser game": <strong>(1)</strong> 193MB of raw, unresized PNG art ships byte-for-byte into every build; <strong>(2)</strong> there is no desktop identity — mobile-first centered column at 1080p, emoji as the entire icon system, no settings screen, thin combat feedback; <strong>(3)</strong> zero desktop platform layer (no wrapper, fullscreen, controller, Steamworks); <strong>(4)</strong> the economy and roguelike are tuned for casual web sessions, not a pay-once 10+ hour audience (runaway coin inflation, 12 boons, 2 bosses, rubber-band scaling); <strong>(5)</strong> the riskiest code — save/load and combat — has no tests, no save versioning, and lives inside 1,900-line components. There is also a <strong>live revenue leak</strong>: the paid expansion unlocks from a URL parameter with no verification. The plan below sequences ~10–13 weeks of work into six phases, with four decisions needed from you first.</p>
+</div>
+
+<div class="scoregrid">
+  <div class="score"><div class="dim">Performance</div><div class="grade g-c">C−</div><div class="note">JS is healthy; assets are not</div></div>
+  <div class="score"><div class="dim">Assets</div><div class="grade g-d">D</div><div class="note">193MB raw PNG, dead pipeline</div></div>
+  <div class="score"><div class="dim">Architecture</div><div class="grade g-c">C</div><div class="note">Works, but god-store + untested saves</div></div>
+  <div class="score"><div class="dim">Game design</div><div class="grade g-c">C+</div><div class="note">Clear loop, thin endgame</div></div>
+  <div class="score"><div class="dim">UX / Juice</div><div class="grade g-c">C+</div><div class="note">Nice moments, browser-game tells</div></div>
+  <div class="score"><div class="dim">Steam ready</div><div class="grade g-d">D</div><div class="note">No desktop path yet — but mappable</div></div>
+</div>
+
+<div class="fixnow">
+<h3>⛔ Fix now — independent of everything else (~2–3 days)</h3>
+<ul>
+  <li><strong>Revenue leak:</strong> appending <code>?payment=success&amp;view=jungle</code> to the URL permanently unlocks the paid R65 expansion — <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/App.tsx:379">App.tsx:379</a> sets <code>junglePassUnlocked: true</code> with zero verification. The fix is nearly free: <code>checkPaymentStatus()</code> at <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/game/store.ts:1585">store.ts:1585</a> already reads the webhook-written payment record — wire it into this path before trusting the param. <span class="chip verified">verified</span></li>
+  <li><strong>Save codes are guessable &amp; unauthenticated:</strong> 8 prefixes × 9,000 numbers = ~72k total codes (<a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/utils/cloudSave.ts:55">cloudSave.ts:55</a>), and <code>downloadSave</code> fetches any save by code with no owner check — anyone can enumerate and read or overwrite other players' saves. Widen the keyspace and add a per-save owner token. <span class="chip verified">verified</span></li>
+  <li><strong>Accessibility bug:</strong> <code>prefers-reduced-motion</code> silently mutes <em>all sound effects</em> — a stray guard at <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/utils/sound.ts:33">sound.ts:33</a> returns early from <code>playSound()</code>. Motion and audio are orthogonal; delete the guard. <span class="chip verified">verified</span></li>
+  <li><strong>Meta Pixel ships in every build:</strong> the Vite strip plugin removes only GA and only in itch.io mode — the Facebook Pixel (<a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/index.html:15">index.html:15</a>) ships to web, itch.io, and mobile, and the Privacy Policy doesn't disclose it. Strip it from non-web builds and update the policy. <span class="chip verified">verified</span></li>
+</ul>
+</div>
+
+<h2>Build log — Phases 0–2 shipped ✅</h2>
+<div class="panel" style="border-color: var(--ok);">
+<p><strong>Executed 3 July 2026 (same day).</strong> All of Phase 0 (security &amp; integrity), Phase 1 (assets &amp; performance), and Phase 2 (engineering foundation) are implemented in the working tree, verified by <strong>100/100 tests</strong> (was 57), green web + itch.io builds, and an HTTP smoke test of the built app. Adversarially reviewed by two independent agents: <em>"safe to ship."</em></p>
+<ul>
+<li><span class="chip ok">done</span> Payment forgery hole closed (webhook-verified); save codes: 72k → 1.1T keyspace + owner tokens; reduced-motion no longer mutes audio; Meta Pixel/GA runtime-gated to web only (this also fixed a broken <code>npm run build</code> on main); Privacy Policy now truthful.</li>
+<li><span class="chip ok">done</span> <strong>dist: 197MB → 14MB.</strong> 138 PNGs → resized WebP; main JS chunk 437KB → 287KB with Firebase lazy-split; service-worker caching (web); fonts self-hosted (48KB); theme 2.0MB → 1.06MB AAC; particles clamped + reduced-motion aware.</li>
+<li><span class="chip ok">done</span> Versioned zod save schema (single source of truth, v0→v1 migration, per-element corruption resilience); pure seeded battle engine powering BOTH arenas (BattleArena 1921→1253, JungleBattle 1270→868 lines, birdAbilityResolver deleted); god-store split into 7 domain slices (largest file 1651→766).</li>
+<li><span class="chip warning">bonus fixes</span> Manual save-code backups were silently dropping ALL jungle progress (19 → 28 fields now); boss reflect damage (Eternal Overlord/Assimilator/Cosmic Queen) was cosmetic due to a stale-state bug — now real, locked by test. <strong>Needs your sign-off: those 3 endgame fights are now modestly harder (as designed).</strong></li>
+<li><span class="chip info">known tradeoff</span> Pre-upgrade save codes shared across two devices: the second device may see a "belongs to another device" banner until it re-downloads the code once (local data unaffected). Firebase security-rules snippet provided for real server-side enforcement — needs manual paste in the console.</li>
+</ul>
+<h3 style="margin-top:20px;">Phase 3 — Desktop identity &amp; juice ✅ (also 3 July 2026)</h3>
+<ul>
+<li><span class="chip ok">done</span> <strong>Design system:</strong> semantic surface/ink/gold/arcane tokens, Grenze display font (self-hosted, offline-safe), Button/Panel/Badge/RarityBadge/StatPill primitives, one canonical rarity map with colorblind shape symbols (●▲◆★✦❋). All contrast AA+, most AAA.</li>
+<li><span class="chip ok">done</span> <strong>72-icon SVG family replaces the emoji UI</strong> — chunky playful-fantasy silhouettes, identical on every OS; battle-log emoji tokenized to icons at render time (engine untouched). Preview: <code>tasks/icon-preview.html</code>.</li>
+<li><span class="chip ok">done</span> <strong>Combat juice:</strong> damage numbers anchored to the struck card and scaled by magnitude (gold crits, green heals), 60–110ms hitstop, stage-level decaying shake, impact flashes, attacker lunges, dice nat-20/nat-1 flourishes — all governed by the reduced-motion setting.</li>
+<li><span class="chip ok">done</span> <strong>Settings screen</strong> (volume sliders with live preview, reduced-motion, colorblind toggles) persisted via save schema v2 — the migration chain's first real use. <strong>Modal queue</strong> ends the first-load popup gauntlet. <strong>Tutorial</strong> is now one welcome screen + contextual coach-marks. <strong>All 12 celebration modals</strong> rebuilt on one accessible dialog contract (focus trap, Escape, press-any-key, focus restore).</li>
+<li><span class="chip ok">done</span> <strong>16:9 desktop stage:</strong> full-width arenas (enemy center-right, party left, docked battle-log rail, bottom HUD) at lg+; Steam Deck 1280×800 lands exactly on the xl breakpoint as first-class; 1920 gets a table-vignette frame. Mobile branches untouched. Copy pass: new tagline <em>"Every legend starts with a whisker."</em>, branded loader, 19 voice fixes.</li>
+<li><span class="chip ok">reviewed</span> Two adversarial reviewers: <em>"ship it"</em> / <em>"shippable"</em> — zero critical findings; all 6 warnings fixed same-day (key-repeat celebration dismiss, focus recapture, desktop ENEMY TURN indicator, poison-tick icon, z-critical above modals, modal-title emoji). Tests 100 → 106, both builds green.</li>
+</ul>
+</div>
+
+<h2>Decisions needed</h2>
+<p class="sub">Click to choose — selections are saved locally in this page. Your choices shape Phases 4–5.</p>
+
+<div class="decision" data-key="wrapper">
+  <h3>1 · Desktop wrapper for Steam</h3>
+  <div class="optgrid">
+    <div class="opt" data-val="tauri"><span class="check">✓</span><div class="rec">Recommended</div><div class="t">Tauri v2</div><div class="d">~3–6MB installer using the OS webview. The itch.io build mode already emits the relative-path, tracker-stripped bundle a webview shell consumes. Steamworks via <code>steamworks-rs</code> Tauri command. Best Steam Deck behavior.</div></div>
+    <div class="opt" data-val="electron"><span class="check">✓</span><div class="t">Electron</div><div class="d">~150MB+ but guarantees identical Chromium rendering on every machine and the mature <code>greenworks</code> Steamworks binding. Choose if webview inconsistency (older Windows WebView2) worries you.</div></div>
+  </div>
+</div>
+
+<div class="decision" data-key="monetization">
+  <h3>2 · Jungle of Talons on Steam</h3>
+  <div class="optgrid">
+    <div class="opt" data-val="bundle"><span class="check">✓</span><div class="rec">Recommended</div><div class="t">Bundle into base price</div><div class="d">Force <code>junglePassUnlocked = true</code> behind a <code>VITE_BUILD_TARGET==='steam'</code> flag (4 sites in store.ts), delete the Yoco path from the bundle. Simplest; a content-complete game justifies a higher base price.</div></div>
+    <div class="opt" data-val="dlc"><span class="check">✓</span><div class="t">Paid Steam DLC</div><div class="d">Replace the boolean with <code>BIsDlcInstalled(dlcAppId)</code> via the Steamworks bridge. A second SKU and store page to maintain, but preserves the two-tier pricing you have on web.</div></div>
+  </div>
+</div>
+
+<div class="decision" data-key="refactor">
+  <h3>3 · Battle engine refactor timing</h3>
+  <div class="optgrid">
+    <div class="opt" data-val="before"><span class="check">✓</span><div class="rec">Recommended</div><div class="t">Extract engine before content push</div><div class="d">Pull combat out of the 1,921-line BattleArena into a pure, seeded, testable reducer in <code>src/game/battle</code> first. Every content item after (boons, bosses, abilities) lands once instead of twice, and combat juice hooks into engine events cleanly.</div></div>
+    <div class="opt" data-val="after"><span class="check">✓</span><div class="t">Polish first, refactor later</div><div class="d">Ship visible improvements sooner; accept that the 30–40 boon expansion and new bosses get built twice (BattleArena + JungleBattle) and drift. Only sensible if you want a fast marketing beat.</div></div>
+  </div>
+</div>
+
+<div class="decision" data-key="art">
+  <h3>4 · Icon &amp; visual identity investment</h3>
+  <div class="optgrid">
+    <div class="opt" data-val="commission"><span class="check">✓</span><div class="rec">Recommended</div><div class="t">Commission a cohesive icon set</div><div class="d">Coins, rarities, elements, status effects, nav — one artist pass (~30–40 icons) so the game looks identical on every OS. This is the single biggest "browser game" tell (307 emoji as functional UI).</div></div>
+    <div class="opt" data-val="svg"><span class="check">✓</span><div class="t">Restyle an open SVG library</div><div class="d">Tint/re-stroke a permissively-licensed set (e.g. game-icons.net, CC-BY) to the gold/purple palette. Cheaper and immediate, less distinctive; credit required.</div></div>
+  </div>
+</div>
+
+<h2>The five pillars</h2>
+<div class="panel"><div class="pillar"><div class="num">1</div><div><strong>Shrink the game by 85%.</strong> 145 PNGs at 864×1184 render in 208×320 boxes. A sharp-based prebuild (resize to 2× display + WebP q80, <code>&lt;picture&gt;</code> fallback) takes 193MB → ~25–35MB. The script already exists at <code>scripts/optimize-images.mjs</code> — it's dead code because <code>sharp</code> was never installed. This one change transforms load time on web, itch.io zip size, and the Steam depot.</div></div></div>
+<div class="panel"><div class="pillar"><div class="num">2</div><div><strong>Harden the foundation.</strong> A versioned save schema with one source-of-truth serializer (today the ~27-field list is hand-copied in 4 places and has already caused documented data loss), a pure seeded battle engine shared by both arenas, store split into domain slices, and tests on exactly the code that has bitten you before.</div></div></div>
+<div class="panel"><div class="pillar"><div class="num">3</div><div><strong>Build a desktop identity.</strong> A designed 16:9 stage instead of a centered mobile column, real icons instead of emoji, a Settings screen (volume sliders exist in code but have no UI), self-hosted fonts, a modal queue instead of four timed popups on load, and combat juice: hitstop, stage shake, impact flash, damage numbers anchored to the card that was hit.</div></div></div>
+<div class="panel"><div class="pillar"><div class="num">4</div><div><strong>Ship the platform layer.</strong> Tauri/Electron wrapper consuming the existing itch.io build mode, a <code>steam</code> build target (bundle expansion, strip trackers, kill doomed network loops), Steamworks achievements (16 already computed in the store), Steam Cloud saves, fullscreen/quit/pause, keyboard + controller navigation for Deck.</div></div></div>
+<div class="panel"><div class="pillar"><div class="num">5</div><div><strong>Tune for a pay-once audience.</strong> Real coin sinks before income runs away (a late dog pays ~2,100/fight; full ascension costs 3,500), 30–40 synergistic boons and 4–5 bosses instead of 12/2, replace rubber-band scaling with an opt-in ascension ladder, dupe pity for the 9-copy Prismatic grind, and unshackle training/events from the real-world clock.</div></div></div>
+
+<h2>Findings explorer</h2>
+<p class="sub">All 55 findings from the six reviews (near-duplicates merged). Every high-impact claim was re-verified by an independent adversarial agent reading the cited code — badges show the verdict. Click a finding to expand; file links open in VS Code.</p>
+<div class="filters">
+  <span class="sub">Filter:</span>
+  <button class="fbtn on" data-sev="all">All</button>
+  <button class="fbtn" data-sev="critical">Critical</button>
+  <button class="fbtn" data-sev="warning">Warning</button>
+  <button class="fbtn" data-sev="info">Info</button>
+</div>
+<div class="tabs" id="tabs"></div>
+<div id="panels"></div>
+
+<h2>Roadmap</h2>
+<p class="sub">~10–13 weeks solo. Phases 1–2 can overlap; Phase 5 content lands once the engine refactor (Decision 3) makes it write-once. Checkboxes persist locally.</p>
+
+<details class="phase" open><summary>Phase 0 · Stop the bleeding <span class="chip critical">2–3 days</span><span class="progress"><div></div></span></summary><div class="ph-body">
+<div class="goal">Live exploits and embarrassments — all independent, all small.</div>
+<div class="task"><input type="checkbox" id="p0-1"><label for="p0-1">Verify payment against the Firebase record before honoring <code>?payment=success</code> (App.tsx:379 → reuse <code>checkPaymentStatus</code>)</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p0-2"><label for="p0-2">Harden save codes: larger keyspace + owner token on read/write (cloudSave.ts:55)</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p0-3"><label for="p0-3">Delete the reduced-motion guard in <code>playSound()</code> (sound.ts:33)</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p0-4"><label for="p0-4">Strip Meta Pixel from non-web builds; update Privacy Policy to disclose actual tracking (index.html:15, vite.config.ts:10)</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p0-5"><label for="p0-5">Delete 7 shipped <code>.DS_Store</code> files + add prebuild cleanup step</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p0-6"><label for="p0-6">Surface cloud-save failures instead of <code>.catch(() =&gt; {})</code> (store.ts:1075) — players think they're backed up</label><span class="eff chip neutral">S</span></div>
+</div></details>
+
+<details class="phase"><summary>Phase 1 · Asset pipeline &amp; load performance <span class="chip warning">~1 week</span><span class="progress"><div></div></span></summary><div class="ph-body">
+<div class="goal">193MB → ~25–35MB; instant repeat loads. Highest impact-per-day in the whole plan.</div>
+<div class="task"><input type="checkbox" id="p1-1"><label for="p1-1">Install <code>sharp</code>, revive <code>scripts/optimize-images.mjs</code>: resize card art to 832×1280 cap, emit WebP q80 + PNG fallback, wire into <code>npm run build</code></label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p1-2"><label for="p1-2">Adopt <code>&lt;picture&gt;</code>/srcset in GameCard + the ~148 <code>.png</code> references; add width/height + <code>decoding="async"</code> to kill CLS</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p1-3"><label for="p1-3">Lazy-load Firebase behind dynamic import + manualChunk (it's in the 424KB main bundle today)</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p1-4"><label for="p1-4">Add vite-plugin-pwa: cache-first for images/sounds, precached shell → offline + instant repeats</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p1-5"><label for="p1-5">Defer SFX warm-up + 2MB theme.mp3 to first interaction; re-encode theme under 600KB</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p1-6"><label for="p1-6">Self-host Inter woff2 (drop the render-blocking Google Fonts @import that fails offline)</label><span class="eff chip neutral">S</span></div>
+<div class="task"><input type="checkbox" id="p1-7"><label for="p1-7">Clamp ParticleSystem count (~40 max), stop animating <code>boxShadow</code>, add <code>useReducedMotion</code> gating</label><span class="eff chip neutral">S</span></div>
+</div></details>
+
+<details class="phase"><summary>Phase 2 · Engineering foundation <span class="chip warning">~2 weeks</span><span class="progress"><div></div></span></summary><div class="ph-body">
+<div class="goal">Make the next three months of content safe to build. Do this before Phase 5.</div>
+<div class="task"><input type="checkbox" id="p2-1"><label for="p2-1">Single <code>SaveData</code> type + <code>buildSavePayload()</code> shared by save/load/restore/cloud; add <code>saveVersion</code> + migration chain; zod-validate on load</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p2-2"><label for="p2-2">Store round-trip tests first (incl. the zero-coin falsy regression that already shipped once)</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p2-3"><label for="p2-3">Extract pure seeded battle engine (state + action → state + events) into <code>src/game/battle</code>; BattleArena/JungleBattle become renderers of engine events</label><span class="eff chip neutral">XL</span></div>
+<div class="task"><input type="checkbox" id="p2-4"><label for="p2-4">Unify ability resolvers (abilityResolver / birdAbilityResolver) into one data-driven effect vocabulary</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p2-5"><label for="p2-5">Split god-store into slices (core / jungle / profiles / sync) with a serializer registry</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p2-6"><label for="p2-6">Fix battle re-entrancy: isResolving guard, timeout cleanup on unmount, correct effect deps</label><span class="eff chip neutral">M</span></div>
+</div></details>
+
+<details class="phase"><summary>Phase 3 · Desktop identity &amp; juice <span class="chip info">~3 weeks</span><span class="progress"><div></div></span></summary><div class="ph-body">
+<div class="goal">The visible transformation: stop looking like a website.</div>
+<div class="task"><input type="checkbox" id="p3-1"><label for="p3-1">Design system: semantic tokens, one canonical rarity palette, shared Button/Panel/Badge/StatPill; refactor views off ad-hoc Tailwind</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p3-2"><label for="p3-2">Replace emoji-as-icons per Decision 4 (HUD, nav, currency, status pills first)</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p3-3"><label for="p3-3">Settings screen: Master/Music/SFX sliders (wire the unused <code>setMusicVolume</code>), reduced-motion toggle, colorblind-safe rarity cues (shape + label, not color alone)</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p3-4"><label for="p3-4">Combat juice: hitstop (60–100ms), stage-level decaying shake for crits, white impact flash, damage numbers anchored to the struck card and scaled by magnitude (crit gold / heal green)</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p3-5"><label for="p3-5">16:9 desktop layout: full-width battle stage at 1920×1080, side space for log/roster; target Steam Deck 1280×800 as first-class</label><span class="eff chip neutral">XL</span></div>
+<div class="task"><input type="checkbox" id="p3-6"><label for="p3-6">Modal queue: one popup at a time, promos suppressed in first session, low-stakes popups → toasts</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p3-7"><label for="p3-7">Route celebration modals through the accessible Modal primitive (focus trap, Escape, aria); interactive first-run tutorial replacing 5 static slides</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p3-8"><label for="p3-8">Copy pass: one playful voice, themed loaders instead of "Loading...", retire "Elite Cat Combat Simulator"</label><span class="eff chip neutral">S</span></div>
+</div></details>
+
+<details class="phase"><summary>Phase 4 · Steam platform layer <span class="chip info">~2–3 weeks</span><span class="progress"><div></div></span></summary><div class="ph-body">
+<div class="goal">From web app to shippable depot. Assumes Decisions 1 &amp; 2.</div>
+<div class="task"><input type="checkbox" id="p4-1"><label for="p4-1">Scaffold wrapper (per Decision 1) consuming a new <code>steam</code> Vite mode (extends itchio mode: relative base, all trackers stripped, expansion per Decision 2)</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p4-2"><label for="p4-2">Steamworks bridge: 16 achievements from <code>unlockAchievement()</code> + jungle medals; stats sync</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p4-3"><label for="p4-3">Steam Cloud as primary save (save-codes demoted to optional cross-platform export)</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p4-4"><label for="p4-4">Fullscreen toggle, Quit-to-Desktop, pause overlay that halts battle/jungle timers (incl. when Steam overlay opens)</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p4-5"><label for="p4-5">Keyboard + controller navigation (Steam Input action sets: navigate/confirm/back/pause) for Deck Verified</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p4-6"><label for="p4-6">Gate cloud/leaderboard/analytics behind build-target + <code>navigator.onLine</code>; exclude Firebase from Steam bundle if Steam services replace it</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p4-7"><label for="p4-7">Rewrite Privacy Policy / ToS for a paid desktop product with a real support contact (currently says "mobile game", points to app store/GitHub)</label><span class="eff chip neutral">S</span></div>
+</div></details>
+
+<details class="phase"><summary>Phase 5 · Content depth for a pay-once audience <span class="chip ok">~3–4 weeks, then ongoing</span><span class="progress"><div></div></span></summary><div class="ph-body">
+<div class="goal">The 10+ hour game. Cheap to build if Phase 2 landed (content = data, not forked components).</div>
+<div class="task"><input type="checkbox" id="p5-1"><label for="p5-1">Economy rework: cap the runaway difficulty reward multiplier; add sinks — cosmetic shop, boon re-rolls, prestige upgrades, run stakes</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p5-2"><label for="p5-2">Boon pool 12 → 30–40 with synergies (poison+execute etc.) and rarity-gated archetypes</label><span class="eff chip neutral">XL</span></div>
+<div class="task"><input type="checkbox" id="p5-3"><label for="p5-3">2–3 new bosses + mid-run shops/events/branching paths in Jungle Run</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p5-4"><label for="p5-4">Replace rubber-band scaling (3× HP cap at birds.ts:360) with opt-in ascension difficulty ladder — restore the power fantasy</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p5-5"><label for="p5-5">Dupe pity + shard/wildcard merging (Prismatic currently needs 9 identical copies with uniform RNG)</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p5-6"><label for="p5-6">Unique ability kits per rarity tier (8 effects currently repeat across 40 cats)</label><span class="eff chip neutral">L</span></div>
+<div class="task"><input type="checkbox" id="p5-7"><label for="p5-7">Decouple from wall clock on Steam: remove 3/day training cap, make Frenzy/events rotate in-session</label><span class="eff chip neutral">M</span></div>
+<div class="task"><input type="checkbox" id="p5-8"><label for="p5-8">Arena endgame: endless ladder with real stat scaling + leaderboard gauntlet, rewards tied to new sinks</label><span class="eff chip neutral">L</span></div>
+</div></details>
+
+<h2>Risks &amp; open questions</h2>
+<table class="risk-t">
+<tr><th>Severity</th><th>Risk / question</th><th>Mitigation</th></tr>
+<tr><td><span class="chip critical">Critical</span></td><td>The payment-unlock hole is live on the web build today; anyone who finds it gets the expansion free and it's saved permanently to their profile and cloud.</td><td>Phase 0 item 1 — ship this week, independent of everything else.</td></tr>
+<tr><td><span class="chip warning">Warning</span></td><td>The XL battle-engine extraction (Phase 2) touches the two biggest files in the repo. Regression risk in the flagship interaction.</td><td>Seeded engine + snapshot tests of full battles <em>before</em> swapping the views over; keep old path behind a flag for one release.</td></tr>
+<tr><td><span class="chip warning">Warning</span></td><td>Existing player saves must survive the save-schema change (localStorage + Firebase + save codes all carry the old shape).</td><td>The migration chain is the point: v0→v1 migration written and tested against real exported saves before release.</td></tr>
+<tr><td><span class="chip warning">Warning</span></td><td>Tauri's OS-webview rendering can differ per machine (esp. older WebView2 on Windows) vs. Electron's bundled Chromium.</td><td>Decision 1. If choosing Tauri, smoke-test on Windows 10 + Deck early in Phase 4, before deep Steamworks work.</td></tr>
+<tr><td><span class="chip info">Info</span></td><td>Icon commissioning (Decision 4) has external cost/lead time and blocks part of Phase 3.</td><td>Start the brief during Phase 1; use restyled SVGs as interim so Phase 3 never stalls.</td></tr>
+<tr><td><span class="chip info">Info</span></td><td>Does the web/mobile live-service variant (daily rewards, Frenzy Friday, Yoco) stay maintained alongside the Steam build?</td><td>The <code>VITE_BUILD_TARGET</code> flag architecture in Phase 4 is designed for both; confirm intent before Phase 5 detunes the clock-gating for Steam only.</td></tr>
+<tr><td><span class="chip info">Info</span></td><td>itch.io deliverable currently unverified — local <code>dist-itchio/</code> contains only .DS_Store files.</td><td>Run <code>npm run zip:itchio</code> fresh and inspect before the next itch push.</td></tr>
+</table>
+
+<h2>File manifest</h2>
+<div class="panel"><ul class="filelist">
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/App.tsx:379">src/ui/App.tsx</a> — payment verification, modal queue, settings entry, desktop layout shell</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/game/store.ts:965">src/game/store.ts</a> — save versioning, slice split, cloud-error surfacing, steam entitlement flag, achievement bridge</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/utils/cloudSave.ts:55">src/utils/cloudSave.ts</a> — keyspace + owner token, shared SaveData type</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/utils/sound.ts:33">src/utils/sound.ts</a> — reduced-motion bug, deferred preload, volume wiring</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/views/BattleArena.tsx:284">src/ui/views/BattleArena.tsx</a> + <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/views/JungleBattle.tsx:1">JungleBattle.tsx</a> — combat logic extraction → thin views over the engine; juice hooks</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/components/GameCard.tsx:151">src/ui/components/GameCard.tsx</a> — <code>&lt;picture&gt;</code>/srcset, dimensions, decoding</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/vite.config.ts:10">vite.config.ts</a> — steam mode, tracker stripping (incl. Meta Pixel), image plugin, firebase chunk, PWA</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/scripts/optimize-images.mjs:1">scripts/optimize-images.mjs</a> — revive (install sharp) and wire into build</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/index.html:15">index.html</a> — tracker loader gating, viewport/desktop meta, font preload</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/game/boons.ts:82">src/game/boons.ts</a>, <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/game/birds.ts:360">birds.ts</a>, <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/game/constants.ts:50">constants.ts</a>, <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/game/data.ts:51">data.ts</a> — Phase 5 balance &amp; content</li>
+<li><code>src-tauri/</code> (new) — desktop wrapper, Steamworks bridge, window config</li>
+<li><a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/views/PrivacyPolicy.tsx:18">PrivacyPolicy.tsx</a> / <a href="vscode://file//Users/mattarnold/Documents/GitHub/whisker-wars/src/ui/views/TermsOfService.tsx:104">TermsOfService.tsx</a> — desktop-appropriate legal + real contact</li>
+</ul></div>
+
+<p class="footer-note">Method: 6 specialist agents (performance, architecture, game design, UX, Steam readiness, asset audit) each read the actual code; an independent adversarial verifier then re-read every high-impact claim's cited lines and returned confirmed/weakened/refuted verdicts, shown as badges. Weakened findings are included with their corrections folded in. Review run 3 July 2026 against <code>main @ 1243877</code>.</p>
+
+</div>
+<script>
+const FINDINGS = {
+"Assets": [
+ {t:"193MB of character art ships as raw uncompressed PNG — zero optimization anywhere",s:"critical",f:"public/images",l:0,v:"confirmed",d:"145 PNGs totalling 193MB; 82% exceed 1MB. Sampled cats are 864×1184 full-truecolor RGBA with no palette reduction or compression pass. Largest: Bramble Wren.png at 2.3MB. dist/ ships every byte verbatim (diff of file trees = identical) because vite.config.ts registers no image plugin.",r:"sharp/oxipng prebuild: resize + WebP q80 + compressed PNG fallback. Expect 193MB → 25–35MB.",e:"L",i:"high"},
+ {t:"Card art shipped at ~4× the pixel area it ever renders at",s:"critical",f:"src/ui/components/GameCard.tsx",l:71,v:"confirmed",d:"GameCard is w-52 h-80 (208×320 CSS px, ≤416×640 at 2× DPR) but sources are 864×1184. ~75% of downloaded pixel data is never displayed.",r:"Cap masters at 832×1280, emit sized variants via <picture>/srcset.",e:"M",i:"high"},
+ {t:"scripts/optimize-images.mjs is fully dead code",s:"critical",f:"scripts/optimize-images.mjs",l:41,v:"confirmed",d:"The script does exactly the right thing (resize >800px, WebP q80) but sharp isn't in package.json, zero .webp files exist in the repo, and nothing in src/ references .webp or <picture>. It has never successfully run.",r:"npm i -D sharp, run it, wire into build; or delete it — misleading as-is.",e:"S",i:"medium"},
+ {t:"Deployed site publicly serves 7 macOS .DS_Store files",s:"warning",f:"public/images",l:0,v:"confirmed",d:"Vite's publicDir copy has no exclusion filter; .DS_Store files in public/images/** are requestable on the live Vercel deployment. Unprofessional for a paid release.",r:"Delete + prebuild find -name .DS_Store -delete step.",e:"S",i:"low"},
+ {t:"itch.io build artifact on disk is empty — pipeline unverified",s:"warning",f:"package.json",l:9,v:"confirmed",d:"dist-itchio/ contains only .DS_Store files — no index.html, JS, or assets. The zip:itchio script would ship whatever is there. Local stale state, but the deliverable hasn't been freshly built and eyeballed.",r:"Run npm run zip:itchio fresh and inspect the zip before any release push.",e:"S",i:"medium"},
+ {t:"All 12 SFX eagerly fetched at module import, before any user gesture",s:"warning",f:"src/utils/sound.ts",l:18,v:"confirmed",d:"new Audio(src) + preload='auto' + load() for every SFX at import time (~180KB), plus theme.mp3 is 2.0MB — 87% of the audio budget — regardless of whether music is ever enabled.",r:"Warm on first interaction; lazy-load theme on music-on; re-encode theme <600KB.",e:"S",i:"low"},
+ {t:"Audio is 100% MP3, theme.mp3 oversized for a loop",s:"info",f:"public/sounds",l:0,v:"confirmed",d:"13/13 files are .mp3, 2.3MB total, dominated by the 2.0MB theme. Most browser games ship looping BGM under 500KB.",r:"Re-encode the loop at ~128kbps, target <600KB.",e:"S",i:"low"},
+ {t:"No duplicate assets found — clean bill of health",s:"info",f:"public/images",l:0,v:"confirmed",d:"All 145 PNGs checked for byte-size collisions: zero duplicates. All bloat is per-file oversizing, not redundant copies.",r:"No action — spend the effort on the resize/compress pipeline instead.",e:"S",i:"low"}
+],
+"Performance": [
+ {t:"Firebase eagerly imported into the 424KB main bundle",s:"warning",f:"src/utils/firebase.ts",l:1,v:"confirmed",d:"initializeApp + getDatabase run at module top level, imported eagerly by store.ts:6. Cloud save/leaderboards never run on first paint, yet Firebase inflates initial download/parse for everyone.",r:"Dynamic import() at point of use + manualChunk in vite.config.ts.",e:"M",i:"medium"},
+ {t:"save() stringifies full state synchronously + read-back verify on hot paths",s:"warning",f:"src/game/store.ts",l:998,v:"confirmed",d:"Every battle/merge/catch handler calls get().save() immediately: full JSON.stringify of the owned array + achievements + jungle state, a localStorage write, then a synchronous read-back compare — mid-animation, blocking the main thread on large collections.",r:"Keep read-back verify only on the debounced/visibilitychange path; skip it on hot-path saves.",e:"M",i:"medium"},
+ {t:"No service worker — returning players re-fetch heavyweight assets",s:"warning",f:"index.html",l:50,v:"confirmed",d:"No SW registration anywhere; no precache manifest. Every repeat visit re-validates/re-downloads large art; no offline resilience on web/itch.",r:"vite-plugin-pwa: cache-first for /images + /sounds, precached JS/CSS shell.",e:"M",i:"medium"},
+ {t:"GameCard <img> has no dimensions — layout shift + main-thread decode jank",s:"warning",f:"src/ui/components/GameCard.tsx",l:151,v:"confirmed",d:"Only loading='lazy' is set; no width/height/aspect-ratio, no decoding='async'. Dozens of tall PNGs streaming into the Collection grid push layout during scroll.",r:"Explicit dimensions (or aspect-ratio) + decoding='async'.",e:"S",i:"medium"},
+ {t:"Uncapped particles animating boxShadow; reduced-motion only honored in CSS",s:"warning",f:"src/ui/components/ParticleSystem.tsx",l:27,v:"confirmed",d:"Particle count is caller-controlled with no clamp; each particle is a motion.div animating boxShadow (repaint-heavy). framer-motion runs in 37 files with no JS-side reduced-motion or device-tier gating.",r:"Clamp (~40), transform/opacity only, useReducedMotion + device-tier degrade.",e:"M",i:"medium"},
+ {t:"GA4 + Meta Pixel on the critical path in <head>",s:"info",f:"index.html",l:6,v:"confirmed",d:"Third-party trackers load before the app module — DNS/connect/parse work that delays first interaction on slow networks.",r:"Defer to after first paint (requestIdleCallback) on the web build.",e:"S",i:"low"},
+ {t:"Positive: JS fundamentals are healthy",s:"info",f:"src/ui/views/Collection.tsx",l:1,v:"confirmed",d:"Zustand selectors are used correctly (no whole-store subscriptions), Collection is well-memoized, GameCard is React.memo'd. The perf problem is assets, not React.",r:"No action — don't spend time micro-optimizing renders.",e:"S",i:"low"}
+],
+"Architecture": [
+ {t:"Save/load has no version or migration; ~27-field list hand-copied in 4 places",s:"critical",f:"src/game/store.ts",l:965,v:"confirmed",d:"save(), load(), restoreProfile() and CloudSaveData each independently list the fields. No saveVersion exists. save-load-bugfix-plan.md documents real shipped data loss from exactly this (dropped fields; `d.coins || 120` resetting zero-coin saves).",r:"One typed SaveData + buildSavePayload() everywhere; saveVersion + migration chain; zod-validate on load and surface failures instead of resetting.",e:"L",i:"high"},
+ {t:"Combat logic lives inside BattleArena.tsx (1,921 lines), not src/game",s:"critical",f:"src/ui/views/BattleArena.tsx",l:284,v:"confirmed",d:"Damage calc, dodge, armor, nat-20, DoT ticks, victory rewards are inline component code driven by exactly 18 setTimeout calls and a `turn` state flag. JungleBattle.tsx (1,270 lines) re-implements the same loop. None of it is unit-testable.",r:"Pure seeded battle engine (state + action → state + events) in src/game/battle; views render engine events; timing stays in the view layer.",e:"XL",i:"high"},
+ {t:"Zero tests on the two riskiest areas: store save/load and battle flow",s:"warning",f:"src/game/__tests__",l:1,v:"confirmed",d:"Exactly 4 test files (456 lines) cover resolvers/constants/events/items. Nothing tests save/load round-trips, mergeCats/ascendCat, jungle phase transitions, or any battle sequencing — where the documented bugs actually occurred.",r:"Store round-trip tests with mocked localStorage first (incl. the zero-coin regression), then seeded battle snapshots after engine extraction.",e:"L",i:"high"},
+ {t:"God-store: six domains in one 1,651-line create()",s:"warning",f:"src/game/store.ts",l:315,v:"confirmed",d:"Base game, jungle, profiles, cloud sync, leaderboards and payment verification in one store. Every new mode must edit state + save + load + restore + cloud — the exact coupling that caused the save bugs.",r:"Domain slices (core/jungle/profiles/sync) + serializer registry so modes self-register into save/load.",e:"L",i:"medium"},
+ {t:"Base and Jungle combat are parallel near-duplicates that drift",s:"warning",f:"src/game/birdAbilityResolver.ts",l:41,v:"confirmed",d:"abilityResolver vs birdAbilityResolver are parallel implementations (only resolveDefense shared); two ~1,300–1,900-line battle views implement the same loop. Base combat uses raw Math.random while jungle injects a seeded PRNG — already diverged.",r:"Enemies/abilities as data with one effect vocabulary resolved by the one engine; jungle becomes an enemy set + boon modifiers.",e:"L",i:"medium"},
+ {t:"Cloud-save failures silently swallowed — false backup confidence",s:"warning",f:"src/game/store.ts",l:1075,v:"confirmed",d:"uploadSave(...).catch(() => {}) discards failures; players believe they're backed up, then lose progress on device change.",r:"cloudSyncError flag in store + subtle 'backup failed — retry' indicator; log failures.",e:"M",i:"medium"},
+ {t:"Non-deterministic RNG + re-entrancy risk in battle sequencing",s:"warning",f:"src/ui/views/BattleArena.tsx",l:191,v:"confirmed",d:"Base resolvers call Math.random directly (unseedable/untestable). setTimeout chains + an await gap with no in-flight lock allow rapid input to double-act; the DoT effect reads stale closures.",r:"Inject RNG (as jungle already does); isResolving guard; clear timeouts on unmount; fix effect deps.",e:"M",i:"medium"},
+ {t:"any-casts around save/restore let field drift compile silently",s:"info",f:"src/game/store.ts",l:1251,v:"confirmed",d:"restoreProfile casts cloud data as Record<string, any> and re-lists fields by hand (a third copy of the save shape); ~21 any/as casts across src. Dropping a field produces no compile error.",r:"Typed SaveData + zod parse replaces the cast — falls out of the save-schema work.",e:"M",i:"medium"}
+],
+"Game design": [
+ {t:"Coin economy inflates without a sink",s:"critical",f:"src/game/constants.ts",l:50,v:"confirmed",d:"Dogs loop back to index 0 but difficultyLevel rises forever (+0.5 reward multiplier/cycle) while dog stats stay fixed — a late dog pays ~2,100 coins/fight by difficulty 3. Biggest sink is full ascension at 3,500 (~2 fights). Verifier note: small sinks exist (bait ≤600, equipment) but are dwarfed.",r:"Cap/curve the multiplier; add sinks that buy depth — cosmetics, re-rolls, prestige upgrades, run stakes.",e:"L",i:"high"},
+ {t:"Roguelike is content-thin for a Steam audience: 12 boons, 2 bosses",s:"warning",f:"src/game/boons.ts",l:82,v:"confirmed",d:"Exactly 12 boons (6C/4R/2L, maxStacks 1–3) — a 20-stage run exhausts variety and every run converges. 2 bosses, 14 regular birds, squad locked at run start so boons are the only in-run choice.",r:"30–40 synergistic boons, 4–5 bosses, mid-run shops/events/branching paths, boon interactions so builds diverge.",e:"XL",i:"high"},
+ {t:"Jungle rubber-band scaling dampens the collection power fantasy",s:"warning",f:"src/game/birds.ts",l:360,v:"weakened",d:"Bird HP scales to 3× / ATK to 1.5× from squad power. Verifier: sqrt-dampened and capped, so investment IS still felt past the caps — 'neutralized' was overstated — but the marquee mode visibly pushes back against exactly the grind the game asks for.",r:"Cap far lower or replace with opt-in ascension tiers (fixed difficulty, better rewards).",e:"L",i:"high"},
+ {t:"F2P time gates misfire on a pay-once binge audience",s:"warning",f:"src/game/store.ts",l:936,v:"confirmed",d:"Training: 3 sessions/day × 15 XP vs ~1,281 XP needed for level 9→10 — both negligible and an energy gate. Frenzy events fire only on real-world Fridays; streaks span 7 real days. A 4-hour Steam session hits artificial walls.",r:"Steam build: remove/raise the cap, rotate events in-session. Keep the clock cadence for the live web variant only.",e:"M",i:"medium"},
+ {t:"No pity or dupe protection; Prismatic needs 9 identical copies",s:"warning",f:"src/game/store.ts",l:184,v:"confirmed",d:"Catches roll uniformly within tier; merges need 3 of the exact same cat, twice over for Prismatic. With tier-6 bait spread over 6 Mythicals that's a long swingy grind with no steering.",r:"Pity counter / dupe-shard currency; wildcard merging; make dupes worth more than a 5–250 coin release.",e:"M",i:"medium"},
+ {t:"Arena has no endgame — infinite loop multiplies rewards, not challenge",s:"info",f:"src/game/store.ts",l:420,v:"confirmed",d:"After 24 dogs the mode loops at higher difficultyLevel, which raises coins but not dog stats. No new mechanics/goals post-content; last achievements fire at dogs 15 and 24.",r:"Endless ladder with real stat scaling, weekly modifiers, leaderboard gauntlet tied to the new coin sinks.",e:"L",i:"medium"},
+ {t:"8 ability effects repeat across 40 cats — rarity is mostly raw stats",s:"info",f:"src/game/data.ts",l:51,v:"confirmed",d:"'1.5× damage on roll ≥15' appears on 8+ cats verbatim. New catches rarely feel mechanically distinct, weakening the collection pull.",r:"Unique kits per tier (Epic+ at minimum) so chasing specific cats means new decisions, not bigger numbers.",e:"L",i:"medium"},
+ {t:"Onboarding is 5 static slides, not a guided first run",s:"info",f:"src/ui/components/WelcomeTutorialModal.tsx",l:11,v:"confirmed",d:"Read-only slides with Skip; never touches merge/ascend/jungle/equipment — the systems that carry the mid-game. Players are told, not shown.",r:"Guided first catch + first battle turn + first equip with coach-marks; defer deep-system tips to unlock moments.",e:"M",i:"low"}
+],
+"UX / Juice": [
+ {t:"307 emoji serve as the game's functional icon system",s:"warning",f:"src/ui/App.tsx",l:532,v:"confirmed",d:"Coins, rarities, abilities, status effects, nav toggles and combat-log lines are all OS emoji glyphs — Segoe on Windows, Apple on Mac, different again on Android. The core iconography has no owned identity; the #1 'browser game' tell.",r:"Cohesive SVG/icon set (Decision 4); replace persistent HUD + status pills first, keep emoji for flavor only.",e:"L",i:"high"},
+ {t:"No settings screen; volume code exists but has no UI",s:"warning",f:"src/ui/App.tsx",l:211,v:"confirmed",d:"Only two binary emoji toggles (sound/music). SFX volume hardcoded 0.5, music 0.2; setMusicVolume() is written and never called. No colorblind support (rarity is color-only), no in-app motion toggle.",r:"Settings screen: Master/Music/SFX sliders, reduced-motion, colorblind-safe rarity cues (shape+label), persisted to the store.",e:"L",i:"high"},
+ {t:"Combat lacks weight: 5px card jitter, no hitstop, no impact flash",s:"warning",f:"src/ui/animations.ts",l:125,v:"confirmed",d:"The hit effect is x:[-5,5,-5,5,0] on the individual card, not the stage. No freeze-frame, no flash, no camera punch; nat-20 crits get log text and a dice glow only. Hits feel weightless vs. polished battlers.",r:"60–100ms hitstop, white/rarity flash on the struck card, stage-level decaying shake for crits, intensity scaled by damage. Respect motion setting.",e:"M",i:"high"},
+ {t:"Damage numbers spawn at hardcoded screen positions, mostly disconnected from targets",s:"warning",f:"src/ui/views/BattleArena.tsx",l:360,v:"weakened",d:"Player→enemy hits float from window.innerWidth/2 regardless of target; enemy→cat hits use a rough per-column estimate. Verifier: 'every hit from one spot' was overstated, but flat red color, no crit/heal styling, and fixed positioning are all real.",r:"Spawn at the struck card's actual rect; scale by magnitude; gold crits, green heals, jitter to avoid overlap.",e:"M",i:"high"},
+ {t:"Mobile-first centered column leaves the 1080p canvas mostly empty",s:"warning",f:"src/ui/App.tsx",l:614,v:"confirmed",d:"Everything capped at max-w-7xl and centered; cards fixed at w-52 h-80; the battle view uses scale-[0.60] hacks. At 1920×1080 — what Steam players see — wide dead gutters frame a small centered column. Reads as a responsive website.",r:"Designed 16:9 stage: full-width arena, party/enemy across the canvas, side space for log/roster; Deck 1280×800 first-class.",e:"XL",i:"high"},
+ {t:"First load fires a gauntlet of independently-timed popups",s:"warning",f:"src/ui/App.tsx",l:385,v:"confirmed",d:"DailyReward (1000ms), WelcomeTutorial (500ms), FrenzyFriday (1200–2500ms), JungleAnnouncement (2000ms) are scheduled independently with duplicate scheduling in the ProfileSelector callback — first session = dismiss five popups before playing. 16 modal components exist.",r:"Single modal queue, one at a time, ordered; suppress promos in first session; demote low-stakes popups to toasts.",e:"M",i:"medium"},
+ {t:"Celebration modals bypass the accessible Modal primitive",s:"warning",f:"src/ui/components/CatchCelebrationModal.tsx",l:76,v:"confirmed",d:"Modal.tsx correctly implements Escape, focus trap, role=dialog — but catch/merge/stone/victory/defeat celebrations are hand-rolled portals with click-only dismiss, no aria, no focus management, and mouse-only copy. The game's biggest reward moments are invisible to keyboard/screen-reader users.",r:"Route them through the shared primitive (or extract its logic to a hook); 'Press any key or tap to continue.'",e:"M",i:"medium"},
+ {t:"Google Fonts @import is render-blocking and fails in offline builds",s:"warning",f:"src/ui/index.css",l:1,v:"confirmed",d:"itch.io and Capacitor builds run offline → the fetch fails and typography silently falls back to system-ui, differing across builds. Inter-for-everything also gives no typographic identity.",r:"Self-host Inter woff2 (preloaded); add a characterful display face for headings.",e:"M",i:"medium"},
+ {t:"Two parallel color systems; no shared Button/Panel/Badge components",s:"info",f:"src/ui/views/BaitingArea.tsx",l:26,v:"confirmed",d:"tailwind.config.js defines a deliberate gold/purple brand palette, but views hand-roll rarity gradients from raw gray/green/blue/purple/orange, re-hardcoded in at least 3 places. Every button is a bespoke motion.button with repeated class strings — hover/press/disabled behavior drifts per screen.",r:"Design tokens + one canonical RARITY_COLORS + reusable Button/Panel/Badge/StatPill.",e:"L",i:"medium"},
+ {t:"Bare 'Loading...' text and inconsistent tone",s:"info",f:"src/ui/App.tsx",l:622,v:"confirmed",d:"Suspense fallback is a plain 'Loading...' div; footer brands the game 'Elite Cat Combat Simulator' while body copy is playful. Small details that read unfinished.",r:"Branded loader/skeletons + one playful voice locked in a copy pass.",e:"M",i:"low"}
+],
+"Steam": [
+ {t:"No desktop wrapper exists — Tauri v2 recommended",s:"critical",f:"package.json",l:20,v:"confirmed",d:"Only web/itchio/Capacitor targets exist. The app is a static SPA with no runtime Node needs (the only server code is Vercel functions that won't exist on Steam), and the itch.io mode already emits the relative-path, file://-loadable bundle a webview shell consumes directly.",r:"Tauri v2 (~3–6MB, best Deck behavior, steamworks-rs) wrapping a new 'steam' Vite mode. Decision 1.",e:"L",i:"high"},
+ {t:"External Yoco checkout for the expansion violates Steam policy",s:"critical",f:"src/ui/components/JunglePurchaseModal.tsx",l:67,v:"confirmed",d:"Purchase redirects to Yoco's hosted payment page; Steam prohibits external payment for in-game content. Entitlement is a single junglePassUnlocked boolean gated at 4 store sites + 2 paywalled views.",r:"VITE_BUILD_TARGET='steam' forces the flag true (or DLC check per Decision 2); strip the entire Yoco/serverless path from the Steam bundle.",e:"M",i:"high"},
+ {t:"Paid entitlement is forgeable via URL param — live revenue leak",s:"critical",f:"src/ui/App.tsx",l:379,v:"weakened",d:"?payment=success&view=jungle sets junglePassUnlocked=true with no verification — exploit confirmed by two independent agents and by direct read. 'Weakened' only because the reviewer missed that checkPaymentStatus() already exists and reads the webhook's payment record — meaning the fix is trivial.",r:"Wire the existing checkPaymentStatus verification into the redirect path. Phase 0.",e:"S",i:"high"},
+ {t:"Meta Pixel ships in every build; only GA is stripped, only for itch.io",s:"critical",f:"index.html",l:15,v:"confirmed",d:"The strip plugin covers GA in itchio mode only. The Facebook Pixel ships to web, itch.io, Capacitor, and any future desktop build — a privacy-review red flag for Steam, firing doomed requests offline, and undisclosed in the Privacy Policy.",r:"Extend the strip plugin to the Pixel + all non-web targets; better, move both trackers to a runtime loader gated on build target.",e:"S",i:"high"},
+ {t:"Mobile-only viewport; no fullscreen, resolution handling, or desktop concept",s:"warning",f:"index.html",l:32,v:"confirmed",d:"viewport pins maximum-scale=1, user-scalable=no with apple-mobile metas; no requestFullscreen anywhere; platform.ts only knows native-vs-web. On a 1080p Steam window the game is a narrow strip.",r:"Desktop layout (Phase 3) + Fullscreen toggle + isDesktop()/isSteam() in platform.ts + sane default window in tauri.conf.json.",e:"L",i:"high"},
+ {t:"16 achievements + rich stats already computed but not bridged to Steamworks",s:"warning",f:"src/game/store.ts",l:254,v:"confirmed",d:"16 internal achievements (verifier corrected the claimed 17) unlock via 14 call sites, backed by GameStats (wins, merges, highest dog...). They map 1:1 to Steam achievements — the triggers are all already computed.",r:"Thin bridge (steamworks-rs command / greenworks): setAchievement + storeStats called from unlockAchievement(). Cheap, high-value.",e:"M",i:"high"},
+ {t:"Manual save codes as primary backup: 72k keyspace, no auth",s:"warning",f:"src/ui/components/SaveCodeModal.tsx",l:229,v:"confirmed",d:"'Write this down or take a screenshot' codes: 8 prefixes × 9,000 numbers, fetchable by anyone who guesses — readable AND overwritable. Substandard vs Steam Cloud on desktop and a live integrity issue on web.",r:"Steam Cloud primary on desktop; keep codes as optional export with a widened keyspace + owner token (Phase 0 for the web fix).",e:"M",i:"medium"},
+ {t:"No keyboard or controller navigation — fails Deck expectations",s:"warning",f:"src/ui/components/Modal.tsx",l:28,v:"confirmed",d:"The only keyboard handling in the app is Modal's Escape + focus trap. Entirely pointer-driven otherwise; no Gamepad API, no shortcuts. Steam Deck Verified needs full controller navigation.",r:"Focus/navigation layer: keyboard-reachable everything, D-pad focus movement, Steam Input action sets (navigate/confirm/back/pause).",e:"L",i:"medium"},
+ {t:"Legal pages read as mobile placeholders; tracking undisclosed",s:"warning",f:"src/ui/views/PrivacyPolicy.tsx",l:80,v:"confirmed",d:"Privacy Policy calls the product 'our mobile game application' and directs support to 'the app store page or GitHub'; it also doesn't disclose the GA/Pixel tracking that actually ships. Steam review expects accurate disclosure and a real contact.",r:"Rewrite both for a paid desktop product: real support email, accurate (or eliminated) tracking disclosure, desktop EULA.",e:"S",i:"medium"},
+ {t:"Doomed network loops during offline play",s:"info",f:"src/utils/firebase.ts",l:16,v:"confirmed",d:"Firebase inits eagerly at import; leaderboard upload fires every 30s and cloud sync every 120s. All failures are caught (core loop survives offline) but the app hammers dead endpoints and carries the full SDK in a desktop bundle.",r:"Gate on navigator.onLine + build target; lazy-init; prefer Steam services on the Steam build.",e:"S",i:"low"},
+ {t:"No quit, no pause — browser-tab lifecycle only",s:"info",f:"src/game/store.ts",l:1637,v:"confirmed",d:"Autosave hangs off visibilitychange/beforeunload; there is no Quit-to-Desktop and no pause state for timed battle/jungle sequences.",r:"Pause overlay with Quit + Fullscreen; halt timers when it (or the Steam overlay) opens; keep autosave hooks as safety net.",e:"S",i:"medium"}
+]
+};
+
+const tabsEl = document.getElementById('tabs');
+const panelsEl = document.getElementById('panels');
+const REPO = '/Users/mattarnold/Documents/GitHub/whisker-wars/';
+let activeSev = 'all';
+
+Object.keys(FINDINGS).forEach((dim, idx) => {
+  const tab = document.createElement('button');
+  tab.className = 'tab' + (idx === 0 ? ' active' : '');
+  const counts = FINDINGS[dim].filter(f => f.s === 'critical').length;
+  tab.innerHTML = dim + ' <span style="opacity:.7">(' + FINDINGS[dim].length + (counts ? ' · ' + counts + '⛔' : '') + ')</span>';
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    panel.classList.add('active');
+  };
+  tabsEl.appendChild(tab);
+
+  const panel = document.createElement('div');
+  panel.className = 'tabpanel' + (idx === 0 ? ' active' : '');
+  FINDINGS[dim].forEach(f => {
+    const el = document.createElement('details');
+    el.className = 'finding ' + f.s;
+    el.dataset.sev = f.s;
+    const fileLink = f.l > 0
+      ? '<a href="vscode://file/' + REPO + f.f + ':' + f.l + '">' + f.f + ':' + f.l + '</a>'
+      : '<code>' + f.f + '</code>';
+    el.innerHTML =
+      '<summary><span class="chip ' + f.s + '">' + f.s + '</span>' +
+      (f.v === 'confirmed' ? '<span class="chip verified">✓ verified</span>' : '<span class="chip weakened">△ adjusted</span>') +
+      '<span>' + f.t + '</span></summary>' +
+      '<div class="body">' +
+      '<div class="meta">' + fileLink + ' · effort <strong>' + f.e + '</strong> · impact <strong>' + f.i + '</strong></div>' +
+      '<div class="lbl">Evidence</div><div>' + f.d + '</div>' +
+      '<div class="lbl">Recommendation</div><div>' + f.r + '</div>' +
+      '</div>';
+    panel.appendChild(el);
+  });
+  panelsEl.appendChild(panel);
+});
+
+document.querySelectorAll('.fbtn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    activeSev = btn.dataset.sev;
+    document.querySelectorAll('.finding').forEach(f => {
+      f.style.display = (activeSev === 'all' || f.dataset.sev === activeSev) ? '' : 'none';
+    });
+  };
+});
+
+// decisions persistence
+document.querySelectorAll('.decision').forEach(dec => {
+  const key = 'ww-decision-' + dec.dataset.key;
+  const saved = localStorage.getItem(key);
+  dec.querySelectorAll('.opt').forEach(opt => {
+    if (saved && opt.dataset.val === saved) opt.classList.add('selected');
+    opt.onclick = () => {
+      dec.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      localStorage.setItem(key, opt.dataset.val);
+    };
+  });
+});
+
+// roadmap checkbox persistence + progress bars
+function updateProgress(phase) {
+  const boxes = phase.querySelectorAll('input[type=checkbox]');
+  const done = [...boxes].filter(b => b.checked).length;
+  const bar = phase.querySelector('.progress > div');
+  if (bar) bar.style.width = boxes.length ? (100 * done / boxes.length) + '%' : '0%';
+}
+document.querySelectorAll('.phase').forEach(phase => {
+  phase.querySelectorAll('input[type=checkbox]').forEach(box => {
+    const key = 'ww-task-' + box.id;
+    box.checked = localStorage.getItem(key) === '1';
+    box.closest('.task').classList.toggle('done', box.checked);
+    box.onchange = () => {
+      localStorage.setItem(key, box.checked ? '1' : '0');
+      box.closest('.task').classList.toggle('done', box.checked);
+      updateProgress(phase);
+    };
+  });
+  updateProgress(phase);
+});
+</script>
+</body>
+</html>

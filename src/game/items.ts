@@ -12,28 +12,28 @@ export interface Equipment {
 
 export const EQUIPMENT: Equipment[] = [
   // Common Weapons
-  { id: 'wooden-claws', name: 'Wooden Claws', slot: 'weapon', rarity: 'Common', atkBonus: 1, hpBonus: 0, description: '+1 ATK', cost: 50, iconUrl: '/images/equipment/Wooden claws.png' },
-  { id: 'iron-claws', name: 'Iron Claws', slot: 'weapon', rarity: 'Common', atkBonus: 2, hpBonus: 0, description: '+2 ATK', cost: 100, iconUrl: '/images/equipment/Iron claws.png' },
+  { id: 'wooden-claws', name: 'Wooden Claws', slot: 'weapon', rarity: 'Common', atkBonus: 1, hpBonus: 0, description: '+1 ATK', cost: 50, iconUrl: '/images/equipment/Wooden claws.webp' },
+  { id: 'iron-claws', name: 'Iron Claws', slot: 'weapon', rarity: 'Common', atkBonus: 2, hpBonus: 0, description: '+2 ATK', cost: 100, iconUrl: '/images/equipment/Iron claws.webp' },
 
   // Common Accessories
-  { id: 'leather-collar', name: 'Leather Collar', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 3, description: '+3 HP', cost: 50, iconUrl: '/images/equipment/Leather collar.png' },
-  { id: 'bell-charm', name: 'Bell Charm', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 5, description: '+5 HP', cost: 100, iconUrl: '/images/equipment/Bell charm.png' },
+  { id: 'leather-collar', name: 'Leather Collar', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 3, description: '+3 HP', cost: 50, iconUrl: '/images/equipment/Leather collar.webp' },
+  { id: 'bell-charm', name: 'Bell Charm', slot: 'accessory', rarity: 'Common', atkBonus: 0, hpBonus: 5, description: '+5 HP', cost: 100, iconUrl: '/images/equipment/Bell charm.webp' },
 
   // Uncommon
-  { id: 'steel-claws', name: 'Steel Claws', slot: 'weapon', rarity: 'Uncommon', atkBonus: 3, hpBonus: 0, description: '+3 ATK', cost: 200, iconUrl: '/images/equipment/Steel claws.png' },
-  { id: 'silver-pendant', name: 'Silver Pendant', slot: 'accessory', rarity: 'Uncommon', atkBonus: 1, hpBonus: 5, description: '+1 ATK, +5 HP', cost: 200, iconUrl: '/images/equipment/Silver pendant.png' },
+  { id: 'steel-claws', name: 'Steel Claws', slot: 'weapon', rarity: 'Uncommon', atkBonus: 3, hpBonus: 0, description: '+3 ATK', cost: 200, iconUrl: '/images/equipment/Steel claws.webp' },
+  { id: 'silver-pendant', name: 'Silver Pendant', slot: 'accessory', rarity: 'Uncommon', atkBonus: 1, hpBonus: 5, description: '+1 ATK, +5 HP', cost: 200, iconUrl: '/images/equipment/Silver pendant.webp' },
 
   // Rare
-  { id: 'crystal-claws', name: 'Crystal Claws', slot: 'weapon', rarity: 'Rare', atkBonus: 4, hpBonus: 2, description: '+4 ATK, +2 HP', cost: 400, iconUrl: '/images/equipment/Crystal claws.png' },
-  { id: 'mystic-amulet', name: 'Mystic Amulet', slot: 'accessory', rarity: 'Rare', atkBonus: 2, hpBonus: 8, description: '+2 ATK, +8 HP', cost: 400, iconUrl: '/images/equipment/Mystical amulet.png' },
+  { id: 'crystal-claws', name: 'Crystal Claws', slot: 'weapon', rarity: 'Rare', atkBonus: 4, hpBonus: 2, description: '+4 ATK, +2 HP', cost: 400, iconUrl: '/images/equipment/Crystal claws.webp' },
+  { id: 'mystic-amulet', name: 'Mystic Amulet', slot: 'accessory', rarity: 'Rare', atkBonus: 2, hpBonus: 8, description: '+2 ATK, +8 HP', cost: 400, iconUrl: '/images/equipment/Mystical amulet.webp' },
 
   // Epic
-  { id: 'void-talons', name: 'Void Talons', slot: 'weapon', rarity: 'Epic', atkBonus: 6, hpBonus: 3, description: '+6 ATK, +3 HP', cost: 800, iconUrl: '/images/equipment/Void talons.png' },
-  { id: 'stardust-collar', name: 'Stardust Collar', slot: 'accessory', rarity: 'Epic', atkBonus: 3, hpBonus: 12, description: '+3 ATK, +12 HP', cost: 800, iconUrl: '/images/equipment/Stardust collar.png' },
+  { id: 'void-talons', name: 'Void Talons', slot: 'weapon', rarity: 'Epic', atkBonus: 6, hpBonus: 3, description: '+6 ATK, +3 HP', cost: 800, iconUrl: '/images/equipment/Void talons.webp' },
+  { id: 'stardust-collar', name: 'Stardust Collar', slot: 'accessory', rarity: 'Epic', atkBonus: 3, hpBonus: 12, description: '+3 ATK, +12 HP', cost: 800, iconUrl: '/images/equipment/Stardust collar.webp' },
 
   // Legendary (drop only from high-tier dogs)
-  { id: 'infernal-fangs', name: 'Infernal Fangs', slot: 'weapon', rarity: 'Legendary', atkBonus: 8, hpBonus: 5, description: '+8 ATK, +5 HP', cost: 0, iconUrl: '/images/equipment/Infernal fangs.png' },
-  { id: 'celestial-crown', name: 'Celestial Crown', slot: 'accessory', rarity: 'Legendary', atkBonus: 5, hpBonus: 15, description: '+5 ATK, +15 HP', cost: 0, iconUrl: '/images/equipment/Celestial crown.png' },
+  { id: 'infernal-fangs', name: 'Infernal Fangs', slot: 'weapon', rarity: 'Legendary', atkBonus: 8, hpBonus: 5, description: '+8 ATK, +5 HP', cost: 0, iconUrl: '/images/equipment/Infernal fangs.webp' },
+  { id: 'celestial-crown', name: 'Celestial Crown', slot: 'accessory', rarity: 'Legendary', atkBonus: 5, hpBonus: 15, description: '+5 ATK, +15 HP', cost: 0, iconUrl: '/images/equipment/Celestial crown.webp' },
 ]
 
 // ===== Elemental Stones (Feline Frenzy Friday drops) =====
@@ -47,11 +47,11 @@ export interface Stone {
 }
 
 export const STONES: Stone[] = [
-  { id: 'emberstone', name: 'Emberstone', element: 'FIRE', effect: '3x damage + burn (3 dmg/turn for 2 turns)', iconUrl: '/images/events/stones/Emberstone.png' },
-  { id: 'froststone', name: 'Froststone', element: 'ICE', effect: '2x damage + freeze (enemy skips next turn)', iconUrl: '/images/events/stones/Froststone.png' },
-  { id: 'terrastone', name: 'Terrastone', element: 'EARTH', effect: '2x damage + rock shield (blocks next hit)', iconUrl: '/images/events/stones/Terrastone.png' },
-  { id: 'stormstone', name: 'Stormstone', element: 'LIGHTNING', effect: 'Double strike + guaranteed crit on first', iconUrl: '/images/events/stones/Stormstone.png' },
-  { id: 'voidstone', name: 'Voidstone', element: 'SHADOW', effect: '2.5x damage + 100% lifesteal', iconUrl: '/images/events/stones/Voidstone.png' },
+  { id: 'emberstone', name: 'Emberstone', element: 'FIRE', effect: '3x damage + burn (3 dmg/turn for 2 turns)', iconUrl: '/images/events/stones/Emberstone.webp' },
+  { id: 'froststone', name: 'Froststone', element: 'ICE', effect: '2x damage + freeze (enemy skips next turn)', iconUrl: '/images/events/stones/Froststone.webp' },
+  { id: 'terrastone', name: 'Terrastone', element: 'EARTH', effect: '2x damage + rock shield (blocks next hit)', iconUrl: '/images/events/stones/Terrastone.webp' },
+  { id: 'stormstone', name: 'Stormstone', element: 'LIGHTNING', effect: 'Double strike + guaranteed crit on first', iconUrl: '/images/events/stones/Stormstone.webp' },
+  { id: 'voidstone', name: 'Voidstone', element: 'SHADOW', effect: '2.5x damage + 100% lifesteal', iconUrl: '/images/events/stones/Voidstone.webp' },
 ]
 
 /** Roll for stone drop from Feline Frenzy Friday (50% base chance + optional streak bonus) */

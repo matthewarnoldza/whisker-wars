@@ -1,28 +1,35 @@
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 import { useGame } from '../../game/store'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from '../components/ui'
+import type { IconProps } from '../icons/types'
+import {
+  FishingRodIcon, CatIcon, MergeIcon, SparkleIcon, SwordsIcon, GemIcon,
+  DiceIcon, EventIcon, TargetIcon, CloudIcon, BulbIcon, ChevronDownIcon,
+  BookIcon, ArrowLeftIcon,
+} from '../icons'
 
 interface Section {
-  icon: string
+  Icon: ComponentType<IconProps>
   title: string
   content: JSX.Element
 }
 
 function Accordion({ section, isOpen, onToggle }: { section: Section; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="border border-slate-700/50 rounded-xl overflow-hidden bg-slate-800/80">
+    <div className="border border-surface-border rounded-xl overflow-hidden bg-surface-raised/80">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-800/90 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-overlay/60 transition-colors"
       >
-        <span className="text-2xl">{section.icon}</span>
-        <span className="flex-1 font-bold text-white text-sm sm:text-base">{section.title}</span>
+        <span className="text-2xl text-accent-300"><section.Icon /></span>
+        <span className="flex-1 font-bold text-ink text-sm sm:text-base font-heading">{section.title}</span>
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
-          className="text-slate-400 text-lg"
+          className="text-ink-subtle text-lg flex"
         >
-          ▾
+          <ChevronDownIcon />
         </motion.span>
       </button>
       <AnimatePresence>
@@ -46,8 +53,8 @@ function Accordion({ section, isOpen, onToggle }: { section: Section; isOpen: bo
 
 function Tip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/20 border border-amber-500/40 rounded-lg text-xs text-amber-200">
-      <span className="mt-0.5">💡</span>
+    <div className="flex items-start gap-2 px-3 py-2 bg-accent-500/15 border border-accent-400/40 rounded-lg text-xs text-accent-200">
+      <BulbIcon className="mt-0.5 shrink-0 text-accent-300" />
       <span>{children}</span>
     </div>
   )
@@ -55,7 +62,7 @@ function Tip({ children }: { children: React.ReactNode }) {
 
 const sections: Section[] = [
   {
-    icon: '🎣',
+    Icon: FishingRodIcon,
     title: 'Getting Started',
     content: (
       <>
@@ -67,7 +74,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '🐱',
+    Icon: CatIcon,
     title: 'Cats & Collection',
     content: (
       <>
@@ -81,7 +88,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '🔮',
+    Icon: MergeIcon,
     title: 'Merging',
     content: (
       <>
@@ -99,7 +106,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '✨',
+    Icon: SparkleIcon,
     title: 'Elite Cats & Ascension',
     content: (
       <>
@@ -116,7 +123,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '⚔️',
+    Icon: SwordsIcon,
     title: 'Equipment & Inventory',
     content: (
       <>
@@ -133,7 +140,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '💎',
+    Icon: GemIcon,
     title: 'Elemental Stones',
     content: (
       <>
@@ -152,7 +159,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '🎲',
+    Icon: DiceIcon,
     title: 'Battle System',
     content: (
       <>
@@ -176,7 +183,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '🎪',
+    Icon: EventIcon,
     title: 'Events',
     content: (
       <>
@@ -192,7 +199,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '🎯',
+    Icon: TargetIcon,
     title: 'Training Arena',
     content: (
       <>
@@ -208,7 +215,7 @@ const sections: Section[] = [
     ),
   },
   {
-    icon: '☁️',
+    Icon: CloudIcon,
     title: 'Cloud Saves & Leaderboard',
     content: (
       <>
@@ -256,29 +263,20 @@ export default function GuidePage() {
         className="flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setView('bait')}
-            className="px-3 py-2 rounded-lg bg-slate-800/90 border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-white transition-all text-sm font-bold"
-          >
-            ← Back
-          </button>
-          <h1 className="text-xl sm:text-2xl font-black text-white">
-            📖 Guide & FAQ
+          <Button variant="secondary" size="sm" onClick={() => setView('bait')}>
+            <ArrowLeftIcon /> Back
+          </Button>
+          <h1 className="text-xl sm:text-2xl font-black text-ink font-heading flex items-center gap-2">
+            <BookIcon className="text-accent-300" /> Guide & FAQ
           </h1>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={expandAll}
-            className="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors"
-          >
+          <Button variant="ghost" size="sm" onClick={expandAll}>
             Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={collapseAll}>
             Collapse All
-          </button>
+          </Button>
         </div>
       </motion.div>
 

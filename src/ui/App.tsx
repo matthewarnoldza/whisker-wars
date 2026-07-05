@@ -17,20 +17,40 @@ const JungleRunView = React.lazy(() => import('./views/JungleRunView'))
 import JungleBackground from './components/JungleBackground'
 import JungleAnnouncementModal from './components/JungleAnnouncementModal'
 import Modal from './components/Modal'
+import SettingsModal from './components/SettingsModal'
 import ProfileSelector from './components/ProfileSelector'
 import WelcomeTutorialModal from './components/WelcomeTutorialModal'
 import SplashScreen from './components/SplashScreen'
 import StorageWarning from './components/StorageWarning'
+import CloudSyncIndicator from './components/CloudSyncIndicator'
 import SaveCodeModal from './components/SaveCodeModal'
 import ErrorBoundary from './components/ErrorBoundary'
+import GameLoader from './components/GameLoader'
 import EventBanner from './components/EventBanner'
 import FrenzyFridayModal from './components/FrenzyFridayModal'
 import { isFrenzyFriday, getFrenzyWeekKey } from '../game/events'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants } from './animations'
+import { StatPill } from './components/ui'
+import {
+  CoinIcon,
+  TrophyIcon,
+  StarIcon,
+  CheckIcon,
+  SpeakerIcon,
+  SpeakerMutedIcon,
+  MusicIcon,
+  MusicMutedIcon,
+  GearIcon,
+  LockIcon,
+  CloseIcon,
+} from './icons'
+import { useMotionSafe } from './hooks/useMotionSafe'
+import { useModalQueue, MODAL_PRIORITY } from './hooks/useModalQueue'
 import { isWeb } from '../utils/platform'
 import { getStorageHealth } from '../utils/storage'
 import { startMusic, stopMusic, playSound } from '../utils/sound'
+import { clearPaymentParams } from '../utils/yocoCheckout'
 import {
   trackPageView,
   trackTabNavigation,
@@ -81,7 +101,9 @@ function DailyRewardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Daily Reward" size="sm">
       <div className="text-center py-6">
-        <div className="text-6xl mb-4 animate-bounce">🪙</div>
+        <div className="mb-4 flex justify-center animate-bounce">
+          <CoinIcon className="text-6xl text-accent-400 drop-shadow-[0_0_12px_rgba(245,183,10,0.55)]" aria-hidden />
+        </div>
         <h3 className="text-2xl font-bold text-amber-400 mb-2">+{reward.coins} Coins!</h3>
         {'bait' in reward && reward.bait && (
           <p className="text-cyan-400 font-semibold mb-2">+ 1x {reward.bait}!</p>
@@ -122,19 +144,20 @@ function AchievementsButton() {
   const achievements = useGame(s => s.achievements)
   const claimAchievement = useGame(s => s.claimAchievement)
   const soundEnabled = useGame(s => s.soundEnabled)
+  const motionSafe = useMotionSafe()
   const unclaimedCount = achievements.filter(a => a.unlocked && !a.claimed).length
 
   return (
     <>
       <motion.button
         onClick={() => { trackAchievementsModalOpened(); setShowAchievements(true) }}
-        className="px-3 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group flex items-center"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="px-3 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative group flex items-center focus:outline-none focus-visible:shadow-focus-gold"
+        whileHover={motionSafe ? undefined : { scale: 1.05 }}
+        whileTap={motionSafe ? undefined : { scale: 0.95 }}
       >
         <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity rounded-lg" />
         <div className="relative flex items-center gap-1.5">
-          <span className="text-lg drop-shadow-md">🏆</span>
+          <TrophyIcon className="text-lg text-gold-300 drop-shadow-md" />
           <span className="hidden xl:inline font-bold text-gold-100 tracking-wide drop-shadow-md text-xs">
             Achievements
           </span>
@@ -149,7 +172,7 @@ function AchievementsButton() {
       <Modal
         isOpen={showAchievements}
         onClose={() => setShowAchievements(false)}
-        title="🏆 Achievements"
+        title="Achievements"
         size="md"
       >
         <div className="grid gap-4 pr-2">
@@ -164,7 +187,9 @@ function AchievementsButton() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">{ach.unlocked ? '🌟' : '🔒'}</span>
+                    {ach.unlocked
+                      ? <StarIcon className="text-xl text-accent-300" aria-hidden />
+                      : <LockIcon className="text-xl text-slate-500" aria-hidden />}
                     <h4 className={`font-black text-lg ${ach.unlocked ? 'text-gold-400' : 'text-slate-400'}`}>
                       {ach.name}
                     </h4>
@@ -189,14 +214,14 @@ function AchievementsButton() {
                 {ach.unlocked && !ach.claimed && (
                   <button
                     onClick={() => { claimAchievement(ach.id); if (soundEnabled) playSound('coinEarned') }}
-                    className="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-lg shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+                    className="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-lg shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95 whitespace-nowrap inline-flex items-center gap-1.5"
                   >
-                    Claim 100 💰
+                    Claim 100 <CoinIcon aria-hidden />
                   </button>
                 )}
                 {ach.claimed && (
-                  <div className="px-4 py-2 bg-slate-700/50 text-slate-400 font-bold rounded-lg whitespace-nowrap">
-                    Claimed ✓
+                  <div className="px-4 py-2 bg-slate-700/50 text-slate-400 font-bold rounded-lg whitespace-nowrap inline-flex items-center gap-1.5">
+                    Claimed <CheckIcon aria-hidden />
                   </div>
                 )}
               </div>
@@ -211,16 +236,19 @@ function AchievementsButton() {
 function SoundToggle() {
   const soundEnabled = useGame(s => s.soundEnabled)
   const toggleSound = useGame(s => s.toggleSound)
+  const motionSafe = useMotionSafe()
 
   return (
     <motion.button
       onClick={toggleSound}
-      className="px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all flex items-center justify-center"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      className="px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all flex items-center justify-center focus:outline-none focus-visible:shadow-focus-gold"
+      whileHover={motionSafe ? undefined : { scale: 1.05 }}
+      whileTap={motionSafe ? undefined : { scale: 0.95 }}
       aria-label={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
     >
-      <span className="text-lg">{soundEnabled ? '🔊' : '🔇'}</span>
+      {soundEnabled
+        ? <SpeakerIcon className="text-lg text-slate-200" />
+        : <SpeakerMutedIcon className="text-lg text-slate-400" />}
     </motion.button>
   )
 }
@@ -228,6 +256,7 @@ function SoundToggle() {
 function MusicToggle() {
   const musicEnabled = useGame(s => s.musicEnabled)
   const toggleMusic = useGame(s => s.toggleMusic)
+  const motionSafe = useMotionSafe()
 
   // Auto-start music on first user interaction if enabled
   useEffect(() => {
@@ -259,17 +288,14 @@ function MusicToggle() {
   return (
     <motion.button
       onClick={handleToggle}
-      className="relative px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all flex items-center justify-center"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      className="relative px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-slate-500 transition-all flex items-center justify-center focus:outline-none focus-visible:shadow-focus-gold"
+      whileHover={motionSafe ? undefined : { scale: 1.05 }}
+      whileTap={motionSafe ? undefined : { scale: 0.95 }}
       aria-label={musicEnabled ? 'Stop music' : 'Play music'}
     >
-      <span className={`text-lg ${musicEnabled ? '' : 'opacity-50'}`}>🎵</span>
-      {!musicEnabled && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          <span className="block w-5 h-0.5 bg-red-500 rotate-45 rounded" />
-        </span>
-      )}
+      {musicEnabled
+        ? <MusicIcon className="text-lg text-slate-200" />
+        : <MusicMutedIcon className="text-lg text-slate-400" />}
     </motion.button>
   )
 }
@@ -294,9 +320,13 @@ export default function App() {
   const dogIndex = useGame(s => s.dogIndex)
   const dismissJungleAnnouncement = useGame(s => s.dismissJungleAnnouncement)
 
-  const [showDailyReward, setShowDailyReward] = useState(false)
+  const motionSafe = useMotionSafe()
+
+  // Single-at-a-time modal queue — replaces the old bag of independent
+  // setTimeouts that let daily-reward / tutorial / promos stack on first load.
+  const modalQueue = useModalQueue()
+
   const [showProfileSelector, setShowProfileSelector] = useState(false)
-  const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
   // Skip splash screen when returning from payment
   const isPaymentReturn = new URLSearchParams(window.location.search).has('payment')
@@ -305,8 +335,7 @@ export default function App() {
   const [isPublicPage, setIsPublicPage] = useState(false)
   const [showStorageWarning, setShowStorageWarning] = useState(false)
   const [showSaveCodeModal, setShowSaveCodeModal] = useState(false)
-  const [showFrenzyPopup, setShowFrenzyPopup] = useState(false)
-  const [showJungleAnnouncement, setShowJungleAnnouncement] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   // Sync view with URL hash
   useEffect(() => {
@@ -374,41 +403,59 @@ export default function App() {
       load()
       setProfileLoaded(true)
 
-      // Unlock jungle pass after load() if returning from successful payment
+      // Returning from payment — never trust the URL. Verify against the Yoco
+      // webhook record in Firebase before unlocking; checkPaymentStatus only
+      // sets junglePassUnlocked when a succeeded jungle-pass payment exists.
       const paymentParams = new URLSearchParams(window.location.search)
       if (paymentParams.get('payment') === 'success' && paymentParams.get('view') === 'jungle') {
-        useGame.setState({ junglePassUnlocked: true, junglePassPending: false })
-        useGame.getState().save()
+        useGame.setState({ junglePassPending: true })
+        useGame.getState().checkPaymentStatus()
+          .then(verified => {
+            if (!verified) {
+              console.warn('Jungle pass payment could not be verified — expansion left locked')
+            }
+            useGame.setState({ junglePassPending: false })
+          })
+          .catch(err => {
+            console.warn('Jungle pass verification failed:', err)
+            useGame.setState({ junglePassPending: false })
+          })
+      }
+      // Strip payment params so a refresh can't re-trigger the return flow
+      if (paymentParams.has('payment')) {
+        clearPaymentParams()
       }
 
       // Check if this is a new profile (created within last 10 seconds)
       const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000
 
-      // Check for daily reward
+      // Welcome tutorial for new profiles who haven't completed it — highest
+      // priority. When it's queued we suppress promo modals this session so a
+      // new player's first minutes are the tutorial and the game, not promos.
+      const welcomeQueued = Boolean(isNewProfile) && !tutorialCompleted
+      if (welcomeQueued) {
+        modalQueue.enqueue('welcome', MODAL_PRIORITY.welcome)
+      }
+
+      // Daily reward
       const canClaim = claimDailyReward()
       if (canClaim) {
-        setTimeout(() => setShowDailyReward(true), 1000)
+        modalQueue.enqueue('daily', MODAL_PRIORITY.daily)
       }
 
-      // Show tutorial for new profiles who haven't completed it
-      if (isNewProfile && !tutorialCompleted) {
-        setTimeout(() => setShowWelcomeTutorial(true), 500)
-      }
-
-      // Check for Frenzy Friday announcement
-      if (isFrenzyFriday()) {
+      // Frenzy Friday promo (suppressed for brand-new players)
+      if (!welcomeQueued && isFrenzyFriday()) {
         const frenzyShownKey = `frenzy-shown-${getFrenzyWeekKey()}`
         if (!sessionStorage.getItem(frenzyShownKey)) {
           sessionStorage.setItem(frenzyShownKey, '1')
-          const delay = canClaim ? 2500 : 1200
-          setTimeout(() => setShowFrenzyPopup(true), delay)
+          modalQueue.enqueue('frenzy', MODAL_PRIORITY.frenzy)
         }
       }
 
-      // Jungle of Talons announcement
+      // Jungle of Talons promo (suppressed for brand-new players)
       const jungleState = useGame.getState()
-      if (!jungleState.jungleAnnouncementShown && jungleState.junglePassUnlocked === false && tutorialCompleted && jungleState.dogIndex >= 10) {
-        setTimeout(() => setShowJungleAnnouncement(true), 2000)
+      if (!welcomeQueued && !jungleState.jungleAnnouncementShown && jungleState.junglePassUnlocked === false && tutorialCompleted && jungleState.dogIndex >= 10) {
+        modalQueue.enqueue('jungle', MODAL_PRIORITY.jungle)
       }
     }
   }, [splashCompleted])
@@ -432,7 +479,11 @@ export default function App() {
       {view === 'jungle' && junglePassUnlocked ? (
         <JungleBackground mode="fullscreen" intensity="low" />
       ) : (
-        <div className="animated-bg" />
+        <>
+          <div className="animated-bg" />
+          {/* Desktop-only vignette that seats the play area on the table (lg+) */}
+          <div className="table-vignette" aria-hidden />
+        </>
       )}
 
       <div className="min-h-screen relative z-10 text-slate-100 font-sans overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -449,7 +500,7 @@ export default function App() {
             ) : (
               <>
                 <img
-                  src="/images/header/WW header.png"
+                  src="/images/header/WW header.webp"
                   alt=""
                   loading="lazy"
                   decoding="async"
@@ -460,14 +511,14 @@ export default function App() {
             )}
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 py-3 relative">
+          <div className="max-w-7xl xl:max-w-[1680px] mx-auto px-4 py-3 relative">
             {/* Single Compact Row */}
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               {/* Left: Logo + Title + Navigation */}
               <div className="flex items-center gap-6">
-                {/* Logo */}
+                {/* Logo + font-heading wordmark */}
                 <motion.div
-                  className="hidden sm:flex items-center"
+                  className="hidden sm:flex items-center gap-3"
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6 }}
@@ -479,6 +530,15 @@ export default function App() {
                     decoding="async"
                     className="h-24 w-auto drop-shadow-lg object-contain"
                   />
+                  {/* Wordmark — only at xl+ where the wider frame gives it room */}
+                  <div className="hidden xl:flex flex-col leading-none border-l border-slate-600/50 pl-3">
+                    <span className="font-heading font-bold tracking-wide text-lg text-slate-100 drop-shadow-md">
+                      Whisker Wars
+                    </span>
+                    <span className="font-heading text-[11px] tracking-[0.2em] uppercase text-accent-400/80">
+                      Where Legends Begin
+                    </span>
+                  </div>
                 </motion.div>
 
                 {/* Navigation Tabs */}
@@ -509,7 +569,7 @@ export default function App() {
                       <span className="relative flex items-center gap-1.5">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d={tab.svgPath}/></svg>
                         <span className="hidden xl:inline">{tab.label}</span>
-                        {jungleLocked && <span className="text-[10px] opacity-70">&#x1F512;</span>}
+                        {jungleLocked && <LockIcon className="text-[10px] opacity-70" title="Locked" />}
                       </span>
                       {jungleNewDot && (
                         <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-slate-900 animate-pulse" />
@@ -523,27 +583,35 @@ export default function App() {
               {/* Right: User Controls */}
               <div className="flex items-center gap-2 sm:gap-3">
                 <motion.div
-                  className="px-3 sm:px-4 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/30 shadow-glow-gold relative overflow-hidden group flex items-center"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={motionSafe ? undefined : { scale: 1.05 }}
+                  whileTap={motionSafe ? undefined : { scale: 0.95 }}
                 >
-                  <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
-                  <div className="relative flex items-center gap-1.5">
-                    <span className="text-lg drop-shadow-md">🪙</span>
-                    <span className="text-base sm:text-lg font-black text-gold-100 drop-shadow-md tracking-wide">
-                      {coins}
-                    </span>
-                  </div>
+                  <StatPill
+                    tone="gold"
+                    size="md"
+                    className="h-10 px-3 sm:px-4 shadow-glow-gold text-base sm:text-lg"
+                    icon={<CoinIcon className="text-lg text-accent-400 drop-shadow-md" />}
+                    value={coins}
+                  />
                 </motion.div>
                 <AchievementsButton />
                 <SoundToggle />
                 <MusicToggle />
+                <motion.button
+                  onClick={() => setShowSettings(true)}
+                  className="px-2.5 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-gold-500/50 transition-all flex items-center justify-center focus:outline-none focus-visible:shadow-focus-gold"
+                  whileHover={motionSafe ? undefined : { scale: 1.05 }}
+                  whileTap={motionSafe ? undefined : { scale: 0.95 }}
+                  aria-label="Open settings"
+                >
+                  <GearIcon className="w-5 h-5 text-slate-200" />
+                </motion.button>
                 {profileLoaded && (
                   <motion.button
                     onClick={() => setShowProfileSelector(true)}
-                    className="px-3 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-purple-500/50 transition-all flex items-center"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    className="px-3 h-10 rounded-lg bg-slate-800/70 border border-slate-700 hover:border-purple-500/50 transition-all flex items-center focus:outline-none focus-visible:shadow-focus-gold"
+                    whileHover={motionSafe ? undefined : { scale: 1.05 }}
+                    whileTap={motionSafe ? undefined : { scale: 0.95 }}
                   >
                     <div className="flex items-center gap-2">
                       <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
@@ -565,9 +633,9 @@ export default function App() {
                 )}
                 <motion.button
                   onClick={() => { if (soundEnabled) playSound('buttonClick'); setView('guide') }}
-                  className="w-10 h-10 rounded-full bg-slate-800/70 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm font-bold"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  className="w-10 h-10 rounded-full bg-slate-800/70 border border-slate-700 hover:border-slate-500 flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm font-bold focus:outline-none focus-visible:shadow-focus-gold"
+                  whileHover={motionSafe ? undefined : { scale: 1.1 }}
+                  whileTap={motionSafe ? undefined : { scale: 0.9 }}
                   title="Guide & FAQ"
                 >
                   ?
@@ -595,7 +663,7 @@ export default function App() {
                 >
                   <span className="relative flex flex-col items-center justify-center gap-1">
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d={tab.svgPath}/></svg>
-                    <span className="text-[10px]">{mobileLabel}{jungleLocked ? ' \u{1F512}' : ''}</span>
+                    <span className="text-[10px] inline-flex items-center gap-0.5">{mobileLabel}{jungleLocked && <LockIcon title="Locked" />}</span>
                   </span>
                   {jungleNewDot && (
                     <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -611,7 +679,7 @@ export default function App() {
         {profileLoaded && !isPublicPage && <EventBanner />}
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-6 py-8 relative z-content">
+        <main className="max-w-7xl xl:max-w-[1680px] mx-auto px-6 py-8 relative z-content">
           <motion.div
             key={view}
             initial="initial"
@@ -619,7 +687,7 @@ export default function App() {
             variants={pageVariants}
           >
             <ErrorBoundary>
-              <Suspense fallback={<div className="text-center py-12 text-slate-500">Loading...</div>}>
+              <Suspense fallback={<GameLoader />}>
                 {view === 'bait' && <BaitingArea baits={BAITS} />}
                 {view === 'collection' && <Collection />}
                 {view === 'inventory' && <Inventory />}
@@ -636,7 +704,7 @@ export default function App() {
         </main>
 
         {/* Premium Footer */}
-        <footer className="max-w-7xl mx-auto px-6 py-8 mt-12 border-t border-slate-800/50">
+        <footer className="max-w-7xl xl:max-w-[1680px] mx-auto px-6 py-8 mt-12 border-t border-slate-800/50">
           <div className="text-center">
             <div className="inline-block px-6 py-3 rounded-xl bg-premium-gradient border border-slate-700/50 shadow-premium mb-3">
               <p className="text-slate-300 text-sm flex items-center gap-3 justify-center">
@@ -648,7 +716,7 @@ export default function App() {
                   className="h-12 w-auto"
                 />
                 <span className="mx-2 text-slate-600">•</span>
-                <span className="text-slate-400">Elite Cat Combat Simulator</span>
+                <span className="text-slate-400 font-heading">Every legend starts with a whisker.</span>
               </p>
             </div>
             <p className="text-xs text-slate-500">
@@ -674,33 +742,33 @@ export default function App() {
       </div>
 
       <DailyRewardModal
-        isOpen={showDailyReward}
-        onClose={() => setShowDailyReward(false)}
+        isOpen={modalQueue.current === 'daily'}
+        onClose={modalQueue.dismiss}
       />
 
       <FrenzyFridayModal
-        isOpen={showFrenzyPopup}
-        onClose={() => setShowFrenzyPopup(false)}
+        isOpen={modalQueue.current === 'frenzy'}
+        onClose={modalQueue.dismiss}
         onFightNow={() => {
-          setShowFrenzyPopup(false)
+          modalQueue.dismiss()
           setView('battle')
         }}
       />
 
       <WelcomeTutorialModal
-        isOpen={showWelcomeTutorial}
+        isOpen={modalQueue.current === 'welcome'}
         onClose={() => {
           trackTutorialCompleted()
-          setShowWelcomeTutorial(false)
           completeTutorial()
+          modalQueue.dismiss()
         }}
       />
 
       {/* Jungle of Talons Announcement Modal */}
-      {showJungleAnnouncement && (
+      {modalQueue.current === 'jungle' && (
         <JungleAnnouncementModal
-          onExplore={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement(); setView('jungle') }}
-          onDismiss={() => { setShowJungleAnnouncement(false); dismissJungleAnnouncement() }}
+          onExplore={() => { dismissJungleAnnouncement(); modalQueue.dismiss(); setView('jungle') }}
+          onDismiss={() => { dismissJungleAnnouncement(); modalQueue.dismiss() }}
         />
       )}
 
@@ -726,29 +794,29 @@ export default function App() {
             const currentProfile = getCurrentProfile()
             const isNewProfile = currentProfile && (Date.now() - currentProfile.created) < 10000
 
+            // Welcome tutorial (highest priority); suppresses promos this session.
+            const welcomeQueued = Boolean(isNewProfile) && !tutorialCompleted
+            if (welcomeQueued) {
+              modalQueue.enqueue('welcome', MODAL_PRIORITY.welcome)
+            }
+
             const canClaim = claimDailyReward()
             if (canClaim && !isNewProfile) {
-              setTimeout(() => setShowDailyReward(true), 1000)
+              modalQueue.enqueue('daily', MODAL_PRIORITY.daily)
             }
 
-            // Show tutorial for new profiles
-            if (isNewProfile && !tutorialCompleted) {
-              setTimeout(() => setShowWelcomeTutorial(true), 800)
-            }
-
-            // Check storage health after profile loads
+            // Check storage health after profile loads (banner, not a queued modal)
             const health = getStorageHealth()
             if (!health.healthy) {
               setTimeout(() => setShowStorageWarning(true), 1500)
             }
 
-            // Check for Frenzy Friday announcement on profile switch
-            if (isFrenzyFriday()) {
+            // Frenzy Friday promo on profile switch (suppressed for brand-new players)
+            if (!welcomeQueued && isFrenzyFriday()) {
               const frenzyShownKey = `frenzy-shown-${getFrenzyWeekKey()}`
               if (!sessionStorage.getItem(frenzyShownKey)) {
                 sessionStorage.setItem(frenzyShownKey, '1')
-                const delay = canClaim ? 2500 : 1200
-                setTimeout(() => setShowFrenzyPopup(true), delay)
+                modalQueue.enqueue('frenzy', MODAL_PRIORITY.frenzy)
               }
             }
           }}
@@ -767,10 +835,10 @@ export default function App() {
           </button>
           <button
             onClick={clearSaveError}
-            className="text-red-300 hover:text-white p-1"
+            className="text-red-300 hover:text-white p-1 focus:outline-none focus-visible:shadow-focus-gold rounded"
             aria-label="Dismiss"
           >
-            ✕
+            <CloseIcon />
           </button>
         </div>
       )}
@@ -780,12 +848,18 @@ export default function App() {
         <StorageWarning onGetCode={() => setShowSaveCodeModal(true)} />
       )}
 
+      {/* Cloud Backup Failure Banner */}
+      {profileLoaded && !isPublicPage && <CloudSyncIndicator />}
+
       {/* Save Code Modal (opened from storage warning) */}
       <SaveCodeModal
         isOpen={showSaveCodeModal}
         onClose={() => setShowSaveCodeModal(false)}
         mode="generate"
       />
+
+      {/* Settings Modal (opened from the header gear button) */}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </>
   )
 }

@@ -5,7 +5,12 @@ import type { Equipment, Stone } from '../../game/items'
 import { motion, AnimatePresence } from 'framer-motion'
 import { containerVariants, cardVariants } from '../animations'
 import { playSound } from '../../utils/sound'
-import { RARITY_GRADIENTS, RARITY_GLOWS, RARITY_BORDERS, RARITY_BOX_SHADOWS, RARITY_ORDER } from '../constants/rarity'
+import { RARITY_BORDERS, RARITY_BOX_SHADOWS, RARITY_ORDER } from '../constants/rarity'
+import { Button, RarityBadge } from '../components/ui'
+import {
+  CoinIcon, BackpackIcon, CartIcon, SwordIcon, GemIcon, StoneIcon,
+  BoxIcon, CloseIcon, LockIcon, EventIcon,
+} from '../icons'
 
 type Tab = 'items' | 'shop'
 type Filter = 'all' | 'weapon' | 'accessory' | 'stone'
@@ -17,12 +22,12 @@ function ItemImage({ item, size = 'md' }: { item: InventoryItem; size?: 'sm' | '
   const [imgError, setImgError] = useState(false)
   const sizeClass = size === 'sm' ? 'w-10 h-10' : size === 'md' ? 'w-16 h-16' : 'w-24 h-24'
   const url = item.type === 'equipment' ? item.data.iconUrl : item.data.iconUrl
-  const fallback = item.type === 'equipment'
-    ? (item.data.slot === 'weapon' ? '⚔️' : '💎')
-    : '💎'
+  const Fallback = item.type === 'equipment'
+    ? (item.data.slot === 'weapon' ? SwordIcon : GemIcon)
+    : GemIcon
 
   if (imgError || !url) {
-    return <span className={`${sizeClass} flex items-center justify-center text-3xl`}>{fallback}</span>
+    return <span className={`${sizeClass} flex items-center justify-center text-3xl text-ink-muted`}><Fallback /></span>
   }
   return (
     <img
@@ -45,6 +50,7 @@ export default function Inventory() {
   const unequipStone = useGame(s => s.unequipStone)
   const soundEnabled = useGame(s => s.soundEnabled)
   const selectedForBattle = useGame(s => s.selectedForBattle)
+  const colorblindMode = useGame(s => s.colorblindMode)
 
   const [tab, setTab] = useState<Tab>('items')
   const [filter, setFilter] = useState<Filter>('all')
@@ -175,8 +181,8 @@ export default function Inventory() {
         animate={{ opacity: 1, y: 0 }}
         className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-500/50"
       >
-        <p className="text-white font-semibold text-center">
-          <span className="text-lg mr-2">🎒</span>
+        <p className="text-white font-semibold text-center inline-flex items-center justify-center gap-2 flex-wrap">
+          <BackpackIcon className="text-lg shrink-0" />
           Manage your equipment, stones, and shop for new gear!
         </p>
       </motion.div>
@@ -184,32 +190,29 @@ export default function Inventory() {
       {/* Stats Bar */}
       <div className="flex items-center justify-between gap-3 px-1">
         <div className="flex items-center gap-4 text-sm">
-          <span className="text-slate-400">
-            <span className="text-white font-bold">{totalOwned}</span> in bag
+          <span className="text-ink-subtle">
+            <span className="text-ink font-bold">{totalOwned}</span> in bag
           </span>
-          <span className="text-slate-400">
-            <span className="text-white font-bold">{totalEquipped}</span> equipped
+          <span className="text-ink-subtle">
+            <span className="text-ink font-bold">{totalEquipped}</span> equipped
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-sm font-bold text-gold-400">
-          <span>🪙</span> {coins.toLocaleString()}
+        <div className="flex items-center gap-1.5 text-sm font-bold text-accent-300">
+          <CoinIcon /> {coins.toLocaleString()}
         </div>
       </div>
 
       {/* Tab Switcher */}
       <div className="flex gap-2">
         {(['items', 'shop'] as Tab[]).map(t => (
-          <button
+          <Button
             key={t}
+            variant={tab === t ? 'primary' : 'secondary'}
+            fullWidth
             onClick={() => { setTab(t); setSelectedItem(null) }}
-            className={`flex-1 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wider transition-all ${
-              tab === t
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
-                : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700'
-            }`}
           >
-            {t === 'items' ? '🎒 My Items' : '🛒 Shop'}
-          </button>
+            {t === 'items' ? <><BackpackIcon /> My Items</> : <><CartIcon /> Shop</>}
+          </Button>
         ))}
       </div>
 
@@ -219,23 +222,20 @@ export default function Inventory() {
           {/* Filters */}
           <div className="flex items-center gap-2 flex-wrap">
             {(['all', 'weapon', 'accessory', 'stone'] as Filter[]).map(f => (
-              <button
+              <Button
                 key={f}
+                variant={filter === f ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
-                  filter === f
-                    ? 'bg-amber-500/50 text-amber-300 border border-amber-500/50'
-                    : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:text-white'
-                }`}
               >
-                {f === 'all' ? 'All' : f === 'weapon' ? '⚔️ Weapons' : f === 'accessory' ? '💎 Accessories' : '🔮 Stones'}
-              </button>
+                {f === 'all' ? 'All' : f === 'weapon' ? <><SwordIcon /> Weapons</> : f === 'accessory' ? <><GemIcon /> Accessories</> : <><StoneIcon /> Stones</>}
+              </Button>
             ))}
             <div className="ml-auto">
               <select
                 value={sort}
                 onChange={e => setSort(e.target.value as Sort)}
-                className="bg-slate-800 text-slate-300 text-xs rounded-lg px-2 py-1.5 border border-slate-700"
+                className="bg-surface-raised text-ink-muted text-xs rounded-lg px-2 py-1.5 border border-surface-border"
               >
                 <option value="rarity">Sort: Rarity</option>
                 <option value="name">Sort: Name</option>
@@ -244,8 +244,8 @@ export default function Inventory() {
           </div>
 
           {filteredItems.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              <div className="text-5xl mb-3">📦</div>
+            <div className="text-center py-12 text-ink-faint">
+              <BoxIcon className="text-5xl mb-3 mx-auto" />
               <p className="font-semibold">No items yet</p>
               <p className="text-sm mt-1">Win battles to earn equipment drops!</p>
             </div>
@@ -304,8 +304,12 @@ export default function Inventory() {
                       <ItemImage item={item} size="md" />
                       <div className="text-center">
                         <div className="text-white font-bold text-xs leading-tight">{name}</div>
-                        <div className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 bg-gradient-to-r ${RARITY_GRADIENTS[rarity]} bg-clip-text text-transparent`}>
-                          {item.type === 'equipment' ? item.data.rarity : item.data.element}
+                        <div className="mt-0.5 flex justify-center">
+                          {item.type === 'equipment' ? (
+                            <RarityBadge rarity={rarity} size={11} colorblindMode={colorblindMode} />
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-arcane-300">{item.data.element}</span>
+                          )}
                         </div>
                         {item.type === 'equipment' && (
                           <div className="text-[10px] text-slate-400 mt-0.5">
@@ -340,13 +344,15 @@ export default function Inventory() {
                     <h3 className="text-lg font-black text-white">
                       {selectedItem.type === 'equipment' ? selectedItem.data.name : selectedItem.data.name}
                     </h3>
-                    <div className={`text-xs font-bold uppercase bg-gradient-to-r ${
-                      RARITY_GRADIENTS[selectedItem.type === 'equipment' ? selectedItem.data.rarity : 'Legendary']
-                    } bg-clip-text text-transparent`}>
-                      {selectedItem.type === 'equipment'
-                        ? `${selectedItem.data.rarity} ${selectedItem.data.slot === 'weapon' ? 'Weapon' : 'Accessory'}`
-                        : `${selectedItem.data.element} Stone`
-                      }
+                    <div className="text-xs font-bold uppercase flex items-center gap-1.5">
+                      {selectedItem.type === 'equipment' ? (
+                        <>
+                          <RarityBadge rarity={selectedItem.data.rarity} size={12} colorblindMode={colorblindMode} />
+                          <span className="text-ink-subtle">{selectedItem.data.slot === 'weapon' ? 'Weapon' : 'Accessory'}</span>
+                        </>
+                      ) : (
+                        <span className="text-arcane-300">{selectedItem.data.element} Stone</span>
+                      )}
                     </div>
                     {selectedItem.type === 'equipment' && (
                       <div className="text-sm text-slate-300 mt-1">{selectedItem.data.description}</div>
@@ -370,10 +376,11 @@ export default function Inventory() {
                           <span className="text-white font-bold">{cat.name}</span>
                           <span className="text-slate-500">Lv.{cat.level}</span>
                           <button
+                            aria-label={`Unequip from ${cat.name}`}
                             onClick={() => handleUnequip(cat.instanceId)}
-                            className="text-red-400 hover:text-red-300 font-bold ml-1"
+                            className="text-danger-400 hover:text-danger-500 font-bold ml-1"
                           >
-                            ✕
+                            <CloseIcon />
                           </button>
                         </div>
                       ))}
@@ -383,13 +390,14 @@ export default function Inventory() {
 
                 {/* Equip button */}
                 {(inventory[selectedItem.type === 'equipment' ? selectedItem.data.id : selectedItem.data.id] || 0) > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-700">
-                    <button
+                  <div className="mt-3 pt-3 border-t border-surface-border">
+                    <Button
+                      variant="secondary"
+                      fullWidth
                       onClick={() => setShowEquipPanel(!showEquipPanel)}
-                      className="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm hover:shadow-lg transition-all"
                     >
                       {showEquipPanel ? 'Hide Cats' : 'Equip to Cat...'}
-                    </button>
+                    </Button>
 
                     <AnimatePresence>
                       {showEquipPanel && (
@@ -488,22 +496,21 @@ export default function Inventory() {
                       <ItemImage item={{ type: 'equipment', data: item }} size="md" />
                       <div className="text-center">
                         <div className="text-white font-bold text-xs">{item.name}</div>
-                        <div className={`text-[10px] font-bold uppercase bg-gradient-to-r ${RARITY_GRADIENTS[item.rarity]} bg-clip-text text-transparent`}>
-                          {item.rarity} {item.slot === 'weapon' ? 'Weapon' : 'Accessory'}
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase">
+                          <RarityBadge rarity={item.rarity} size={11} colorblindMode={colorblindMode} />
+                          <span className="text-ink-subtle">{item.slot === 'weapon' ? 'Weapon' : 'Accessory'}</span>
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{item.description}</div>
+                        <div className="text-[10px] text-ink-subtle mt-0.5">{item.description}</div>
                       </div>
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        fullWidth
                         onClick={() => handleBuy(item.id)}
                         disabled={!canAfford}
-                        className={`w-full py-2 rounded-lg font-bold text-xs transition-all ${
-                          canAfford
-                            ? 'bg-gradient-to-r from-gold-500 to-amber-500 text-slate-900 hover:shadow-lg'
-                            : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                        }`}
                       >
-                        🪙 {item.cost}
-                      </button>
+                        <CoinIcon /> {item.cost}
+                      </Button>
                     </div>
                   </motion.div>
                 )
@@ -531,13 +538,14 @@ export default function Inventory() {
                       <ItemImage item={{ type: 'equipment', data: item }} size="md" />
                       <div className="text-center">
                         <div className="text-white font-bold text-xs">{item.name}</div>
-                        <div className={`text-[10px] font-bold uppercase bg-gradient-to-r ${RARITY_GRADIENTS[item.rarity]} bg-clip-text text-transparent`}>
-                          {item.rarity} {item.slot === 'weapon' ? 'Weapon' : 'Accessory'}
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase">
+                          <RarityBadge rarity={item.rarity} size={11} colorblindMode={colorblindMode} />
+                          <span className="text-ink-subtle">{item.slot === 'weapon' ? 'Weapon' : 'Accessory'}</span>
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{item.description}</div>
+                        <div className="text-[10px] text-ink-subtle mt-0.5">{item.description}</div>
                       </div>
-                      <div className="w-full py-2 rounded-lg bg-slate-700/80 text-slate-500 font-bold text-xs text-center">
-                        🔒 Drop Only
+                      <div className="w-full py-2 rounded-lg bg-surface-raised/80 text-ink-faint font-bold text-xs text-center inline-flex items-center justify-center gap-1.5">
+                        <LockIcon /> Drop Only
                       </div>
                     </div>
                   </div>
@@ -569,8 +577,8 @@ export default function Inventory() {
                         <div className="text-[10px] font-bold uppercase text-purple-400">{stone.element}</div>
                         <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">{stone.effect}</div>
                       </div>
-                      <div className="w-full py-2 rounded-lg bg-slate-700/80 text-slate-500 font-bold text-xs text-center">
-                        🎪 Friday Event
+                      <div className="w-full py-2 rounded-lg bg-surface-raised/80 text-ink-faint font-bold text-xs text-center inline-flex items-center justify-center gap-1.5">
+                        <EventIcon /> Friday Event
                       </div>
                     </div>
                   </div>

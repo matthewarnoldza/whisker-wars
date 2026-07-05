@@ -1,5 +1,8 @@
 import Modal from './Modal'
 import type { Dog } from '../../game/data'
+import { useMotionSafe } from '../hooks/useMotionSafe'
+import { Button, Panel, cx } from './ui'
+import { TrophyIcon, CoinIcon, XPIcon, GiftIcon, GemIcon, ArrowRightIcon } from '../icons'
 
 interface VictoryRewards {
   coins: number
@@ -25,72 +28,71 @@ export default function BattleVictoryModal({
   onNextBattle,
   onChooseBattle,
 }: BattleVictoryModalProps) {
+  const reduce = useMotionSafe()
   return (
     <Modal
       isOpen={isOpen}
       onClose={isFrontierBattle ? onNextBattle : onChooseBattle}
-      title="🎉 VICTORY!"
+      title="Victory!"
       size="sm"
     >
       <div className="text-center py-6">
-        <div className="text-6xl mb-4 animate-bounce">🏆</div>
-        <h3 className="text-2xl font-bold text-gold-400 mb-2">Epic Victory!</h3>
-        <p className="text-slate-300 mb-6">
+        <TrophyIcon
+          className={cx('mx-auto mb-4 text-accent-300 [filter:drop-shadow(0_0_18px_rgba(245,183,10,0.55))]', !reduce && 'animate-bounce')}
+          size={64}
+        />
+        <h3 className="font-heading text-2xl font-black text-accent-300 mb-2">Epic Victory!</h3>
+        <p className="text-ink-muted mb-6">
           You have defeated {dog.name}! Your cats grow stronger!
         </p>
 
-        <div className="bg-slate-800/50 rounded-lg p-6 mb-6 border border-gold-500/30">
-          <div className="text-sm text-slate-400 mb-4 uppercase tracking-wider">Rewards Earned</div>
+        <Panel accent className="mb-6 text-left">
+          <div className="text-xs text-ink-subtle mb-4 uppercase tracking-wider font-heading font-bold text-center">Rewards Earned</div>
           <div className="space-y-3">
             <div className="flex items-center justify-center gap-3">
-              <span className="text-4xl">💰</span>
-              <div>
-                <div className="text-3xl font-black text-gold-400">+{rewards.coins}</div>
-                <div className="text-xs text-slate-500">COINS</div>
+              <CoinIcon className="text-accent-300" size={40} />
+              <div className="text-left">
+                <div className="text-3xl font-black text-accent-300 tabular-nums">+{rewards.coins}</div>
+                <div className="text-xs text-ink-faint uppercase tracking-wide">Coins</div>
               </div>
             </div>
             <div className="flex items-center justify-center gap-3">
-              <span className="text-4xl">⭐</span>
-              <div>
-                <div className="text-3xl font-black text-cyan-400">+{rewards.xp}</div>
-                <div className="text-xs text-slate-500">EXPERIENCE</div>
+              <XPIcon className="text-arcane-300" size={40} />
+              <div className="text-left">
+                <div className="text-3xl font-black text-arcane-300 tabular-nums">+{rewards.xp}</div>
+                <div className="text-xs text-ink-faint uppercase tracking-wide">Experience</div>
               </div>
             </div>
             {rewards.equipDrop && (
-              <div className="flex items-center justify-center gap-3 pt-2 border-t border-slate-700/50 mt-2">
-                <span className="text-4xl">🎁</span>
-                <div>
-                  <div className="text-lg font-black text-purple-400">{rewards.equipDrop}</div>
-                  <div className="text-xs text-slate-500">EQUIPMENT DROP</div>
+              <div className="flex items-center justify-center gap-3 pt-2 border-t border-surface-border mt-2">
+                <GiftIcon className="text-arcane-300" size={40} />
+                <div className="text-left">
+                  <div className="text-lg font-black text-arcane-300">{rewards.equipDrop}</div>
+                  <div className="text-xs text-ink-faint uppercase tracking-wide">Equipment Drop</div>
                 </div>
               </div>
             )}
             {rewards.stoneDrop && (
-              <div className="flex items-center justify-center gap-3 pt-2 border-t border-slate-700/50 mt-2">
-                <span className="text-4xl">💎</span>
-                <div>
-                  <div className="text-lg font-black text-emerald-400">{rewards.stoneDrop}</div>
-                  <div className="text-xs text-slate-500">ELEMENTAL STONE</div>
+              <div className="flex items-center justify-center gap-3 pt-2 border-t border-surface-border mt-2">
+                <GemIcon className="text-success-400" size={40} />
+                <div className="text-left">
+                  <div className="text-lg font-black text-success-400">{rewards.stoneDrop}</div>
+                  <div className="text-xs text-ink-faint uppercase tracking-wide">Elemental Stone</div>
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </Panel>
 
         {isFrontierBattle ? (
-          <button
-            onClick={onNextBattle}
-            className="w-full px-6 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-black text-lg rounded-xl shadow-glow-gold hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95"
-          >
-            Continue to Next Battle →
-          </button>
+          <Button variant="primary" size="lg" fullWidth onClick={onNextBattle}>
+            Continue to Next Battle
+            <ArrowRightIcon size={18} />
+          </Button>
         ) : (
-          <button
-            onClick={onChooseBattle}
-            className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-lg rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105 active:scale-95"
-          >
+          <Button variant="secondary" size="lg" fullWidth onClick={onChooseBattle}>
             Choose Next Battle
-          </button>
+          </Button>
         )}
       </div>
     </Modal>

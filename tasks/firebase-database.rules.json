@@ -1,0 +1,39 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "saves": {
+      "$code": {
+        ".read": true,
+        ".write": "!data.exists() || !data.child('ownerToken').exists() || newData.child('ownerToken').val() === data.child('ownerToken').val()"
+      }
+    },
+
+    "leaderboard": {
+      ".read": true,
+      ".indexOn": ["totalWins", "highestDogDefeated", "collectionCompletion", "totalMerges"],
+      "$cloudCode": {
+        ".write": true
+      }
+    },
+
+    "jungleLeaderboard": {
+      ".read": true,
+      ".indexOn": ["bestScore", "highestStage", "totalClears", "fastestClearMs"],
+      "$cloudCode": {
+        ".write": true
+      }
+    },
+
+    "payments": {
+      "$profileId": {
+        ".read": true,
+        "$checkoutId": {
+          ".write": "!data.exists()",
+          ".validate": "newData.hasChildren(['status', 'product', 'timestamp'])"
+        }
+      }
+    }
+  }
+}

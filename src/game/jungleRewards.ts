@@ -20,7 +20,7 @@ export const JUNGLE_REWARDS: JungleReward[] = [
     name: 'Jungle Survivor',
     description: 'Complete your first Jungle of Talons run',
     type: 'badge',
-    imageUrl: '/images/rewards/Jungle Survivor.png',
+    imageUrl: '/images/rewards/Jungle Survivor.webp',
     requirement: { kind: 'complete_run', value: 1 },
   },
   {
@@ -28,7 +28,7 @@ export const JUNGLE_REWARDS: JungleReward[] = [
     name: 'Talon Blade',
     description: 'Defeat the Talon Queen at Stage 10',
     type: 'border',
-    imageUrl: '/images/rewards/Talon Blade.png',
+    imageUrl: '/images/rewards/Talon Blade.webp',
     requirement: { kind: 'boss_kill', value: 10 },
   },
   {
@@ -36,7 +36,7 @@ export const JUNGLE_REWARDS: JungleReward[] = [
     name: 'Feathered Collar',
     description: 'Reach Stage 15 in a single run',
     type: 'border',
-    imageUrl: '/images/rewards/Feathered Collar.png',
+    imageUrl: '/images/rewards/Feathered Collar.webp',
     requirement: { kind: 'reach_stage', value: 15 },
   },
   {
@@ -44,7 +44,7 @@ export const JUNGLE_REWARDS: JungleReward[] = [
     name: 'Vine Crest',
     description: 'Achieve a score of 5,000 in a single run',
     type: 'badge',
-    imageUrl: '/images/rewards/Vine Crest.png',
+    imageUrl: '/images/rewards/Vine Crest.webp',
     requirement: { kind: 'score', value: 5000 },
   },
   {
@@ -52,7 +52,7 @@ export const JUNGLE_REWARDS: JungleReward[] = [
     name: 'Jungle Crown',
     description: 'Conquer all 20 stages and defeat the Apex Raptor',
     type: 'border',
-    imageUrl: '/images/rewards/Jungle Crown.png',
+    imageUrl: '/images/rewards/Jungle Crown.webp',
     requirement: { kind: 'complete_run', value: 1 },
   },
   {
@@ -60,7 +60,7 @@ export const JUNGLE_REWARDS: JungleReward[] = [
     name: 'Apex Predator',
     description: 'Complete a run with a flawless stage count of 10 or more',
     type: 'title',
-    imageUrl: '/images/rewards/Apex Predator Title.png',
+    imageUrl: '/images/rewards/Apex Predator Title.webp',
     requirement: { kind: 'flawless', value: 10 },
   },
 ]

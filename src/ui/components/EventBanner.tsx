@@ -6,6 +6,8 @@ import { BAITS } from '../../game/data'
 import { FRENZY_STREAK_REWARDS, FRENZY_STREAK_LENGTH } from '../../game/constants'
 import Modal from './Modal'
 import FrenzyCountdown from './FrenzyCountdown'
+import { Button } from './ui'
+import { ICON_FOR_EMOJI, FlameIcon, ShieldIcon } from '../icons'
 
 export default function EventBanner() {
   const completedEventRewards = useGame(s => s.completedEventRewards)
@@ -45,20 +47,27 @@ export default function EventBanner() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-2xl flex-shrink-0">{event.icon}</span>
+                  {(() => {
+                    const EvIcon = ICON_FOR_EMOJI[event.icon]
+                    return EvIcon
+                      ? <EvIcon className="text-2xl flex-shrink-0" aria-hidden />
+                      : <span className="text-2xl flex-shrink-0">{event.icon}</span>
+                  })()}
                   <div className="min-w-0">
                     <p className="text-white font-bold text-sm truncate">{event.name}</p>
                     <p className="text-white/70 text-xs truncate">{event.description}</p>
                     {isFrenzy && frenzyStreak > 0 && (
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[10px] text-amber-300 font-bold">
+                        <span className="text-[10px] text-accent-300 font-bold">
                           Streak: {frenzyStreak}
                         </span>
                         {Array.from({ length: Math.min(frenzyStreak, 5) }).map((_, i) => (
-                          <span key={i} className="text-xs">🔥</span>
+                          <FlameIcon key={i} className="text-xs text-orange-400" aria-hidden />
                         ))}
                         {shieldCount > 0 && (
-                          <span className="text-[10px] text-cyan-300 ml-1">🛡️ x{shieldCount}</span>
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-300 ml-1">
+                            <ShieldIcon aria-hidden /> x{shieldCount}
+                          </span>
                         )}
                       </div>
                     )}
@@ -67,30 +76,24 @@ export default function EventBanner() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {isCompleted ? (
-                    <span className="px-3 py-1.5 rounded-lg bg-emerald-500/30 text-emerald-300 text-xs font-bold">
+                    <span className="px-3 py-1.5 rounded-lg bg-success-500/30 text-success-400 text-xs font-bold">
                       Completed
                     </span>
                   ) : (
                     <>
-                      <motion.button
-                        onClick={() => setView('battle')}
-                        className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-bold hover:bg-white/30 transition-colors"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
+                      <Button variant="secondary" size="sm" onClick={() => setView('battle')}>
                         Fight Boss
-                      </motion.button>
-                      <motion.button
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={() => {
                           const success = claimEventReward(event)
                           if (success) setClaimedEvent(event.id)
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-gold-500/80 text-black text-xs font-bold hover:bg-gold-400 transition-colors"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                       >
                         Claim
-                      </motion.button>
+                      </Button>
                     </>
                   )}
                 </div>
@@ -121,12 +124,17 @@ export default function EventBanner() {
               size="sm"
             >
               <div className="text-center py-4">
-                <div className="text-5xl mb-3">{event.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-3">{event.name}</h3>
+                {(() => {
+                  const EvIcon = ICON_FOR_EMOJI[event.icon]
+                  return EvIcon
+                    ? <EvIcon className="text-5xl mb-3 mx-auto text-accent-300" aria-hidden />
+                    : <div className="text-5xl mb-3">{event.icon}</div>
+                })()}
+                <h3 className="text-xl font-bold text-white mb-3 font-heading tracking-wide">{event.name}</h3>
                 <div className="space-y-2 mb-6">
-                  <p className="text-amber-400 font-bold text-lg">+{totalCoins} Coins</p>
+                  <p className="text-accent-300 font-bold text-lg">+{totalCoins} Coins</p>
                   {isFrenzy && frenzyStreak > 1 && (
-                    <p className="text-amber-300 text-sm font-semibold">
+                    <p className="text-accent-300 text-sm font-semibold">
                       Streak Bonus: x{streakReward.coinMultiplier} ({streakReward.label})
                     </p>
                   )}
@@ -134,14 +142,9 @@ export default function EventBanner() {
                     <p className="text-cyan-400 font-semibold">+1x {bait.name}</p>
                   )}
                 </div>
-                <motion.button
-                  onClick={() => setClaimedEvent(null)}
-                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-900 font-bold rounded-xl"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <Button variant="primary" size="lg" onClick={() => setClaimedEvent(null)}>
                   Awesome!
-                </motion.button>
+                </Button>
               </div>
             </Modal>
           )

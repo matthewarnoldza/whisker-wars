@@ -1,5 +1,4 @@
-import { database, ref, set, get } from './firebase'
-import { query, orderByChild, limitToLast } from 'firebase/database'
+import { getDb } from './firebase'
 
 export interface LeaderboardEntry {
   name: string
@@ -32,6 +31,7 @@ export async function uploadLeaderboardStats(
   }
 ): Promise<boolean> {
   try {
+    const { database, ref, set } = await getDb()
     const entry: LeaderboardEntry = {
       name,
       cloudCode,
@@ -52,6 +52,7 @@ export async function fetchLeaderboard(
   limit: number = 50
 ): Promise<LeaderboardEntry[]> {
   try {
+    const { database, ref, get, query, orderByChild, limitToLast } = await getDb()
     const leaderboardRef = ref(database, 'leaderboard')
     const q = query(leaderboardRef, orderByChild(category), limitToLast(limit))
     const snapshot = await get(q)

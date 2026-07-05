@@ -31,7 +31,7 @@ export const EVENTS: GameEvent[] = [
     eventDog: {
       id: 'cupid-corgi', name: 'Cupid Corgi', health: 180, attack: 13,
       ability: { name: 'Love Arrow', description: 'Charms a cat, skipping their turn' },
-      imageUrl: '/images/dogs/Slime Hound.png', // Reuse existing dog image
+      imageUrl: '/images/dogs/Slime Hound.webp', // Reuse existing dog image
     },
     coinReward: 500,
     baitReward: 'starlight-salmon',
@@ -49,7 +49,7 @@ export const EVENTS: GameEvent[] = [
     eventDog: {
       id: 'blossom-beast', name: 'Blossom Beast', health: 200, attack: 14,
       ability: { name: 'Petal Storm', description: 'Damages all cats with razor petals' },
-      imageUrl: '/images/dogs/Echo Howler.png',
+      imageUrl: '/images/dogs/Echo Howler.webp',
     },
     coinReward: 500,
     baitReward: 'cosmic-tuna',
@@ -67,7 +67,7 @@ export const EVENTS: GameEvent[] = [
     eventDog: {
       id: 'solar-hound', name: 'Solar Hound', health: 220, attack: 14,
       ability: { name: 'Solar Flare', description: 'Burns all cats over time' },
-      imageUrl: '/images/dogs/Magma Beast.png',
+      imageUrl: '/images/dogs/Magma Beast.webp',
     },
     coinReward: 600,
     baitReward: 'void-venison',
@@ -85,7 +85,7 @@ export const EVENTS: GameEvent[] = [
     eventDog: {
       id: 'shadow-mutt', name: 'Shadow Mutt', health: 190, attack: 14,
       ability: { name: 'Bad Luck Curse', description: 'Reduces all dice rolls by 2' },
-      imageUrl: '/images/dogs/Shadow Stalker.png',
+      imageUrl: '/images/dogs/Shadow Stalker.webp',
     },
     coinReward: 666,
     coinMultiplier: 1.0,
@@ -102,7 +102,7 @@ export const EVENTS: GameEvent[] = [
     eventDog: {
       id: 'ghost-hound', name: 'Ghost Hound', health: 250, attack: 15,
       ability: { name: 'Phantom Howl', description: 'Phases through shields and armor' },
-      imageUrl: '/images/dogs/Void Walker.png',
+      imageUrl: '/images/dogs/Void Walker.webp',
     },
     coinReward: 750,
     baitReward: 'aurora-anchovy',
@@ -120,7 +120,7 @@ export const EVENTS: GameEvent[] = [
     eventDog: {
       id: 'blizzard-wolf', name: 'Blizzard Wolf', health: 280, attack: 16,
       ability: { name: 'Absolute Zero', description: 'Freezes a random cat each turn' },
-      imageUrl: '/images/dogs/Frost Wolf.png',
+      imageUrl: '/images/dogs/Frost Wolf.webp',
     },
     coinReward: 1000,
     baitReward: 'mythic-mackerel',
@@ -138,27 +138,27 @@ export const FRENZY_DOGS: Dog[] = [
   {
     id: 'ember-drake', name: 'Ember Drake', health: 120, attack: 11,
     ability: { name: 'Inferno Breath', description: 'Burns a cat for 4 dmg/turn for 2 turns' },
-    imageUrl: '/images/events/dogs/Ember Drake.png',
+    imageUrl: '/images/events/dogs/Ember Drake.webp',
   },
   {
     id: 'glacial-howler', name: 'Glacial Howler', health: 130, attack: 10,
     ability: { name: 'Permafrost Howl', description: 'Freezes a random cat, skipping their next turn' },
-    imageUrl: '/images/events/dogs/Glacial Howler.png',
+    imageUrl: '/images/events/dogs/Glacial Howler.webp',
   },
   {
     id: 'granite-colossus', name: 'Granite Colossus', health: 150, attack: 9,
     ability: { name: 'Tectonic Slam', description: 'Damages all cats for 40% ATK and gains 3 armor' },
-    imageUrl: '/images/events/dogs/Granite Colossus.png',
+    imageUrl: '/images/events/dogs/Granite Colossus.webp',
   },
   {
     id: 'voltfang-warden', name: 'Voltfang Warden', health: 110, attack: 12,
     ability: { name: 'Chain Lightning', description: 'Chains to 1 other cat for 60% damage' },
-    imageUrl: '/images/events/dogs/Voltfang Warden.png',
+    imageUrl: '/images/events/dogs/Voltfang Warden.webp',
   },
   {
     id: 'obsidian-shade', name: 'Obsidian Shade', health: 115, attack: 11,
     ability: { name: 'Soul Siphon', description: 'Steals 30% of damage dealt as HP, 20% dodge chance' },
-    imageUrl: '/images/events/dogs/Obsidian Shade.png',
+    imageUrl: '/images/events/dogs/Obsidian Shade.webp',
   },
 ]
 

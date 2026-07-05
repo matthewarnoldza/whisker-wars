@@ -5,6 +5,9 @@ import type { JungleRunScore, JungleRunState } from '../../game/jungleRun'
 import { getBoonById } from '../../game/boons'
 import { useGame } from '../../game/store'
 import { getNewlyUnlockedMedals } from '../../game/jungleRewards'
+import { useDialog } from '../hooks/useDialog'
+import { useMotionSafe } from '../hooks/useMotionSafe'
+import { CoinIcon, ClockIcon } from '../icons'
 
 interface JungleVictoryModalProps {
   score: JungleRunScore
@@ -12,10 +15,12 @@ interface JungleVictoryModalProps {
   onClose: () => void
 }
 
-function AnimatedCounter({ target, duration = 1.5, delay = 0 }: { target: number; duration?: number; delay?: number }) {
-  const [value, setValue] = useState(0)
+function AnimatedCounter({ target, duration = 1.5, delay = 0, reduce = false }: { target: number; duration?: number; delay?: number; reduce?: boolean }) {
+  const [value, setValue] = useState(reduce ? target : 0)
 
   useEffect(() => {
+    // Reduced motion: land on the final figure, no count-up animation.
+    if (reduce) { setValue(target); return }
     const timeout = setTimeout(() => {
       const startTime = Date.now()
       const animate = () => {
@@ -28,7 +33,7 @@ function AnimatedCounter({ target, duration = 1.5, delay = 0 }: { target: number
       requestAnimationFrame(animate)
     }, delay * 1000)
     return () => clearTimeout(timeout)
-  }, [target, duration, delay])
+  }, [target, duration, delay, reduce])
 
   return <>{value.toLocaleString()}</>
 }
@@ -61,6 +66,8 @@ function ConfettiParticles() {
 }
 
 export default function JungleVictoryModal({ score, runState, onClose }: JungleVictoryModalProps) {
+  const reduce = useMotionSafe()
+  const { dialogRef, dialogProps } = useDialog<HTMLDivElement>({ onClose })
   const jungleStats = useGame(s => s.jungleStats)
   const unlockedJungleMedals = useGame(s => s.unlockedJungleMedals)
 
@@ -96,30 +103,33 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[110] bg-emerald-950/95 backdrop-blur-lg flex items-center justify-center touch-none overflow-y-auto p-4"
       >
-        <ConfettiParticles />
+        {!reduce && <ConfettiParticles />}
 
         <motion.div
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 180 }}
-          className="relative w-full max-w-lg my-4"
-          onClick={(e) => e.stopPropagation()}
+          ref={dialogRef}
+          {...dialogProps}
+          aria-labelledby="jungle-victory-title"
+          initial={reduce ? { opacity: 0 } : { scale: 0.7, opacity: 0 }}
+          animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+          exit={reduce ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+          transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 20, stiffness: 180 }}
+          className="relative w-full max-w-lg my-4 focus:outline-none"
         >
           {/* Victory Header */}
           <motion.div
-            initial={{ scale: 0.3, opacity: 0 }}
+            initial={reduce ? false : { scale: 0.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 12, stiffness: 100, delay: 0.2 }}
+            transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 12, stiffness: 100, delay: 0.2 }}
             className="text-center mb-6"
           >
             <motion.h1
-              className="text-5xl font-black text-amber-400 tracking-wider"
+              id="jungle-victory-title"
+              className="font-heading text-5xl font-black uppercase text-amber-400 tracking-wider"
               style={{ textShadow: '0 0 40px rgba(251,191,36,0.6)' }}
-              animate={{ textShadow: ['0 0 30px rgba(251,191,36,0.4)', '0 0 50px rgba(251,191,36,0.7)', '0 0 30px rgba(251,191,36,0.4)'] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              animate={reduce ? undefined : { textShadow: ['0 0 30px rgba(251,191,36,0.4)', '0 0 50px rgba(251,191,36,0.7)', '0 0 30px rgba(251,191,36,0.4)'] }}
+              transition={reduce ? undefined : { duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
-              VICTORY!
+              Victory!
             </motion.h1>
             <p className="text-emerald-200/60 text-sm mt-2">
               The jungle has been conquered!
@@ -138,15 +148,15 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
               {scoreRows.map(row => (
                 <div key={row.label} className="flex justify-between items-center">
                   <span className="text-emerald-200/70 text-sm">{row.label}</span>
-                  <span className={`text-sm font-bold ${row.value > 0 ? 'text-slate-100' : 'text-slate-500'}`}>
+                  <span className={`text-sm font-bold ${row.value > 0 ? 'text-ink' : 'text-ink-faint'}`}>
                     {row.value > 0 ? `+${row.value}` : row.value}
                   </span>
                 </div>
               ))}
               <div className="border-t border-emerald-500/20 pt-2 mt-2 flex justify-between items-center">
-                <span className="text-slate-100 font-bold">Total Score</span>
-                <span className="text-2xl font-black text-amber-400">
-                  <AnimatedCounter target={score.totalScore} delay={0.6} />
+                <span className="text-ink font-bold">Total Score</span>
+                <span className="text-2xl font-black text-amber-400 tabular-nums">
+                  <AnimatedCounter target={score.totalScore} delay={0.6} reduce={reduce} />
                 </span>
               </div>
             </div>
@@ -194,14 +204,18 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
             className="grid grid-cols-2 gap-3 mb-4"
           >
             <div className="bg-emerald-900/80 border border-emerald-500/20 rounded-xl p-4 text-center">
-              <div className="text-xs text-emerald-200/50 uppercase tracking-wider font-bold mb-1">Coins Earned</div>
-              <div className="text-2xl font-black text-amber-400">
-                <AnimatedCounter target={score.coinsEarned} delay={0.8} />
+              <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-200/50 uppercase tracking-wider font-bold mb-1">
+                <CoinIcon className="text-amber-400" size={14} /> Coins Earned
+              </div>
+              <div className="text-2xl font-black text-amber-400 tabular-nums">
+                <AnimatedCounter target={score.coinsEarned} delay={0.8} reduce={reduce} />
               </div>
             </div>
             <div className="bg-emerald-900/80 border border-emerald-500/20 rounded-xl p-4 text-center">
-              <div className="text-xs text-emerald-200/50 uppercase tracking-wider font-bold mb-1">Time Elapsed</div>
-              <div className="text-2xl font-black text-teal-300">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-200/50 uppercase tracking-wider font-bold mb-1">
+                <ClockIcon className="text-teal-300" size={14} /> Time Elapsed
+              </div>
+              <div className="text-2xl font-black text-teal-300 tabular-nums">
                 {elapsedMinutes}:{elapsedSeconds.toString().padStart(2, '0')}
               </div>
             </div>
@@ -222,7 +236,7 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
                   if (!boon) return null
                   const rarityColor = boon.rarity === 'Legendary' ? 'text-amber-400 border-amber-500/30'
                     : boon.rarity === 'Rare' ? 'text-purple-400 border-purple-500/30'
-                    : 'text-slate-400 border-slate-500/30'
+                    : 'text-ink-subtle border-surface-border'
                   return (
                     <span
                       key={ab.boonId}
@@ -248,7 +262,7 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
             <div className="space-y-1.5">
               {survivingCats.map(cat => (
                 <div key={cat.instanceId} className="flex items-center justify-between">
-                  <span className="text-slate-100 text-sm font-bold">{cat.name}</span>
+                  <span className="text-ink text-sm font-bold">{cat.name}</span>
                   <span className="text-emerald-400 text-xs font-bold">
                     {cat.currentHp}/{cat.maxHp} HP
                   </span>
@@ -256,8 +270,8 @@ export default function JungleVictoryModal({ score, runState, onClose }: JungleV
               ))}
               {knockedOutCats.map(cat => (
                 <div key={cat.instanceId} className="flex items-center justify-between opacity-50">
-                  <span className="text-slate-400 text-sm font-bold line-through">{cat.name}</span>
-                  <span className="text-red-400 text-xs font-bold">KO</span>
+                  <span className="text-ink-subtle text-sm font-bold line-through">{cat.name}</span>
+                  <span className="text-danger-400 text-xs font-bold">KO</span>
                 </div>
               ))}
             </div>

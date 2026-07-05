@@ -85,7 +85,7 @@ export const BIRDS: Bird[] = [
       effect: 'aoe',
       params: { aoeFraction: 0.3, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Jungle Sparrow.png',
+    imageUrl: '/images/birds/Jungle Sparrow.webp',
   },
   {
     id: 'toxic-toucan', name: 'Toxic Toucan',
@@ -97,7 +97,7 @@ export const BIRDS: Bird[] = [
       effect: 'dot_poison',
       params: { dotDamage: 3, dotTurns: 2, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Toxic Toucan.png',
+    imageUrl: '/images/birds/Toxic Toucan.webp',
   },
 
   {
@@ -110,7 +110,7 @@ export const BIRDS: Bird[] = [
       effect: 'aoe',
       params: { aoeFraction: 0.25, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Bramble Wren.png',
+    imageUrl: '/images/birds/Bramble Wren.webp',
   },
 
   // Tier 2 (stages 4-9)
@@ -124,7 +124,7 @@ export const BIRDS: Bird[] = [
       effect: 'reflect',
       params: { reflectFraction: 0.2 },
     },
-    imageUrl: '/images/birds/Mirror Macaw.png',
+    imageUrl: '/images/birds/Mirror Macaw.webp',
   },
   {
     id: 'screech-owl', name: 'Screech Owl',
@@ -136,7 +136,7 @@ export const BIRDS: Bird[] = [
       effect: 'debuff_atk',
       params: { debuffMultiplier: 0.7, debuffTurns: 2, cooldown: 4 },
     },
-    imageUrl: '/images/birds/Screech Owl.png',
+    imageUrl: '/images/birds/Screech Owl.webp',
   },
 
   {
@@ -149,7 +149,7 @@ export const BIRDS: Bird[] = [
       effect: 'debuff_atk',
       params: { debuffMultiplier: 0.75, debuffTurns: 2, cooldown: 4 },
     },
-    imageUrl: '/images/birds/Dusk Parakeet.png',
+    imageUrl: '/images/birds/Dusk Parakeet.webp',
   },
 
   // Tier 3 (stages 7-14)
@@ -163,7 +163,7 @@ export const BIRDS: Bird[] = [
       effect: 'silence',
       params: { cooldown: 4 },
     },
-    imageUrl: '/images/birds/Silencing Heron.png',
+    imageUrl: '/images/birds/Silencing Heron.webp',
   },
   {
     id: 'phoenix-finch', name: 'Phoenix Finch',
@@ -175,7 +175,7 @@ export const BIRDS: Bird[] = [
       effect: 'heal_self',
       params: { healFraction: 0.15, cooldown: 4 },
     },
-    imageUrl: '/images/birds/Phoenix Finch.png',
+    imageUrl: '/images/birds/Phoenix Finch.webp',
   },
 
   {
@@ -188,7 +188,7 @@ export const BIRDS: Bird[] = [
       effect: 'heal_self',
       params: { healFraction: 0.10, cooldown: 4 },
     },
-    imageUrl: '/images/birds/Coral Ibis.png',
+    imageUrl: '/images/birds/Coral Ibis.webp',
   },
 
   // Tier 4 (stages 11-19)
@@ -202,7 +202,7 @@ export const BIRDS: Bird[] = [
       effect: 'dodge',
       params: { dodgeChance: 0.3 },
     },
-    imageUrl: '/images/birds/Shadow Swift.png',
+    imageUrl: '/images/birds/Shadow Swift.webp',
   },
   {
     id: 'inferno-hawk', name: 'Inferno Hawk',
@@ -214,7 +214,7 @@ export const BIRDS: Bird[] = [
       effect: 'dot_burn',
       params: { dotDamage: 4, dotTurns: 3, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Inferno Hawk.png',
+    imageUrl: '/images/birds/Inferno Hawk.webp',
   },
 
   {
@@ -227,7 +227,7 @@ export const BIRDS: Bird[] = [
       effect: 'dot_burn',
       params: { dotDamage: 5, dotTurns: 2, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Obsidian Harrier.png',
+    imageUrl: '/images/birds/Obsidian Harrier.webp',
   },
 
   // Tier 5 (stages 16-20)
@@ -241,7 +241,7 @@ export const BIRDS: Bird[] = [
       effect: 'aoe',
       params: { aoeFraction: 0.4, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Storm Condor.png',
+    imageUrl: '/images/birds/Storm Condor.webp',
   },
 
   {
@@ -254,7 +254,7 @@ export const BIRDS: Bird[] = [
       effect: 'aoe',
       params: { aoeFraction: 0.35, cooldown: 3 },
     },
-    imageUrl: '/images/birds/Gale Cassowary.png',
+    imageUrl: '/images/birds/Gale Cassowary.webp',
   },
 
   // ===== BOSSES =====
@@ -268,7 +268,7 @@ export const BIRDS: Bird[] = [
       effect: 'revive',
       params: { reviveHpFraction: 0.4 },
     },
-    imageUrl: '/images/birds/Talon Queen.png',
+    imageUrl: '/images/birds/Talon Queen.webp',
   },
   {
     id: 'apex-raptor', name: 'Apex Raptor',
@@ -280,7 +280,7 @@ export const BIRDS: Bird[] = [
       effect: 'enrage',
       params: { enrageThreshold: 0.3, enrageMultiplier: 1.5 },
     },
-    imageUrl: '/images/birds/Apex Raptor.png',
+    imageUrl: '/images/birds/Apex Raptor.webp',
   },
 ]
 

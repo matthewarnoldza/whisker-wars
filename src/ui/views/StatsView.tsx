@@ -1,6 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../../game/store'
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { rarityStyle } from '../constants/rarity'
+import { Button, RarityBadge } from '../components/ui'
+import {
+  SwordsIcon, TrophyIcon, CatIcon, CoinIcon, MoneyBagIcon, TargetIcon,
+  ChartIcon, MedalIcon, LeafIcon, CloudIcon,
+} from '../icons'
 import { fetchLeaderboard, LEADERBOARD_CATEGORIES, type LeaderboardEntry, type LeaderboardCategory } from '../../utils/leaderboard'
 import { fetchJungleLeaderboard, JUNGLE_LEADERBOARD_CATEGORIES, type JungleLeaderboardEntry, type JungleLeaderboardCategory } from '../../utils/jungleLeaderboard'
 import JunglePurchaseModal from '../components/JunglePurchaseModal'
@@ -14,6 +20,7 @@ export default function StatsView() {
   const achievements = useGame(s => s.achievements)
   const getCurrentProfile = useGame(s => s.getCurrentProfile)
   const junglePassUnlocked = useGame(s => s.junglePassUnlocked)
+  const colorblindMode = useGame(s => s.colorblindMode)
 
   const [tab, setTab] = useState<'stats' | 'leaderboard' | 'jungle'>('stats')
   const [leaderboardCategory, setLeaderboardCategory] = useState<LeaderboardCategory>('totalWins')
@@ -97,18 +104,6 @@ export default function StatsView() {
     return breakdown
   }, [owned])
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'Common': return 'text-slate-400'
-      case 'Uncommon': return 'text-green-400'
-      case 'Rare': return 'text-blue-400'
-      case 'Epic': return 'text-purple-400'
-      case 'Legendary': return 'text-orange-400'
-      case 'Mythical': return 'text-red-400'
-      default: return 'text-slate-400'
-    }
-  }
-
   // Find current player's rank in leaderboard
   const myRank = useMemo(() => {
     if (!profile?.cloudCode) return null
@@ -127,14 +122,14 @@ export default function StatsView() {
 
   const jungleCategoryMeta = JUNGLE_LEADERBOARD_CATEGORIES.find(c => c.key === jungleCategory)!
 
-  const StatCard = ({ icon, label, value, subtitle }: { icon: string, label: string, value: string | number, subtitle?: string }) => (
+  const StatCard = ({ icon, label, value, subtitle }: { icon: ReactNode, label: string, value: string | number, subtitle?: string }) => (
     <motion.div
       className="premium-card p-4 rounded-xl"
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 300 }}
     >
       <div className="flex items-center gap-3">
-        <div className="text-4xl">{icon}</div>
+        <div className="text-4xl text-accent-300">{icon}</div>
         <div className="flex-1">
           <p className="text-sm text-slate-400 uppercase tracking-wide font-semibold">{label}</p>
           <p className="text-2xl font-black text-gold-400">{value}</p>
@@ -156,41 +151,20 @@ export default function StatsView() {
           <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gold-400 via-amber-300 to-gold-500 mb-2 font-heading drop-shadow-glow">
             Stats Dashboard
           </h1>
-          <p className="text-slate-400 text-lg">Track your progress and achievements</p>
+          <p className="text-slate-400 text-lg">See how your legend's shaping up.</p>
         </div>
 
         {/* Tab Switcher */}
         <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setTab('stats')}
-            className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
-              tab === 'stats'
-                ? 'bg-gradient-to-r from-gold-500 to-amber-500 text-black'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
+          <Button variant={tab === 'stats' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('stats')}>
             My Stats
-          </button>
-          <button
-            onClick={() => setTab('leaderboard')}
-            className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
-              tab === 'leaderboard'
-                ? 'bg-gradient-to-r from-gold-500 to-amber-500 text-black'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
+          </Button>
+          <Button variant={tab === 'leaderboard' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('leaderboard')}>
             Leaderboards
-          </button>
-          <button
-            onClick={() => setTab('jungle')}
-            className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
-              tab === 'jungle'
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-black'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
+          </Button>
+          <Button variant={tab === 'jungle' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('jungle')}>
             Jungle
-          </button>
+          </Button>
         </div>
 
         <AnimatePresence mode="wait">
@@ -207,8 +181,8 @@ export default function StatsView() {
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/60 to-teal-500/60 border border-emerald-500/50 mb-6"
               >
-                <p className="text-white text-center font-semibold">
-                  <span className="text-lg mr-2">📊</span>
+                <p className="text-white text-center font-semibold inline-flex items-center justify-center gap-2 flex-wrap">
+                  <ChartIcon className="text-lg shrink-0" />
                   Track your legendary journey through the realm of Whisker Wars - view your battle record, collection progress, and achievements!
                 </p>
               </motion.div>
@@ -216,34 +190,34 @@ export default function StatsView() {
               {/* Main Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 <StatCard
-                  icon="⚔️"
+                  icon={<SwordsIcon />}
                   label="Total Battles"
                   value={stats.totalBattles}
                   subtitle={`${stats.totalWins}W / ${stats.totalLosses}L`}
                 />
                 <StatCard
-                  icon="🏆"
+                  icon={<TrophyIcon />}
                   label="Win Rate"
                   value={`${winRate}%`}
                 />
                 <StatCard
-                  icon="🐱"
+                  icon={<CatIcon />}
                   label="Cats Collected"
                   value={totalCats}
                   subtitle={`${uniqueCatsCollected}/40 unique`}
                 />
                 <StatCard
-                  icon="🪙"
+                  icon={<CoinIcon />}
                   label="Current Coins"
                   value={coins}
                 />
                 <StatCard
-                  icon="💰"
+                  icon={<MoneyBagIcon />}
                   label="Lifetime Coins"
                   value={stats.totalCoinsEarned}
                 />
                 <StatCard
-                  icon="🎯"
+                  icon={<TargetIcon />}
                   label="Progress"
                   value={`Dog ${dogIndex + 1}`}
                   subtitle={difficultyLevel > 0 ? `Difficulty Level ${difficultyLevel + 1}` : 'First Playthrough'}
@@ -253,7 +227,7 @@ export default function StatsView() {
               {/* Collection Stats */}
               <div className="premium-card p-6 rounded-xl mb-8">
                 <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2 font-heading">
-                  <span className="text-3xl">📊</span> Collection Statistics
+                  <ChartIcon className="text-3xl text-accent-300" /> Collection Statistics
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -263,8 +237,8 @@ export default function StatsView() {
                     <div className="space-y-2">
                       {Object.entries(rarityBreakdown).map(([rarity, count]) => (
                         <div key={rarity} className="flex items-center justify-between">
-                          <span className={`font-semibold ${getRarityColor(rarity)}`}>{rarity}</span>
-                          <span className="text-slate-400 font-mono">{count}</span>
+                          <RarityBadge rarity={rarity} colorblindMode={colorblindMode} />
+                          <span className="text-ink-subtle font-mono">{count}</span>
                         </div>
                       ))}
                     </div>
@@ -307,7 +281,7 @@ export default function StatsView() {
               {/* Achievements Progress */}
               <div className="premium-card p-6 rounded-xl">
                 <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2 font-heading">
-                  <span className="text-3xl">🏅</span> Achievements
+                  <MedalIcon className="text-3xl text-accent-300" /> Achievements
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -337,8 +311,8 @@ export default function StatsView() {
               {/* Cloud code requirement notice */}
               {!profile?.cloudCode && (
                 <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-500/50 mb-6">
-                  <p className="text-white text-center font-semibold">
-                    <span className="text-lg mr-2">☁️</span>
+                  <p className="text-white text-center font-semibold inline-flex items-center justify-center gap-2 flex-wrap">
+                    <CloudIcon className="text-lg shrink-0" />
                     Enable Cloud Save in your profile to appear on the leaderboard!
                   </p>
                 </div>
@@ -365,10 +339,10 @@ export default function StatsView() {
               {myRank !== null && (
                 <div className="premium-card p-4 rounded-xl mb-6 border border-gold-500/30">
                   <div className="flex items-center gap-3">
-                    <div className="text-4xl">🥇</div>
+                    <MedalIcon className="text-4xl text-accent-300" />
                     <div>
-                      <p className="text-sm text-slate-400 uppercase tracking-wide font-semibold">Your Rank</p>
-                      <p className="text-3xl font-black text-gold-400">#{myRank}</p>
+                      <p className="text-sm text-ink-subtle uppercase tracking-wide font-semibold">Your Rank</p>
+                      <p className="text-3xl font-black text-accent-300">#{myRank}</p>
                     </div>
                   </div>
                 </div>
@@ -385,20 +359,20 @@ export default function StatsView() {
                 {leaderboardLoading ? (
                   <div className="p-12 text-center">
                     <div className="inline-block w-8 h-8 border-4 border-gold-400 border-t-transparent rounded-full animate-spin mb-3" />
-                    <p className="text-slate-400">Loading leaderboard...</p>
+                    <p className="text-slate-400">Tallying the top cats…</p>
                   </div>
                 ) : leaderboardData.length === 0 ? (
                   <div className="p-12 text-center">
-                    <p className="text-4xl mb-3">🏆</p>
-                    <p className="text-slate-400 text-lg">No entries yet. Be the first!</p>
-                    <p className="text-slate-500 text-sm mt-1">Enable Cloud Save to submit your scores</p>
+                    <TrophyIcon className="text-4xl mb-3 text-accent-300 mx-auto" />
+                    <p className="text-ink-subtle text-lg">No entries yet. Be the first!</p>
+                    <p className="text-ink-faint text-sm mt-1">Enable Cloud Save to submit your scores</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-800">
                     {leaderboardData.map((entry, idx) => {
                       const rank = idx + 1
                       const isMe = profile?.cloudCode === entry.cloudCode
-                      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+                      const medalColor = rank === 1 ? '#facc15' : rank === 2 ? '#cbd5e1' : rank === 3 ? '#d97706' : null
                       return (
                         <motion.div
                           key={entry.cloudCode}
@@ -409,11 +383,11 @@ export default function StatsView() {
                             isMe ? 'bg-gold-500/10 border-l-4 border-gold-500' : ''
                           }`}
                         >
-                          <div className="w-10 text-center">
-                            {medal ? (
-                              <span className="text-2xl">{medal}</span>
+                          <div className="w-10 flex justify-center">
+                            {medalColor ? (
+                              <MedalIcon className="text-2xl" style={{ color: medalColor }} />
                             ) : (
-                              <span className="text-lg font-bold text-slate-500">#{rank}</span>
+                              <span className="text-lg font-bold text-ink-faint">#{rank}</span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -454,9 +428,9 @@ export default function StatsView() {
                     </div>
                     <button
                       onClick={() => setShowPurchaseModal(true)}
-                      className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black text-sm rounded-lg shadow-[0_0_16px_rgba(52,211,153,0.3)] hover:shadow-[0_0_24px_rgba(52,211,153,0.5)] transition-all whitespace-nowrap"
+                      className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black text-sm rounded-lg shadow-[0_0_16px_rgba(52,211,153,0.3)] hover:shadow-[0_0_24px_rgba(52,211,153,0.5)] transition-all whitespace-nowrap inline-flex items-center gap-2"
                     >
-                      Unlock Expansion
+                      <LeafIcon /> Unlock Expansion
                     </button>
                   </div>
                 </div>
@@ -465,8 +439,8 @@ export default function StatsView() {
               {/* Cloud code notice */}
               {!profile?.cloudCode && junglePassUnlocked && (
                 <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-orange-500/60 border border-amber-500/50 mb-6">
-                  <p className="text-white text-center font-semibold">
-                    <span className="text-lg mr-2">☁️</span>
+                  <p className="text-white text-center font-semibold inline-flex items-center justify-center gap-2 flex-wrap">
+                    <CloudIcon className="text-lg shrink-0" />
                     Enable Cloud Save in your profile to appear on the leaderboard!
                   </p>
                 </div>
@@ -493,9 +467,9 @@ export default function StatsView() {
               {myJungleRank !== null && (
                 <div className="premium-card p-4 rounded-xl mb-6 border border-emerald-500/30">
                   <div className="flex items-center gap-3">
-                    <div className="text-4xl">🌿</div>
+                    <LeafIcon className="text-4xl text-emerald-400" />
                     <div>
-                      <p className="text-sm text-slate-400 uppercase tracking-wide font-semibold">Your Rank</p>
+                      <p className="text-sm text-ink-subtle uppercase tracking-wide font-semibold">Your Rank</p>
                       <p className="text-3xl font-black text-emerald-400">#{myJungleRank}</p>
                     </div>
                   </div>
@@ -513,20 +487,20 @@ export default function StatsView() {
                 {jungleLoading ? (
                   <div className="p-12 text-center">
                     <div className="inline-block w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin mb-3" />
-                    <p className="text-slate-400">Loading leaderboard...</p>
+                    <p className="text-slate-400">Ranking the jungle warriors…</p>
                   </div>
                 ) : jungleData.length === 0 ? (
                   <div className="p-12 text-center">
-                    <p className="text-4xl mb-3">🌿</p>
-                    <p className="text-slate-400 text-lg">No jungle warriors yet. Be the first!</p>
-                    <p className="text-slate-500 text-sm mt-1">Complete jungle runs with Cloud Save enabled</p>
+                    <LeafIcon className="text-4xl mb-3 text-emerald-400 mx-auto" />
+                    <p className="text-ink-subtle text-lg">No jungle warriors yet. Be the first!</p>
+                    <p className="text-ink-faint text-sm mt-1">Complete jungle runs with Cloud Save enabled</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-800">
                     {jungleData.map((entry, idx) => {
                       const rank = idx + 1
                       const isMe = profile?.cloudCode === entry.cloudCode
-                      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+                      const medalColor = rank === 1 ? '#facc15' : rank === 2 ? '#cbd5e1' : rank === 3 ? '#d97706' : null
                       return (
                         <motion.div
                           key={entry.cloudCode}
@@ -537,11 +511,11 @@ export default function StatsView() {
                             isMe ? 'bg-emerald-500/10 border-l-4 border-emerald-500' : ''
                           }`}
                         >
-                          <div className="w-10 text-center">
-                            {medal ? (
-                              <span className="text-2xl">{medal}</span>
+                          <div className="w-10 flex justify-center">
+                            {medalColor ? (
+                              <MedalIcon className="text-2xl" style={{ color: medalColor }} />
                             ) : (
-                              <span className="text-lg font-bold text-slate-500">#{rank}</span>
+                              <span className="text-lg font-bold text-ink-faint">#{rank}</span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">

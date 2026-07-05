@@ -5,6 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { trackProfileSwitched } from '../../utils/analytics'
 import SaveCodeModal from './SaveCodeModal'
 import { uploadSave, CloudSaveData } from '../../utils/cloudSave'
+import { buildSavePayload } from '../../game/saveData'
+import { Button } from './ui'
+import {
+  CatIcon,
+  CalendarIcon,
+  ClockIcon,
+  EditIcon,
+  TrashIcon,
+  PlayIcon,
+  PlusIcon,
+  PawIcon,
+} from '../icons'
 
 interface ProfileSelectorProps {
   onProfileSelected: () => void
@@ -39,27 +51,9 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
     const state = useGame.getState()
     const profile = state.getCurrentProfile()
     if (profile) {
-      const saveData: CloudSaveData = {
-        coins: state.coins,
-        baits: state.baits,
-        owned: state.owned,
-        dogIndex: state.dogIndex,
-        difficultyLevel: state.difficultyLevel,
-        favorites: state.favorites,
-        theme: state.theme,
-        achievements: state.achievements,
-        stats: state.stats,
-        lastDailyReward: state.lastDailyReward,
-        tutorialCompleted: state.tutorialCompleted,
-        trainingCooldowns: state.trainingCooldowns,
-        selectedForBattle: state.selectedForBattle,
-        dailyStreak: state.dailyStreak,
-        soundEnabled: state.soundEnabled,
-        musicEnabled: state.musicEnabled,
-        inventory: state.inventory,
-        completedEventRewards: state.completedEventRewards,
-        alienUnlocked: state.alienUnlocked,
-      }
+      // Complete versioned SaveData from the single source of truth (includes
+      // Jungle-expansion and frenzy fields).
+      const saveData: CloudSaveData = buildSavePayload(state)
       uploadSave(saveData, profile).then(result => {
         if (result.success && result.code && result.isNew) {
           useGame.getState().setProfileCloudCode(result.code)
@@ -139,10 +133,11 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
       >
         {/* Header */}
         <div className="px-8 py-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-slate-800">
-          <h2 className="text-3xl font-black bg-gradient-to-r from-gold-400 via-gold-300 to-gold-500 bg-clip-text text-transparent font-heading">
-            🐱 Select Your Profile
+          <h2 className="flex items-center gap-3 text-3xl font-black bg-gradient-to-r from-gold-400 via-gold-300 to-gold-500 bg-clip-text text-transparent font-heading">
+            <CatIcon className="text-gold-400 shrink-0" />
+            Select Your Profile
           </h2>
-          <p className="text-slate-400 mt-2">Choose a profile to continue playing</p>
+          <p className="text-slate-400 mt-2">Pick a profile and get back to the cats.</p>
         </div>
 
         {/* Content */}
@@ -173,41 +168,43 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
                         autoFocus
                       />
                     ) : (
-                      <h3 className="text-xl font-black text-gold-400 mb-3 truncate">
+                      <h3 className="text-xl font-heading font-black text-gold-400 mb-3 truncate">
                         {profile.name}
                       </h3>
                     )}
 
                     <div className="space-y-1 text-sm text-slate-400 mb-4 flex-1">
-                      <div>📅 Created: {formatDate(profile.created)}</div>
-                      <div>🕐 Last played: {formatDate(profile.lastPlayed)}</div>
+                      <div className="flex items-center gap-1.5"><CalendarIcon className="shrink-0" /> Created: {formatDate(profile.created)}</div>
+                      <div className="flex items-center gap-1.5"><ClockIcon className="shrink-0" /> Last played: {formatDate(profile.lastPlayed)}</div>
                     </div>
 
                     <div className="flex gap-2">
                       <button
                         onClick={(e) => handleGetCode(profile.id, e)}
-                        className="flex-1 px-3 py-2 bg-blue-900/50 hover:bg-blue-800 text-blue-200 rounded font-bold text-sm transition-all"
+                        className="flex-1 px-3 py-2 bg-blue-900/50 hover:bg-blue-800 text-blue-200 rounded font-bold text-sm transition-all focus:outline-none focus-visible:shadow-focus-gold"
                       >
                         📋 Code
                       </button>
                       <button
                         onClick={(e) => handleRename(profile.id, e)}
-                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded font-bold text-sm transition-all"
+                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded font-bold text-sm transition-all focus:outline-none focus-visible:shadow-focus-gold"
+                        aria-label="Rename profile"
                       >
-                        ✏️
+                        <EditIcon />
                       </button>
                       <button
                         onClick={(e) => handleDeleteProfile(profile.id, e)}
-                        className="px-3 py-2 bg-red-900/50 hover:bg-red-800 text-red-200 rounded font-bold text-sm transition-all"
+                        className="px-3 py-2 bg-red-900/50 hover:bg-red-800 text-red-200 rounded font-bold text-sm transition-all focus:outline-none focus-visible:shadow-focus-gold"
+                        aria-label="Delete profile"
                       >
-                        🗑️
+                        <TrashIcon />
                       </button>
                     </div>
                   </div>
 
                   {/* Play hover overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-gold-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
-                    <div className="text-4xl">▶️</div>
+                    <PlayIcon className="text-4xl text-white drop-shadow-lg" />
                   </div>
                 </motion.div>
               ))}
@@ -222,7 +219,7 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
                   className="premium-card p-6 cursor-pointer hover:border-gold-500/50 transition-all border-dashed flex items-center justify-center min-h-[200px]"
                 >
                   <div className="text-center">
-                    <div className="text-5xl mb-3">➕</div>
+                    <PlusIcon className="text-5xl text-gold-400 mx-auto mb-3" />
                     <div className="text-lg font-bold text-gold-400">Create New Profile</div>
                   </div>
                 </motion.div>
@@ -236,33 +233,34 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
                   animate={{ opacity: 1, scale: 1 }}
                   className="premium-card p-6 border-gold-500/50 min-h-[200px] flex flex-col justify-center"
                 >
-                  <h3 className="text-lg font-black text-gold-400 mb-4">New Profile</h3>
+                  <h3 className="text-lg font-heading font-black text-gold-400 mb-4">New Profile</h3>
                   <input
                     type="text"
                     value={newProfileName}
                     onChange={(e) => setNewProfileName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile()}
-                    placeholder="Enter profile name..."
+                    placeholder="Name your profile…"
                     className="bg-slate-800 text-white px-4 py-3 rounded border border-gold-500/30 mb-4 font-bold"
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      variant="primary"
                       onClick={handleCreateProfile}
                       disabled={!newProfileName.trim()}
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded shadow-glow-gold hover:shadow-premium-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      fullWidth
                     >
                       Create
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="secondary"
                       onClick={() => {
                         setCreatingNew(false)
                         setNewProfileName('')
                       }}
-                      className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded font-bold transition-all"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </motion.div>
               )}
@@ -271,15 +269,12 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
 
           {profiles.length === 0 && !creatingNew && (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">🐾</div>
-              <h3 className="text-2xl font-bold text-slate-300 mb-2">No profiles yet!</h3>
-              <p className="text-slate-500 mb-6">Create your first profile to start playing</p>
-              <button
-                onClick={() => setCreatingNew(true)}
-                className="px-8 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-black text-lg rounded-xl shadow-glow-gold hover:shadow-premium-lg transition-all"
-              >
+              <PawIcon className="text-6xl text-slate-400 mx-auto mb-4" />
+              <h3 className="text-2xl font-heading font-bold text-slate-300 mb-2">No profiles yet!</h3>
+              <p className="text-slate-500 mb-6">Create your first profile and start your clowder.</p>
+              <Button variant="primary" size="lg" onClick={() => setCreatingNew(true)}>
                 Create Profile
-              </button>
+              </Button>
             </div>
           )}
 
@@ -287,12 +282,9 @@ export default function ProfileSelector({ onProfileSelected }: ProfileSelectorPr
           <div className="border-t border-slate-700 pt-6 mt-6">
             <div className="text-center">
               <p className="text-slate-400 text-sm mb-3">Have a save code from another device?</p>
-              <button
-                onClick={handleRestoreCode}
-                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all inline-flex items-center gap-2"
-              >
+              <Button variant="secondary" onClick={handleRestoreCode}>
                 📋 Enter Save Code
-              </button>
+              </Button>
             </div>
           </div>
         </div>

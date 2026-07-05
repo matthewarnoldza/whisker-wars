@@ -1,5 +1,4 @@
-import { database, ref, set, get } from './firebase'
-import { query, orderByChild, limitToLast } from 'firebase/database'
+import { getDb } from './firebase'
 
 export interface JungleLeaderboardEntry {
   name: string
@@ -48,6 +47,7 @@ export async function uploadJungleLeaderboardStats(
   }
 ): Promise<void> {
   try {
+    const { database, ref, set } = await getDb()
     const entry: JungleLeaderboardEntry = {
       name,
       cloudCode,
@@ -67,6 +67,7 @@ export async function fetchJungleLeaderboard(
   limit: number = 50
 ): Promise<JungleLeaderboardEntry[]> {
   try {
+    const { database, ref, get, query, orderByChild, limitToLast } = await getDb()
     // Map category key to the actual field stored in Firebase
     const orderField = category === 'fastestClear' ? 'fastestClearMs' : category
     const leaderboardRef = ref(database, 'jungleLeaderboard')

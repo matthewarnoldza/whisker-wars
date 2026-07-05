@@ -18,7 +18,12 @@ import {
   calculateStatBoost,
   getAscendedBaseStat,
 } from '../../game/constants'
-import { RARITY_TEXT_COLORS, RARITY_BORDERS } from '../constants/rarity'
+import { rarityStyle } from '../constants/rarity'
+import { Button, Panel, RarityBadge } from '../components/ui'
+import {
+  BookIcon, MergeIcon, SwordsIcon, CardIcon, SearchIcon, StarIcon,
+  HealIcon, SadCatIcon, CatIcon, GemIcon, TrashIcon, ChevronDownIcon,
+} from '../icons'
 import {
   trackCardZoomed,
   trackCatReleased,
@@ -45,6 +50,7 @@ export default function Collection() {
   const mergeCats = useGame(s => s.mergeCats)
   const coins = useGame(s => s.coins)
   const soundEnabled = useGame(s => s.soundEnabled)
+  const colorblindMode = useGame(s => s.colorblindMode)
 
   const [sortBy, setSortBy] = useState<SortOption>('level')
   const [filterBy, setFilterBy] = useState<FilterOption>('all')
@@ -137,24 +143,6 @@ export default function Collection() {
     }
   }, [selectedForMerge, mergeCats, cats])
 
-  const rarityColors: Record<Rarity, string> = {
-    Common: 'text-gray-400 border-gray-500',
-    Uncommon: 'text-green-400 border-green-500',
-    Rare: 'text-blue-400 border-blue-500',
-    Epic: 'text-purple-400 border-purple-500',
-    Legendary: 'text-orange-400 border-orange-500',
-    Mythical: 'text-matrix-400 border-matrix-500',
-  }
-
-  const rarityOrder: Record<Rarity, number> = {
-    Common: 0,
-    Uncommon: 1,
-    Rare: 2,
-    Epic: 3,
-    Legendary: 4,
-    Mythical: 5,
-  }
-
   // Calculate unique cats collected (by base id, not instanceId)
   const uniqueCatsCollected = useMemo(() => {
     const uniqueIds = new Set(cats.map(cat => cat.id))
@@ -229,7 +217,7 @@ export default function Collection() {
         case 'level':
           return b.level - a.level
         case 'rarity':
-          return rarityOrder[b.rarity as Rarity] - rarityOrder[a.rarity as Rarity]
+          return rarityStyle(b.rarity).order - rarityStyle(a.rarity).order
         case 'hp':
           return b.maxHp - a.maxHp
         case 'attack':
@@ -259,20 +247,20 @@ export default function Collection() {
           : 'bg-gradient-to-r from-purple-500/60 to-pink-500/60 border border-purple-500/50'
         }`}
       >
-        <p className="text-white text-center font-bold text-sm sm:text-base">
+        <p className="text-white text-center font-bold text-sm sm:text-base inline-flex items-center justify-center gap-2 flex-wrap">
           {showCatadex ? (
             <>
-              <span className="text-lg mr-2">📖</span>
+              <BookIcon className="text-lg shrink-0" />
               Browse all {totalUniqueCats} cats. Undiscovered cats appear as silhouettes — use the right bait to find them!
             </>
           ) : mergeMode ? (
             <>
-              <span className="text-lg mr-2">&#x2726;</span>
+              <MergeIcon className="text-lg shrink-0" />
               Select 3 of the same cat to merge into an Elite! {selectedForMerge.length}/3 selected
             </>
           ) : (
             <>
-              <span className="text-lg mr-2">⚔️</span>
+              <SwordsIcon className="text-lg shrink-0" />
               Select up to 3 of your cats for battle by clicking the circles. Heal injured cats before sending them into combat!
             </>
           )}
@@ -280,62 +268,61 @@ export default function Collection() {
       </motion.div>
 
       {/* Compact Stats & Progress Bar */}
-      <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-slate-700/50">
+      <Panel elevation="flat" className="p-3 sm:p-4">
         {/* Mobile: 2x2 Grid, Desktop: Row */}
         <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center sm:justify-start gap-2 sm:gap-4 text-xs sm:text-sm">
-          <span className="font-bold text-slate-300">
-            <span className="text-white">{cats.length}</span> cats
+          <span className="font-bold text-ink-muted">
+            <span className="text-ink">{cats.length}</span> cats
           </span>
-          <span className="hidden sm:inline text-slate-600">•</span>
-          <span className="font-bold text-slate-300">
-            <span className="text-gold-400">{selected.length}/3</span> selected
+          <span className="hidden sm:inline text-ink-faint">•</span>
+          <span className="font-bold text-ink-muted">
+            <span className="text-accent-300">{selected.length}/3</span> selected
           </span>
-          <span className="hidden sm:inline text-slate-600">•</span>
-          <span className="font-bold text-slate-300">
-            🎴 <span className="text-purple-400">{uniqueCatsCollected}/{totalUniqueCats}</span> unique
+          <span className="hidden sm:inline text-ink-faint">•</span>
+          <span className="font-bold text-ink-muted inline-flex items-center gap-1">
+            <CardIcon className="text-arcane-300" /> <span className="text-arcane-300">{uniqueCatsCollected}/{totalUniqueCats}</span> unique
           </span>
-          <span className="hidden sm:inline text-slate-600">•</span>
+          <span className="hidden sm:inline text-ink-faint">•</span>
           <div className="col-span-2 sm:col-span-1 flex items-center gap-2 mt-1 sm:mt-0">
-            <span className="font-bold text-gold-400 text-xs sm:text-sm">{collectionProgress}%</span>
+            <span className="font-bold text-accent-300 text-xs sm:text-sm">{collectionProgress}%</span>
             {/* Progress Bar (Inline) */}
-            <div className="flex-1 sm:w-32 bg-slate-800/80 rounded-full h-2 overflow-hidden border border-slate-700/50">
+            <div className="flex-1 sm:w-32 bg-surface-raised/80 rounded-full h-2 overflow-hidden border border-surface-border">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${collectionProgress}%` }}
                 transition={{ duration: 1, ease: 'easeOut' }}
-                className="h-full bg-gradient-to-r from-gold-400 to-gold-500 rounded-full"
+                className="h-full bg-gradient-to-r from-accent-300 to-accent-500 rounded-full"
               />
             </div>
           </div>
         </div>
-      </div>
+      </Panel>
 
       {/* Compact Toolbar */}
       <div className="premium-card rounded-xl p-4 space-y-3">
         {/* Row 1: Search, Favorites, Heal All */}
         <div className="flex flex-col sm:flex-row gap-2">
           {/* Search Bar */}
-          <input
-            type="text"
-            placeholder="🔍 Search cats..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-slate-200 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
-          />
+          <div className="relative flex-1">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+            <input
+              type="text"
+              placeholder="Search cats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-surface-raised/80 border border-surface-border rounded-lg text-ink text-sm placeholder-ink-faint focus:outline-none focus-visible:shadow-focus-gold focus:border-accent-500 transition-all"
+            />
+          </div>
 
           {/* Favorites Toggle */}
-          <motion.button
+          <Button
+            variant={showFavoritesOnly ? 'primary' : 'ghost'}
+            size="sm"
             onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
-              showFavoritesOnly
-                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
-                : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-pink-500/50 hover:text-pink-300'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="whitespace-nowrap"
           >
-            ⭐ Favorites
-          </motion.button>
+            <StarIcon /> Favorites
+          </Button>
 
           {/* Heal All Button */}
           <motion.button
@@ -343,7 +330,7 @@ export default function Collection() {
               const catsNeedingHeal = cats.filter(c => c.currentHp < c.maxHp).length
               const success = healAllCats()
               if (!success) {
-                const msg = coins < 25 ? 'Not enough coins! Need 25💰' : 'All cats are already at full health!'
+                const msg = coins < 25 ? 'Not enough coins! Need 25 coins' : 'All cats are already at full health!'
                 setHealMessage(msg)
                 setTimeout(() => setHealMessage(null), 2500)
               } else {
@@ -380,7 +367,7 @@ export default function Collection() {
                 className="absolute inset-0 bg-emerald-300/60 rounded-lg"
               />
             )}
-            <span className="relative z-10">💊 Heal All (25💰)</span>
+            <span className="relative z-10 inline-flex items-center gap-1.5"><HealIcon /> Heal All (25)</span>
           </motion.button>
 
           {/* Heal Message Toast — fixed to top center, above everything */}
@@ -398,75 +385,61 @@ export default function Collection() {
           </AnimatePresence>
 
           {/* Merge Mode Toggle */}
-          <motion.button
+          <Button
+            variant={mergeMode ? 'primary' : 'ghost'}
+            size="sm"
             onClick={handleMergeToggle}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
-              mergeMode
-                ? 'bg-gradient-to-r from-yellow-500 to-amber-400 text-slate-900 shadow-lg'
-                : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-yellow-500/50 hover:text-yellow-300'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="whitespace-nowrap"
           >
-            &#x2726; Merge
-          </motion.button>
+            <MergeIcon /> Merge
+          </Button>
 
           {/* Catadex Toggle */}
-          <motion.button
+          <Button
+            variant={showCatadex ? 'primary' : 'ghost'}
+            size="sm"
             onClick={() => { setShowCatadex(v => !v); if (mergeMode) handleMergeToggle() }}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
-              showCatadex
-                ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg'
-                : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-indigo-500/50 hover:text-indigo-300'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="whitespace-nowrap"
           >
-            Catadex
-          </motion.button>
+            <BookIcon /> Catadex
+          </Button>
         </div>
 
         {/* Row 2: Sort & Filter */}
         <div className="flex flex-col lg:flex-row gap-3 pt-3 border-t border-slate-800/30">
           {/* Sort */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Sort:</span>
+            <span className="text-[10px] font-bold text-ink-subtle uppercase tracking-wider whitespace-nowrap">Sort:</span>
             {(['level', 'rarity', 'name', 'hp', 'attack'] as SortOption[]).map(option => (
-              <motion.button
+              <Button
                 key={option}
+                variant={sortBy === option ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => handleSortChange(option)}
-                className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${sortBy === option
-                  ? 'bg-gradient-to-r from-gold-400 to-gold-600 text-slate-900 shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-gold-500/50 hover:text-gold-300'
-                  }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                className="px-3 py-1 text-[11px]"
               >
                 {option.charAt(0).toUpperCase() + option.slice(1)}
-              </motion.button>
+              </Button>
             ))}
           </div>
 
           {/* Divider */}
-          <div className="hidden lg:block w-px bg-slate-700/50" />
+          <div className="hidden lg:block w-px bg-surface-border" />
 
           {/* Filter */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Filter:</span>
+            <span className="text-[10px] font-bold text-ink-subtle uppercase tracking-wider whitespace-nowrap">Filter:</span>
             {(['all', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythical'] as FilterOption[]).map(
               option => (
-                <motion.button
+                <Button
                   key={option}
+                  variant={filterBy === option ? 'primary' : 'ghost'}
+                  size="sm"
                   onClick={() => handleFilterChange(option)}
-                  className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${filterBy === option
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                    : 'bg-slate-800/80 text-slate-400 border border-slate-700 hover:border-purple-500/50 hover:text-purple-300'
-                    }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="px-3 py-1 text-[11px]"
                 >
                   {option === 'all' ? 'All' : option}
-                </motion.button>
+                </Button>
               )
             )}
           </div>
@@ -505,8 +478,8 @@ export default function Collection() {
                   animate={{ opacity: 1, y: 0 }}
                   className={`relative rounded-xl overflow-hidden border-2 transition-all ${
                     discovered
-                      ? `${rarityColors[cat.rarity]} bg-slate-900/90`
-                      : 'border-slate-700 bg-slate-900/80'
+                      ? `${rarityStyle(cat.rarity).border} bg-surface-deep/90`
+                      : 'border-surface-border bg-surface-deep/80'
                   }`}
                 >
                   {/* Cat Image */}
@@ -550,13 +523,15 @@ export default function Collection() {
 
                     {/* Rarity */}
                     <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                        discovered ? rarityColors[cat.rarity].split(' ')[0] : 'text-slate-600'
-                      }`}>
-                        {cat.rarity}
-                      </span>
+                      {discovered ? (
+                        <RarityBadge rarity={cat.rarity} size={11} colorblindMode={colorblindMode} />
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
+                          {cat.rarity}
+                        </span>
+                      )}
                       {discovered && bestInstance && (
-                        <span className="text-[10px] font-bold text-slate-400">Lv.{bestInstance.level}</span>
+                        <span className="text-[10px] font-bold text-ink-subtle">Lv.{bestInstance.level}</span>
                       )}
                     </div>
 
@@ -584,8 +559,8 @@ export default function Collection() {
 
           {catadexCats.length === 0 && (
             <div className="text-center py-12">
-              <span className="text-4xl">🔍</span>
-              <p className="text-slate-400 mt-2">No cats match your filter.</p>
+              <SearchIcon className="text-4xl text-ink-subtle mx-auto" />
+              <p className="text-ink-subtle mt-2">No cats match your filter.</p>
             </div>
           )}
         </motion.div>
@@ -598,11 +573,11 @@ export default function Collection() {
           animate={{ opacity: 1, scale: 1 }}
           className="premium-card rounded-2xl p-16 text-center"
         >
-          <div className="text-8xl mb-6 animate-float">😿</div>
-          <h3 className="text-3xl font-bold text-slate-300 mb-3">
+          <SadCatIcon className="text-8xl mb-6 animate-float text-ink-subtle mx-auto" />
+          <h3 className="text-3xl font-bold text-ink-muted mb-3 font-heading">
             {filterBy === 'all' ? 'No cats yet!' : `No ${filterBy} cats found`}
           </h3>
-          <p className="text-slate-500 text-lg">
+          <p className="text-ink-faint text-lg">
             {filterBy === 'all'
               ? 'Visit the Baiting Area to befriend some cats!'
               : 'Try a different filter or catch more cats!'}
@@ -613,9 +588,9 @@ export default function Collection() {
       {/* Merge mode empty state */}
       {!showCatadex && mergeMode && mergeCandidates.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12 space-y-3">
-          <div className="text-6xl mb-4">🐱</div>
-          <h3 className="text-xl font-bold text-slate-300">No cats ready to merge</h3>
-          <p className="text-slate-500 text-sm">You need 3 of the same cat (and tier) to merge. Catch more duplicates!</p>
+          <CatIcon className="text-6xl mb-4 text-ink-subtle mx-auto" />
+          <h3 className="text-xl font-bold text-ink-muted font-heading">No cats ready to merge</h3>
+          <p className="text-ink-faint text-sm">You need 3 of the same cat (and tier) to merge. Catch more duplicates!</p>
         </motion.div>
       )}
 
@@ -729,7 +704,7 @@ export default function Collection() {
                   {/* Stone Equipped Indicator */}
                   {cat.equipment?.stone && (
                     <div className="absolute bottom-2 left-2 z-card-overlay px-1.5 py-0.5 rounded-md bg-emerald-600/90 border border-emerald-400/50 shadow-lg">
-                      <span className="text-[9px] font-black text-white">💎</span>
+                      <GemIcon className="text-[10px] text-white" />
                     </div>
                   )}
 
@@ -748,9 +723,7 @@ export default function Collection() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isFavorite ? 0 : 2}>
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
+                    <StarIcon className="h-5 w-5" size={20} />
                   </motion.button>
 
                   {/* Delete Icon - Top Right (Hover Only) */}
@@ -771,9 +744,7 @@ export default function Collection() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+                    <TrashIcon className="h-5 w-5" size={20} />
                   </motion.button>
                 </div>
               </motion.div>
@@ -793,12 +764,12 @@ export default function Collection() {
           >
             <motion.button
               onClick={() => setShowMergeConfirm(true)}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 text-white font-black text-lg tracking-wider uppercase shadow-2xl border-2 border-white/30"
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 text-white font-black text-lg tracking-wider uppercase shadow-2xl border-2 border-white/30 inline-flex items-center gap-2"
               style={{ animation: 'merge-pulse 2s ease-in-out infinite' }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              &#x2726; {(() => {
+              <MergeIcon /> {(() => {
                 const firstCat = cats.find(c => c.instanceId === selectedForMerge[0])
                 return (firstCat?.eliteTier || 0) >= 1 ? 'MERGE INTO PRISMATIC' : 'MERGE INTO ELITE'
               })()}
@@ -845,7 +816,7 @@ export default function Collection() {
               </div>
 
               {/* Arrow */}
-              <div className="text-center text-3xl text-cyan-400 mb-4">&#x2193;</div>
+              <div className="flex justify-center text-3xl text-cyan-400 mb-4"><ChevronDownIcon /></div>
 
               {/* Result Preview */}
               {(() => {
@@ -899,22 +870,12 @@ export default function Collection() {
 
               {/* Buttons */}
               <div className="flex gap-3">
-                <motion.button
-                  onClick={() => setShowMergeConfirm(false)}
-                  className="flex-1 px-4 py-3 rounded-xl bg-slate-700 text-slate-300 font-bold text-sm hover:bg-slate-600 transition-all"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+                <Button variant="secondary" fullWidth onClick={() => setShowMergeConfirm(false)}>
                   Cancel
-                </motion.button>
-                <motion.button
-                  onClick={handleMergeConfirm}
-                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-black text-sm shadow-lg"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  &#x2726; Merge!
-                </motion.button>
+                </Button>
+                <Button variant="primary" fullWidth onClick={handleMergeConfirm}>
+                  <MergeIcon /> Merge!
+                </Button>
               </div>
             </motion.div>
           </motion.div>

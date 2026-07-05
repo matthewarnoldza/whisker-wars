@@ -1,4 +1,5 @@
 import { useState, useEffect, CSSProperties } from 'react'
+import { SparkleIcon, SkullIcon } from '../icons'
 
 interface D20DiceProps {
   value: number
@@ -177,7 +178,7 @@ export default function D20Dice({ value, rolling }: D20DiceProps) {
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-2 h-2 bg-gold-300 rounded-full"
+              className="absolute w-2 h-2 bg-accent-300 rounded-full"
               style={{
                 top: '50%',
                 left: '50%',
@@ -199,15 +200,21 @@ export default function D20Dice({ value, rolling }: D20DiceProps) {
           }}
         >
           <span
-            className={`text-base font-black tracking-wider uppercase px-3 py-1 rounded-lg ${
+            className={`inline-flex items-center gap-1.5 text-base font-black font-heading tracking-wider uppercase px-3 py-1 rounded-lg ${
               isCriticalHit
-                ? 'text-gold-300 bg-gold-900/70 border border-gold-500/50'
+                ? 'text-accent-300 bg-accent-900/70 border border-accent-500/50'
                 : isCriticalFail
-                ? 'text-red-300 bg-red-900/70 border border-red-500/50'
-                : 'text-slate-200 bg-slate-800/70'
+                ? 'text-danger-400 bg-danger-600/40 border border-danger-500/50'
+                : 'text-ink-muted bg-surface-raised/70'
             }`}
           >
-            {isCriticalHit ? '✨ CRITICAL! ✨' : isCriticalFail ? '💀 MISS! 💀' : `Roll: ${showValue}`}
+            {isCriticalHit ? (
+              <><SparkleIcon aria-hidden /> CRITICAL! <SparkleIcon aria-hidden /></>
+            ) : isCriticalFail ? (
+              <><SkullIcon aria-hidden /> MISS! <SkullIcon aria-hidden /></>
+            ) : (
+              `Roll: ${showValue}`
+            )}
           </span>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { GamepadIcon } from '../icons'
 
 interface SplashScreenProps {
   onClose: () => void
@@ -15,7 +16,7 @@ export default function SplashScreen({ onClose }: SplashScreenProps) {
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src="/images/backgrounds/WW Key Art.png"
+          src="/images/backgrounds/WW Key Art.webp"
           alt="Whisker Wars"
           className="w-full h-full object-cover"
         />
@@ -42,12 +43,12 @@ export default function SplashScreen({ onClose }: SplashScreenProps) {
 
           {/* Tagline */}
           <motion.h1
-            className="text-3xl sm:text-4xl font-black text-white mb-4 drop-shadow-lg"
+            className="text-3xl sm:text-4xl font-heading font-black text-white mb-4 drop-shadow-lg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.8 }}
           >
-            Elite Cat Combat Simulator
+            Every legend starts with a whisker.
           </motion.h1>
 
           <motion.p
@@ -56,13 +57,13 @@ export default function SplashScreen({ onClose }: SplashScreenProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7, duration: 0.8 }}
           >
-            Collect, Battle, and Dominate the Arena
+            Collect. Battle. Rule the arena.
           </motion.p>
 
           {/* Click to Play Button */}
           <motion.button
             onClick={onClose}
-            className="px-12 py-4 bg-white text-slate-900 font-black text-xl rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.4),0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6),0_0_60px_rgba(255,255,255,0.3)] transition-all duration-300 border-2 border-white/80"
+            className="px-12 py-4 bg-white text-slate-900 font-black text-xl rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.4),0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6),0_0_60px_rgba(255,255,255,0.3)] transition-all duration-300 border-2 border-white/80 focus:outline-none focus-visible:shadow-focus-gold"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.9, duration: 0.5 }}
@@ -71,7 +72,7 @@ export default function SplashScreen({ onClose }: SplashScreenProps) {
           >
             <span className="flex items-center gap-3">
               <span>Click to Play</span>
-              <span className="text-2xl">🎮</span>
+              <GamepadIcon className="text-2xl" />
             </span>
           </motion.button>
 

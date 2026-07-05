@@ -1,11 +1,36 @@
-import React from 'react'
-import { motion } from 'framer-motion'
+import React, { useEffect } from 'react'
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
 import Avatar from './Avatar'
 import type { Cat, Dog } from '../../game/data'
 import { useHolographicCard } from '../hooks/useHolographicCard'
 import { isWeb } from '../../utils/platform'
 import { RARITY_GRADIENTS, RARITY_GLOWS } from '../constants/rarity'
 import { getEquipmentBonuses } from '../../game/items'
+import { useJuiceEnabled } from '../animations'
+
+// ===== Combat "juice" hit-feedback signal =====
+// A one-shot effect pulse pushed by the battle views when this card is struck /
+// healed / dodges / is afflicted. `key` must change every trigger (it drives the
+// flash-overlay remount + recoil replay). dx/dy = recoil nudge direction (px),
+// pointed AWAY from the attacker so the struck card visibly recoils.
+export type CardFxKind = 'hit' | 'crit' | 'heal' | 'dodge' | 'poison' | 'burn' | 'ability'
+export interface CardFx {
+  key: number
+  kind: CardFxKind
+  dx?: number
+  dy?: number
+}
+
+const FX_OVERLAY: Record<CardFxKind, { style: React.CSSProperties; opacity: number; dur: number } | null> = {
+  // TODO(design-tokens): promote these hit-flash colors to the shared palette.
+  hit: { style: { background: '#FFFFFF', mixBlendMode: 'screen' }, opacity: 0.82, dur: 0.11 },
+  crit: { style: { background: '#FFC53D', mixBlendMode: 'screen' }, opacity: 0.92, dur: 0.14 },
+  heal: { style: { background: 'radial-gradient(circle at 50% 60%, rgba(61,220,132,0.9), transparent 70%)' }, opacity: 0.5, dur: 0.4 },
+  ability: { style: { background: 'radial-gradient(circle at 50% 50%, rgba(167,139,250,0.85), transparent 70%)' }, opacity: 0.55, dur: 0.32 },
+  poison: { style: { boxShadow: 'inset 0 0 22px 6px rgba(74,222,128,0.85)' }, opacity: 0.75, dur: 0.5 },
+  burn: { style: { boxShadow: 'inset 0 0 22px 6px rgba(251,146,60,0.85)' }, opacity: 0.75, dur: 0.5 },
+  dodge: null,
+}
 
 // Stable style references to prevent Firefox animation restarts on re-render
 const DELAY_0 = { animationDelay: '0s' } as const
@@ -27,6 +52,8 @@ interface GameCardProps {
     showStats?: boolean
     animate?: boolean
     holographicMode?: 'subtle' | 'full' | 'none'
+    /** Combat juice hit-feedback pulse (battle arenas only). */
+    fx?: CardFx | null
 }
 
 export default React.memo(function GameCard({
@@ -37,10 +64,32 @@ export default React.memo(function GameCard({
     disabled = false,
     showStats = true,
     animate = true,
-    holographicMode = 'full'
+    holographicMode = 'full',
+    fx = null
 }: GameCardProps) {
 
     const isCat = !isEnemy
+
+    // ===== Combat juice: impact flash + directional recoil =====
+    const juiceEnabled = useJuiceEnabled()
+    const recoilControls = useAnimationControls()
+    const fxKey = fx?.key
+    useEffect(() => {
+        if (!fx || !juiceEnabled) return
+        const { kind, dx = 0, dy = 0 } = fx
+        if (kind === 'dodge') {
+            void recoilControls.start({ x: [0, dx || 16, 0], transition: { duration: 0.26, ease: 'easeOut' } })
+        } else if (kind === 'heal') {
+            void recoilControls.start({ scale: [1, 1.04, 1], transition: { duration: 0.3, ease: 'easeOut' } })
+        } else if (kind === 'ability') {
+            void recoilControls.start({ scale: [1, 1.06, 1], transition: { duration: 0.3, ease: 'easeOut' } })
+        } else if (kind === 'hit' || kind === 'crit') {
+            void recoilControls.start({ x: [0, dx, 0], y: [0, dy, 0], scale: [1, 0.97, 1], transition: { duration: 0.2, ease: 'easeOut' } })
+        }
+        // poison / burn: rim-only pulse, no positional recoil
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fxKey])
+    const overlay = fx ? FX_OVERLAY[fx.kind] : null
     const rarity = (character as Cat).rarity || 'Common'
     const isElite = (character as any).isElite === true
     const eliteTier = (character as any).eliteTier || 0
@@ -142,7 +191,9 @@ export default React.memo(function GameCard({
             )}
 
             {/* Card Container with Rarity Glow */}
-            <div className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ring-1 ring-white/10 ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
+            <motion.div
+                animate={recoilControls}
+                className={`relative z-[3] isolate w-full h-full rounded-2xl overflow-hidden shadow-premium-lg ring-1 ring-white/10 ${rarityGlow} ${hasSpecialGlow ? rarityAnimationClass : ''}`}
             >
 
                 {/* Full-Bleed Character Art - No Border */}
@@ -151,9 +202,12 @@ export default React.memo(function GameCard({
                         <img
                             src={character.imageUrl}
                             alt={isCat ? `${character.name}, ${rarity} cat` : `${character.name}, enemy dog`}
+                            width={832}
+                            height={1280}
                             loading="lazy"
                             decoding="async"
                             className="w-full h-full object-cover"
+                            style={{ aspectRatio: '832 / 1280' }}
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 scale-150">
@@ -235,7 +289,22 @@ export default React.memo(function GameCard({
                         )}
                     </div>
                 </div>
-            </div>
+
+                {/* Combat juice: impact flash / heal glow / DoT rim (clipped to card radius) */}
+                <AnimatePresence>
+                    {overlay && (
+                        <motion.div
+                            key={fx!.key}
+                            className="absolute inset-0 rounded-2xl pointer-events-none z-[25]"
+                            style={overlay.style}
+                            initial={{ opacity: overlay.opacity }}
+                            animate={{ opacity: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: overlay.dur, ease: 'easeOut' }}
+                        />
+                    )}
+                </AnimatePresence>
+            </motion.div>
         </motion.div>
     )
 })

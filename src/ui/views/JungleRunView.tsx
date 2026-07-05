@@ -13,8 +13,14 @@ import BossIntroModal from '../components/BossIntroModal'
 import JungleVictoryModal from '../components/JungleVictoryModal'
 import JungleDefeatModal from '../components/JungleDefeatModal'
 import JunglePurchaseModal from '../components/JunglePurchaseModal'
+import GameLoader from '../components/GameLoader'
 import Modal from '../components/Modal'
 import { RARITY_BORDERS, RARITY_TEXT_COLORS, RARITY_BOX_SHADOWS } from '../constants/rarity'
+import { Button, StatPill, RarityBadge } from '../components/ui'
+import {
+  CatIcon, LockIcon, CheckIcon, TrophyIcon, TargetIcon, LeafIcon,
+  CoinIcon, BoltIcon, PawIcon, HeartIcon, SwordIcon,
+} from '../icons'
 import {
   trackJungleRunStart,
   trackJungleStageComplete,
@@ -183,20 +189,20 @@ function JungleStatsSummary({ stats }: { stats: { totalRuns: number; totalRunsCo
     : '--'
 
   const statItems = [
-    { label: 'Total Runs', value: stats.totalRuns, icon: '🏃' },
-    { label: 'Completions', value: stats.totalRunsCompleted, icon: '🎯' },
-    { label: 'Best Score', value: stats.bestScore, icon: '🏆' },
-    { label: 'Best Stage', value: stats.bestStage, icon: '🌿' },
-    { label: 'Coins Earned', value: stats.totalCoinsEarned, icon: '🪙' },
-    { label: 'Fastest Clear', value: fastestStr, icon: '⚡' },
+    { label: 'Total Runs', value: stats.totalRuns, Icon: PawIcon },
+    { label: 'Completions', value: stats.totalRunsCompleted, Icon: TargetIcon },
+    { label: 'Best Score', value: stats.bestScore, Icon: TrophyIcon },
+    { label: 'Best Stage', value: stats.bestStage, Icon: LeafIcon },
+    { label: 'Coins Earned', value: stats.totalCoinsEarned, Icon: CoinIcon },
+    { label: 'Fastest Clear', value: fastestStr, Icon: BoltIcon },
   ]
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {statItems.map(item => (
         <div key={item.label} className="bg-slate-800/60 rounded-xl p-3 border border-emerald-900/30 text-center">
-          <div className="text-xl mb-1">{item.icon}</div>
-          <div className="text-lg font-black text-emerald-300">{item.value}</div>
+          <item.Icon className="text-xl mb-1 mx-auto text-emerald-400" aria-hidden />
+          <div className="text-lg font-black text-emerald-300 font-heading">{item.value}</div>
           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</div>
         </div>
       ))}
@@ -217,11 +223,11 @@ function LeaderboardPreview() {
 
   return (
     <div className="bg-slate-800/40 rounded-xl border border-emerald-900/30 p-4">
-      <h3 className="text-sm font-black text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-        <span>🏆</span> Top Explorers
+      <h3 className="text-sm font-black text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2 font-heading">
+        <TrophyIcon className="text-accent-300" aria-hidden /> Top Explorers
       </h3>
       {loading ? (
-        <div className="text-center text-slate-500 text-sm py-4">Loading...</div>
+        <GameLoader compact />
       ) : entries.length === 0 ? (
         <div className="text-center text-slate-500 text-sm py-4">No entries yet. Be the first!</div>
       ) : (
@@ -242,6 +248,7 @@ function LeaderboardPreview() {
 }
 
 function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onConfirm: (ids: [string, string, string]) => void; onCancel: () => void }) {
+  const colorblindMode = useGame(s => s.colorblindMode)
   const [selected, setSelected] = useState<string[]>([])
   const PAGE_SIZE = 9
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -264,7 +271,7 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h2 className="text-2xl font-black text-emerald-400 mb-1">Select Your Squad</h2>
+        <h2 className="text-2xl font-black text-emerald-400 mb-1 font-heading tracking-wide">Select Your Squad</h2>
         <p className="text-slate-400 text-sm">Choose {JUNGLE_SQUAD_SIZE} cats to brave the jungle</p>
       </div>
 
@@ -285,7 +292,7 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
                   {cat.imageUrl ? (
                     <img src={cat.imageUrl} alt={cat.name} className="w-12 h-12 object-contain rounded" />
                   ) : (
-                    <div className="w-12 h-12 bg-slate-700 rounded flex items-center justify-center text-xl">🐱</div>
+                    <div className="w-12 h-12 bg-slate-700 rounded flex items-center justify-center text-xl"><CatIcon className="text-slate-300" aria-hidden /></div>
                   )}
                   <span className="text-[10px] font-bold text-slate-300 truncate w-full text-center px-1 mt-1">{cat.name}</span>
                 </>
@@ -303,9 +310,9 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
           {selectedCats.map(cat => (
             <div key={cat.instanceId} className="bg-slate-800/60 rounded-lg p-2 text-center border border-slate-700/50">
               <div className="text-xs font-bold text-slate-300 truncate">{cat.name}</div>
-              <div className="flex justify-center gap-3 mt-1">
-                <span className="text-[10px] text-red-400 font-bold">HP {cat.currentHp}/{cat.maxHp}</span>
-                <span className="text-[10px] text-amber-400 font-bold">ATK {cat.currentAttack}</span>
+              <div className="flex justify-center gap-2 mt-1">
+                <StatPill icon={<HeartIcon aria-hidden />} value={`${cat.currentHp}/${cat.maxHp}`} tone="health" size="sm" />
+                <StatPill icon={<SwordIcon aria-hidden />} value={cat.currentAttack} tone="attack" size="sm" />
               </div>
             </div>
           ))}
@@ -353,9 +360,12 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
               {cat.imageUrl ? (
                 <img src={cat.imageUrl} alt={cat.name} className="w-full aspect-square object-contain rounded-lg mb-1" />
               ) : (
-                <div className="w-full aspect-square bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl">🐱</div>
+                <div className="w-full aspect-square bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl"><CatIcon className="text-slate-300" aria-hidden /></div>
               )}
-              <div className={`text-xs font-bold truncate ${RARITY_TEXT_COLORS[cat.rarity] || 'text-slate-200'}`}>{cat.name}</div>
+              <div className="flex items-center justify-between gap-1">
+                <div className={`text-xs font-bold truncate ${RARITY_TEXT_COLORS[cat.rarity] || 'text-slate-200'}`}>{cat.name}</div>
+                <RarityBadge rarity={cat.rarity} size={11} showLabel={false} colorblindMode={colorblindMode} className="shrink-0" />
+              </div>
               <div className="text-[10px] text-slate-500">Lv.{cat.level}</div>
               <div className="text-[10px] text-slate-500">
                 <span className="text-red-400/70">HP {cat.currentHp}</span>
@@ -365,7 +375,7 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
               {isKO && <div className="absolute inset-0 flex items-center justify-center"><span className="text-xs font-bold text-red-400 bg-slate-900/80 px-2 py-1 rounded">KO</span></div>}
               {isSelected && (
                 <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-[10px] font-black">&#10003;</span>
+                  <CheckIcon className="text-white text-[10px]" aria-hidden />
                 </div>
               )}
             </motion.button>
@@ -387,31 +397,21 @@ function SquadSelector({ owned, onConfirm, onCancel }: { owned: OwnedCat[]; onCo
 
       {/* Actions */}
       <div className="flex gap-3 justify-center pt-2">
-        <motion.button
-          onClick={onCancel}
-          className="px-6 py-3 bg-slate-800 text-slate-300 font-bold rounded-xl border border-slate-700 hover:border-slate-500 transition-colors"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
+        <Button variant="secondary" size="lg" onClick={onCancel}>
           Cancel
-        </motion.button>
-        <motion.button
+        </Button>
+        <Button
+          variant="primary"
+          size="lg"
           onClick={() => {
             if (selected.length === JUNGLE_SQUAD_SIZE) {
               onConfirm(selected as [string, string, string])
             }
           }}
           disabled={selected.length !== JUNGLE_SQUAD_SIZE}
-          className={`px-6 py-3 font-bold rounded-xl shadow-lg transition-all ${
-            selected.length === JUNGLE_SQUAD_SIZE
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-neon'
-              : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-          }`}
-          whileHover={selected.length === JUNGLE_SQUAD_SIZE ? { scale: 1.05 } : {}}
-          whileTap={selected.length === JUNGLE_SQUAD_SIZE ? { scale: 0.95 } : {}}
         >
           Begin Run ({selected.length}/{JUNGLE_SQUAD_SIZE})
-        </motion.button>
+        </Button>
       </div>
     </div>
   )
@@ -556,8 +556,8 @@ export default function JungleRunView() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
           >
-            <div className="text-6xl mb-4">🔒</div>
-            <h1 className="text-3xl font-black text-emerald-400 mb-2">Jungle of Talons</h1>
+            <LockIcon className="text-6xl mb-4 mx-auto text-emerald-400" aria-hidden />
+            <h1 className="text-3xl font-black text-emerald-400 mb-2 font-heading tracking-wide">Jungle of Talons</h1>
             <p className="text-slate-200 text-sm leading-relaxed mb-6">
               Lead your squad through 20 stages of bird combat. Collect boons, defeat bosses,
               and climb the leaderboard in this roguelite jungle adventure.
@@ -575,14 +575,13 @@ export default function JungleRunView() {
             </ul>
           </div>
 
-          <motion.button
+          <Button
+            variant="primary"
+            size="lg"
             onClick={() => { trackJunglePurchaseStart(); setPurchaseModalInitialState('preview'); setShowPurchaseModal(true) }}
-            className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-lg"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
           >
             Unlock Expansion
-          </motion.button>
+          </Button>
 
           {/* Dev tools — preview/dev builds only */}
           {import.meta.env.DEV && (
@@ -620,21 +619,16 @@ export default function JungleRunView() {
       <>
         <div className="max-w-2xl mx-auto py-8 space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-black text-emerald-400 mb-1">Jungle of Talons</h1>
+            <h1 className="text-3xl font-black text-emerald-400 mb-1 font-heading tracking-wide">Jungle of Talons</h1>
             <p className="text-slate-400 text-sm">Brave the jungle. Conquer the birds. Claim glory.</p>
           </div>
 
           <JungleStatsSummary stats={jungleStats} />
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <motion.button
-              onClick={handleStartRun}
-              className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-lg"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <Button variant="primary" size="lg" onClick={handleStartRun}>
               Start New Run
-            </motion.button>
+            </Button>
           </div>
 
           <LeaderboardPreview />
@@ -693,7 +687,7 @@ export default function JungleRunView() {
           >
             <div>
               <div className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-1">Stage {currentStage}</div>
-              <h2 className="text-2xl font-black text-emerald-300">{stageName}</h2>
+              <h2 className="text-3xl font-black text-emerald-300 font-heading tracking-wide drop-shadow-[0_2px_12px_rgba(16,185,129,0.35)]">{stageName}</h2>
               {isBossStage(currentStage) && (
                 <div className="mt-2 inline-block px-3 py-1 bg-red-900/50 border border-red-700/50 rounded-full">
                   <span className="text-xs font-black text-red-400 uppercase tracking-wider">Boss Stage</span>
@@ -713,7 +707,7 @@ export default function JungleRunView() {
                   {cat.imageUrl ? (
                     <img src={cat.imageUrl} alt={cat.name} className="w-24 h-24 mx-auto object-contain rounded-lg mb-1" />
                   ) : (
-                    <div className="w-24 h-24 mx-auto bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl">🐱</div>
+                    <div className="w-24 h-24 mx-auto bg-slate-700 rounded-lg mb-1 flex items-center justify-center text-2xl"><CatIcon className="text-slate-300" aria-hidden /></div>
                   )}
                   <div className="text-xs font-bold text-slate-300 truncate">{cat.name}</div>
                   <div className="flex items-center justify-center gap-1 mt-0.5">
@@ -742,7 +736,10 @@ export default function JungleRunView() {
               ))}
             </div>
 
-            <motion.button
+            <Button
+              variant="primary"
+              size="lg"
+              className="px-10 text-xl"
               onClick={() => {
                 if (isBossStage(currentStage)) {
                   setShowBossIntro(true)
@@ -750,12 +747,9 @@ export default function JungleRunView() {
                   startJungleBattle()
                 }
               }}
-              className="px-10 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-neon text-xl"
-              whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(34, 197, 94, 0.6)' }}
-              whileTap={{ scale: 0.95 }}
             >
               Fight!
-            </motion.button>
+            </Button>
           </motion.div>
         )}
 
@@ -809,12 +803,12 @@ export default function JungleRunView() {
               transition={{ duration: 1.5, repeat: Infinity }}
             >
               <img
-                src="/images/jungle/Healing Spring.png"
+                src="/images/jungle/Healing Spring.webp"
                 alt="Healing Spring"
                 className="w-full max-w-md h-48 object-cover mx-auto rounded-2xl drop-shadow-[0_0_24px_rgba(34,211,238,0.5)]"
               />
             </motion.div>
-            <h2 className="text-3xl font-black text-cyan-400">Healing Spring</h2>
+            <h2 className="text-3xl font-black text-cyan-400 font-heading tracking-wide">Healing Spring</h2>
             <p className="text-slate-300 text-base">Your cats have drunk from the magical pool and recovered 25% HP!</p>
             <div className="flex justify-center gap-6 mt-4">
               {jungleRun.squad.map(cat => (
@@ -831,12 +825,9 @@ export default function JungleRunView() {
                 </div>
               ))}
             </div>
-            <button
-              onClick={() => advanceJungleStage()}
-              className="mt-6 px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black text-lg rounded-xl transition-colors"
-            >
+            <Button variant="primary" size="lg" className="mt-6" onClick={() => advanceJungleStage()}>
               CONTINUE RUN
-            </button>
+            </Button>
           </motion.div>
         )}
 
@@ -848,13 +839,13 @@ export default function JungleRunView() {
             className="text-center py-12"
           >
             <motion.div
-              className="text-5xl mb-4"
+              className="text-5xl mb-4 flex justify-center"
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 0.5 }}
             >
-              &#127942;
+              <TrophyIcon className="text-accent-300" aria-hidden />
             </motion.div>
-            <h2 className="text-2xl font-black text-emerald-400">Stage {currentStage - 1} Cleared!</h2>
+            <h2 className="text-2xl font-black text-emerald-400 font-heading tracking-wide">Stage {currentStage - 1} Cleared!</h2>
             <p className="text-slate-300 text-sm mt-2">Advancing to next stage...</p>
           </motion.div>
         )}
@@ -897,25 +888,18 @@ export default function JungleRunView() {
               Are you sure you want to abandon this run? Your progress will be saved and scored based on stages cleared so far.
             </p>
             <div className="flex gap-3 justify-center">
-              <motion.button
-                onClick={() => setShowAbandonConfirm(false)}
-                className="px-6 py-3 bg-slate-800 text-slate-300 font-bold rounded-xl border border-slate-700"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
+              <Button variant="secondary" onClick={() => setShowAbandonConfirm(false)}>
                 Keep Going
-              </motion.button>
-              <motion.button
+              </Button>
+              <Button
+                variant="danger"
                 onClick={() => {
                   setShowAbandonConfirm(false)
                   abandonJungleRun()
                 }}
-                className="px-6 py-3 bg-red-700 text-white font-bold rounded-xl"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
               >
                 Abandon
-              </motion.button>
+              </Button>
             </div>
           </div>
         </Modal>

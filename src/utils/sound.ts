@@ -15,23 +15,47 @@ const SFX_FILES: Record<string, string> = {
   birdAttack: '/sounds/bird.mp3',
 }
 
-// Preload all SFX by fetching them once (warms the browser HTTP cache)
-for (const src of Object.values(SFX_FILES)) {
-  const audio = new Audio(src)
-  audio.preload = 'auto'
-  audio.load()
+// Warm the browser HTTP cache by fetching every SFX once. Runs lazily on the
+// first user interaction so nothing is fetched before a gesture.
+let _warmed = false
+function warmSounds() {
+  if (_warmed) return
+  _warmed = true
+  for (const src of Object.values(SFX_FILES)) {
+    const audio = new Audio(src)
+    audio.preload = 'auto'
+    audio.load()
+  }
+}
+
+// Trigger warm-up once, on the first pointer or keyboard interaction. Removing
+// both listeners after the first fire gives us { once: true } semantics.
+if (typeof window !== 'undefined') {
+  const onFirstInteraction = () => {
+    window.removeEventListener('pointerdown', onFirstInteraction)
+    window.removeEventListener('keydown', onFirstInteraction)
+    warmSounds()
+  }
+  window.addEventListener('pointerdown', onFirstInteraction)
+  window.addEventListener('keydown', onFirstInteraction)
 }
 
 // Background music
 let musicElement: HTMLAudioElement | null = null
 let _isMusicPlaying = false
 
+// Live volume levels (0..1). These are the single source of truth for playback
+// volume; the store pushes user settings here via setSfxVolume/setMusicVolume so
+// the values survive a save-load cycle. Defaults match the settings contract.
+let _sfxVolume = 0.5
+let _musicVolume = 0.2
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
+
 export type SoundName = keyof typeof SFX_FILES
 
 /** Play a sound effect using a fresh Audio element (reliable across all browsers) */
 export function playSound(name: SoundName) {
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
-
   const src = SFX_FILES[name]
   if (!src) return
 
@@ -39,7 +63,7 @@ export function playSound(name: SoundName) {
   // where cloned elements don't have buffered data and silently fail to play.
   // The browser serves the file from its HTTP cache so there's no re-download.
   const audio = new Audio(src)
-  audio.volume = 0.5
+  audio.volume = _sfxVolume
   audio.play().catch(() => {/* autoplay policy — ignore */})
 }
 
@@ -48,10 +72,10 @@ export function startMusic() {
   if (_isMusicPlaying) return
 
   if (!musicElement) {
-    musicElement = new Audio('/sounds/theme.mp3')
+    musicElement = new Audio('/sounds/theme.m4a')
     musicElement.loop = true
-    musicElement.volume = 0.2
   }
+  musicElement.volume = _musicVolume
 
   musicElement.play().catch(() => {/* autoplay policy — ignore */})
   _isMusicPlaying = true
@@ -71,11 +95,30 @@ export function isMusicPlaying(): boolean {
   return _isMusicPlaying
 }
 
-/** Set music volume (0.0 to 1.0) */
+/** Set SFX volume (0.0 to 1.0). Applies to every subsequently played sound. */
+export function setSfxVolume(volume: number) {
+  _sfxVolume = clamp01(volume)
+}
+
+/** Current SFX volume (0.0 to 1.0). */
+export function getSfxVolume(): number {
+  return _sfxVolume
+}
+
+/**
+ * Set music volume (0.0 to 1.0). Applies to the live music element immediately
+ * AND is remembered for any future music element created by startMusic().
+ */
 export function setMusicVolume(volume: number) {
+  _musicVolume = clamp01(volume)
   if (musicElement) {
-    musicElement.volume = Math.max(0, Math.min(1, volume))
+    musicElement.volume = _musicVolume
   }
+}
+
+/** Current music volume (0.0 to 1.0). */
+export function getMusicVolume(): number {
+  return _musicVolume
 }
 
 // Re-export SFX for type-safe access to sound names

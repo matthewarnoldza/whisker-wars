@@ -12,6 +12,8 @@ import { resolveAbility } from '../../game/abilityResolver'
 import { motion, AnimatePresence } from 'framer-motion'
 import { shakeVariants, attackVariants, damageVariants } from '../animations'
 import { trackTrainingStart, trackTrainingComplete, trackAbilityTriggered } from '../../utils/analytics'
+import { Button } from '../components/ui'
+import { TargetIcon, CatIcon, SkullIcon, HourglassIcon, DumbbellIcon, XPIcon, BookIcon } from '../icons'
 
 const TRAINING_XP = TRAINING_XP_CONST
 const MAX_DAILY_SESSIONS = MAX_DAILY_TRAINING_SESSIONS
@@ -213,23 +215,20 @@ export default function TrainingArena() {
           animate={{ opacity: 1, y: 0 }}
           className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-yellow-500/60 border border-amber-500/50"
         >
-          <p className="text-white text-center font-semibold">
-            <span className="text-lg mr-2">🎯</span>
+          <p className="text-white text-center font-semibold inline-flex items-center justify-center gap-2 flex-wrap">
+            <TargetIcon className="text-lg shrink-0" />
             Select a cat to train against the Training Dummy. Each cat can train {MAX_DAILY_SESSIONS} times per day. No injuries!
           </p>
         </motion.div>
 
         {owned.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <div className="text-6xl mb-4">🐱</div>
+          <div className="text-center py-16 text-ink-subtle">
+            <CatIcon className="text-6xl mb-4 mx-auto" />
             <p className="text-lg mb-2">No cats yet!</p>
             <p className="text-sm">Visit the Baiting Area to catch your first cat.</p>
-            <button
-              onClick={() => setView('bait')}
-              className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-            >
+            <Button variant="primary" className="mt-4" onClick={() => setView('bait')}>
               Go to Baiting Area
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -266,15 +265,15 @@ export default function TrainingArena() {
                   {/* Dead overlay */}
                   {cat.currentHp <= 0 && (
                     <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center rounded-2xl z-10">
-                      <span className="text-4xl mb-1">💀</span>
-                      <span className="text-xs text-slate-300 font-semibold">Heal first</span>
+                      <SkullIcon className="text-4xl mb-1 text-ink-muted" />
+                      <span className="text-xs text-ink-muted font-semibold">Heal first</span>
                     </div>
                   )}
                   {/* Cooldown overlay */}
                   {sessions.remaining === 0 && cat.currentHp > 0 && (
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center rounded-2xl z-10">
-                      <span className="text-3xl mb-1">⏳</span>
-                      <span className="text-xs text-slate-300 font-semibold">Resting</span>
+                      <HourglassIcon className="text-3xl mb-1 text-ink-muted" />
+                      <span className="text-xs text-ink-muted font-semibold">Resting</span>
                     </div>
                   )}
                 </motion.div>
@@ -297,8 +296,8 @@ export default function TrainingArena() {
         animate={{ opacity: 1, y: 0 }}
         className="p-4 rounded-xl bg-gradient-to-r from-amber-500/60 to-yellow-500/60 border border-amber-500/50"
       >
-        <p className="text-white text-center font-semibold">
-          <span className="text-lg mr-2">🎯</span>
+        <p className="text-white text-center font-semibold inline-flex items-center justify-center gap-2 flex-wrap">
+          <TargetIcon className="text-lg shrink-0" />
           Training Mode - Roll the dice and attack the Training Dummy! Your cat won't be injured.
         </p>
       </motion.div>
@@ -370,9 +369,9 @@ export default function TrainingArena() {
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleAttack}
-              className="w-full px-6 py-5 bg-gradient-to-b from-amber-600 to-amber-800 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-amber-400/50 font-heading tracking-wider flex items-center justify-center gap-2"
+              className="w-full px-6 py-5 bg-gradient-to-b from-accent-500 to-accent-700 text-white font-black text-2xl rounded-xl shadow-2xl border-4 border-accent-300/50 font-heading tracking-wider flex items-center justify-center gap-2"
             >
-              🎯 TRAIN!
+              <TargetIcon /> TRAIN!
             </motion.button>
           )}
         </div>
@@ -425,9 +424,9 @@ export default function TrainingArena() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={handleAttack}
-                  className="px-8 py-4 bg-gradient-to-b from-amber-600 to-amber-800 text-white font-black text-xl rounded-xl shadow-lg border-2 border-amber-400 font-heading tracking-wider hover:shadow-amber-500/50 transition-shadow"
+                  className="px-8 py-4 bg-gradient-to-b from-accent-500 to-accent-700 text-white font-black text-xl rounded-xl shadow-lg border-2 border-accent-300 font-heading tracking-wider hover:shadow-glow-gold-sm transition-shadow inline-flex items-center gap-2"
                 >
-                  TRAIN!
+                  <TargetIcon /> TRAIN!
                 </motion.button>
               )}
             </div>
@@ -533,26 +532,26 @@ export default function TrainingArena() {
       <Modal
         isOpen={showCompleteModal}
         onClose={resetToSelect}
-        title="🎯 Training Complete!"
+        title="Training Complete!"
         size="sm"
       >
         <div className="text-center py-6">
-          <div className="text-6xl mb-4 animate-bounce">💪</div>
-          <h3 className="text-2xl font-bold text-amber-400 mb-2">Great Practice!</h3>
-          <p className="text-slate-300 mb-6">
+          <DumbbellIcon className="text-6xl mb-4 animate-bounce text-accent-400 mx-auto" />
+          <h3 className="text-2xl font-bold text-accent-400 mb-2 font-heading">Great Practice!</h3>
+          <p className="text-ink-muted mb-6">
             {selectedCat?.name} has finished training! HP fully restored.
           </p>
 
-          <div className="bg-slate-800/80 rounded-lg p-6 mb-6 border border-amber-500/30">
-            <div className="text-sm text-slate-400 mb-4 uppercase tracking-wider">Training Reward</div>
+          <div className="bg-surface-raised/80 rounded-lg p-6 mb-6 border border-accent-500/30">
+            <div className="text-sm text-ink-subtle mb-4 uppercase tracking-wider">Training Reward</div>
             <div className="flex items-center justify-center gap-3">
-              <span className="text-4xl">⭐</span>
+              <XPIcon className="text-4xl text-arcane-300" />
               <div>
-                <div className="text-3xl font-black text-cyan-400">+{TRAINING_XP}</div>
-                <div className="text-xs text-slate-500">EXPERIENCE</div>
+                <div className="text-3xl font-black text-arcane-300">+{TRAINING_XP}</div>
+                <div className="text-xs text-ink-faint">EXPERIENCE</div>
               </div>
             </div>
-            <div className="mt-4 text-sm text-slate-400">
+            <div className="mt-4 text-sm text-ink-subtle">
               {sessionsAfterTraining > 0
                 ? `${sessionsAfterTraining} training session${sessionsAfterTraining !== 1 ? 's' : ''} remaining today`
                 : 'No more sessions today for this cat'
@@ -561,21 +560,18 @@ export default function TrainingArena() {
           </div>
 
           <div className="flex gap-3 justify-center">
-            <button
-              onClick={resetToSelect}
-              className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-900 font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
-            >
-              🎯 Train Again
-            </button>
-            <button
+            <Button variant="primary" onClick={resetToSelect}>
+              <TargetIcon /> Train Again
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => {
                 setShowCompleteModal(false)
                 setTimeout(() => setView('collection'), 350)
               }}
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl shadow-lg hover:shadow-premium-lg transition-all hover:scale-105"
             >
-              📚 Collection
-            </button>
+              <BookIcon /> Collection
+            </Button>
           </div>
         </div>
       </Modal>

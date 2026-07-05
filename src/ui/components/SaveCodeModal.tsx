@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import Modal from './Modal'
-import { uploadSave, previewSave, downloadSave, CloudSaveData } from '../../utils/cloudSave'
+import { uploadSave, previewSave, downloadSave, isValidSaveCode, CloudSaveData } from '../../utils/cloudSave'
 import { useGame } from '../../game/store'
+import { buildSavePayload } from '../../game/saveData'
 
 interface SaveCodeModalProps {
   isOpen: boolean
@@ -63,8 +64,8 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
     if (mode !== 'restore') return
 
     const normalizedCode = inputCode.trim().toUpperCase()
-    // Only check if it looks like a valid code format
-    if (/^[A-Z]+-\d{4}$/.test(normalizedCode)) {
+    // Only check if it looks like a valid code format (new or legacy)
+    if (isValidSaveCode(normalizedCode)) {
       checkCode(normalizedCode)
     } else {
       setPreview(null)
@@ -78,34 +79,14 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
 
     const profile = getCurrentProfile()
     if (!profile) {
-      setGenerateError('No profile loaded')
+      setGenerateError('No profile loaded yet — pick one first.')
       setIsGenerating(false)
       return
     }
 
-    // Get current save data from store
-    const state = useGame.getState()
-    const saveData: CloudSaveData = {
-      coins: state.coins,
-      baits: state.baits,
-      owned: state.owned,
-      dogIndex: state.dogIndex,
-      difficultyLevel: state.difficultyLevel,
-      favorites: state.favorites,
-      theme: state.theme,
-      achievements: state.achievements,
-      stats: state.stats,
-      lastDailyReward: state.lastDailyReward,
-      tutorialCompleted: state.tutorialCompleted,
-      trainingCooldowns: state.trainingCooldowns,
-      selectedForBattle: state.selectedForBattle,
-      dailyStreak: state.dailyStreak,
-      soundEnabled: state.soundEnabled,
-      musicEnabled: state.musicEnabled,
-      inventory: state.inventory,
-      completedEventRewards: state.completedEventRewards,
-      alienUnlocked: state.alienUnlocked,
-    }
+    // Get current save data from the single source of truth (complete versioned
+    // SaveData, including Jungle-expansion and frenzy fields).
+    const saveData: CloudSaveData = buildSavePayload(useGame.getState())
 
     // Use existing code if profile has one, otherwise generate new
     const result = await uploadSave(saveData, profile, profile.cloudCode)
@@ -117,7 +98,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
         setProfileCloudCode(result.code)
       }
     } else {
-      setGenerateError(result.error || 'Failed to generate save code')
+      setGenerateError(result.error || "Couldn't mint your save code. Give it another go?")
     }
 
     setIsGenerating(false)
@@ -141,7 +122,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
     if (result.success && result.preview) {
       setPreview(result.preview)
     } else {
-      setRestoreError(result.error || 'Could not find save')
+      setRestoreError(result.error || "No save found for that code — double-check the letters?")
     }
 
     setIsChecking(false)
@@ -160,7 +141,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
 
       setRestoreSuccess(true)
     } else {
-      setRestoreError(result.error || 'Could not restore save')
+      setRestoreError(result.error || "Couldn't restore that save. Try again in a moment.")
     }
 
     setIsRestoring(false)
@@ -193,7 +174,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
           {isGenerating ? (
             <div className="py-8">
               <div className="text-4xl mb-4 animate-bounce">🐱</div>
-              <p className="text-slate-300">Creating your save code...</p>
+              <p className="text-slate-300">Minting your save code…</p>
             </div>
           ) : generateError ? (
             <div className="py-4">
@@ -265,7 +246,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
                   type="text"
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  placeholder="CAT-1234"
+                  placeholder="PAW-K7M2XR4Q"
                   className="w-full bg-slate-800 text-white text-2xl text-center font-mono font-bold px-4 py-4 rounded-xl border border-gold-500/30 focus:border-gold-500 focus:outline-none tracking-wider"
                   autoFocus
                 />
@@ -274,7 +255,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
               {isChecking && (
                 <div className="text-center text-slate-400">
                   <span className="inline-block animate-spin mr-2">🔍</span>
-                  Checking code...
+                  Sniffing out your save…
                 </div>
               )}
 
@@ -310,7 +291,7 @@ export default function SaveCodeModal({ isOpen, onClose, mode, onRestoreComplete
                   disabled={!preview || isRestoring}
                   className="flex-1 px-6 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-black rounded-xl shadow-glow-gold hover:shadow-premium-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isRestoring ? 'Loading...' : 'Load My Cats!'}
+                  {isRestoring ? 'Fetching…' : 'Load My Cats!'}
                 </button>
               </div>
             </>

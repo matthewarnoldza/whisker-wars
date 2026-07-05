@@ -65,7 +65,7 @@ export default function JungleBackground({ children, intensity = 'medium', mode 
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'url(/images/backgrounds/Jungle_Background.png)',
+          backgroundImage: 'url(/images/backgrounds/Jungle_Background.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',

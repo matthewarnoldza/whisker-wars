@@ -1,6 +1,9 @@
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { ScaledBird } from '../../game/birds'
+import { useDialog } from '../hooks/useDialog'
+import { useMotionSafe } from '../hooks/useMotionSafe'
+import { HeartIcon, SwordIcon, ShieldIcon } from '../icons'
 
 interface BossIntroModalProps {
   bird: ScaledBird
@@ -36,6 +39,8 @@ const BOSS_THEMES: Record<number, {
 
 export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIntroModalProps) {
   const theme = BOSS_THEMES[stageNumber] ?? BOSS_THEMES[10]
+  const reduce = useMotionSafe()
+  const { dialogRef, dialogProps } = useDialog<HTMLDivElement>({ onClose: onContinue })
 
   return createPortal(
     <AnimatePresence>
@@ -43,7 +48,7 @@ export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIn
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-lg flex items-center justify-center touch-none overflow-hidden"
+        className="fixed inset-0 z-[110] bg-surface-deep/95 backdrop-blur-lg flex items-center justify-center touch-none overflow-hidden"
       >
         {/* Vignette effect */}
         <div className="absolute inset-0 pointer-events-none" style={{
@@ -51,12 +56,14 @@ export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIn
         }} />
 
         <motion.div
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          transition={{ type: 'spring', damping: 18, stiffness: 140 }}
-          className="relative w-full max-w-md mx-4 text-center"
-          onClick={(e) => e.stopPropagation()}
+          ref={dialogRef}
+          {...dialogProps}
+          aria-labelledby="boss-intro-title"
+          initial={reduce ? { opacity: 0 } : { scale: 0.7, opacity: 0 }}
+          animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+          exit={reduce ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+          transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 18, stiffness: 140 }}
+          className="relative w-full max-w-md mx-4 text-center focus:outline-none"
         >
           {/* Stage Number */}
           <motion.div
@@ -75,9 +82,9 @@ export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIn
 
           {/* Boss Image */}
           <motion.div
-            initial={{ scale: 0.3, opacity: 0 }}
+            initial={reduce ? false : { scale: 0.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 14, stiffness: 100, delay: 0.3 }}
+            transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 14, stiffness: 100, delay: 0.3 }}
             className={`relative mx-auto w-56 h-56 rounded-2xl overflow-hidden mb-6 ${theme.glow} border-2 ${theme.border}`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-40`} />
@@ -86,20 +93,23 @@ export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIn
               alt={bird.name}
               className="w-full h-full object-cover relative z-10"
             />
-            {/* Pulse overlay */}
-            <motion.div
-              animate={{ opacity: [0, 0.15, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} z-20`}
-            />
+            {/* Pulse overlay (steady under reduced motion) */}
+            {!reduce && (
+              <motion.div
+                animate={{ opacity: [0, 0.15, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} z-20`}
+              />
+            )}
           </motion.div>
 
           {/* Boss Name */}
           <motion.h2
-            initial={{ scale: 0.5, opacity: 0 }}
+            id="boss-intro-title"
+            initial={reduce ? false : { scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 16, stiffness: 120, delay: 0.5 }}
-            className="text-4xl font-black text-amber-400 mb-2 tracking-wide"
+            transition={reduce ? { duration: 0.2 } : { type: 'spring', damping: 16, stiffness: 120, delay: 0.5 }}
+            className="font-heading text-4xl font-black uppercase text-amber-400 mb-2 tracking-wide"
             style={{ textShadow: '0 0 30px rgba(251,191,36,0.5)' }}
           >
             {bird.name}
@@ -124,50 +134,53 @@ export default function BossIntroModal({ bird, stageNumber, onContinue }: BossIn
             className="flex justify-center gap-6 mb-5"
           >
             <div className="text-center">
-              <div className="text-2xl font-black text-red-400">{bird.scaledHP}</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">HP</div>
+              <HeartIcon className="mx-auto mb-1 text-danger-400" size={18} />
+              <div className="text-2xl font-black text-danger-400 tabular-nums">{bird.scaledHP}</div>
+              <div className="text-[10px] text-ink-faint uppercase tracking-wider font-bold">HP</div>
             </div>
-            <div className="w-px bg-slate-700" />
+            <div className="w-px bg-surface-border" />
             <div className="text-center">
-              <div className="text-2xl font-black text-orange-400">{bird.scaledATK}</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">ATK</div>
+              <SwordIcon className="mx-auto mb-1 text-orange-400" size={18} />
+              <div className="text-2xl font-black text-orange-400 tabular-nums">{bird.scaledATK}</div>
+              <div className="text-[10px] text-ink-faint uppercase tracking-wider font-bold">ATK</div>
             </div>
-            <div className="w-px bg-slate-700" />
+            <div className="w-px bg-surface-border" />
             <div className="text-center">
-              <div className="text-2xl font-black text-blue-400">{bird.DEF}</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">DEF</div>
+              <ShieldIcon className="mx-auto mb-1 text-blue-400" size={18} />
+              <div className="text-2xl font-black text-blue-400 tabular-nums">{bird.DEF}</div>
+              <div className="text-[10px] text-ink-faint uppercase tracking-wider font-bold">DEF</div>
             </div>
           </motion.div>
 
           {/* Flavor Text */}
           <motion.p
-            initial={{ opacity: 0 }}
+            initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-            className="text-slate-500 text-sm italic mb-8"
+            transition={{ delay: reduce ? 0 : 0.9 }}
+            className="text-ink-faint text-sm italic mb-8"
           >
             "{theme.flavorText}"
           </motion.p>
 
           {/* Enter Battle Button */}
           <motion.div
-            initial={{ y: 20, opacity: 0 }}
+            initial={reduce ? false : { y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 1.0 }}
+            transition={{ delay: reduce ? 0 : 1.0 }}
           >
             <motion.button
               onClick={onContinue}
-              className="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-black text-lg rounded-xl shadow-[0_0_30px_rgba(251,191,36,0.3)] transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              animate={{
+              className="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-surface-deep font-heading font-black uppercase tracking-wide text-lg rounded-xl shadow-[0_0_30px_rgba(251,191,36,0.3)] transition-all focus:outline-none focus-visible:shadow-focus-gold"
+              whileHover={reduce ? undefined : { scale: 1.05 }}
+              whileTap={reduce ? undefined : { scale: 0.95 }}
+              animate={reduce ? undefined : {
                 boxShadow: [
                   '0 0 20px rgba(251,191,36,0.3)',
                   '0 0 40px rgba(251,191,36,0.5)',
                   '0 0 20px rgba(251,191,36,0.3)',
                 ],
               }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              transition={reduce ? undefined : { duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
               Enter Battle
             </motion.button>

@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`battle engine — full battle to victory > reaches victory, event-type sequence is stable, rewards match legacy formula 1`] = `
+[
+  "Log",
+  "DiceRolled",
+  "Sound",
+  "DamageDealt",
+  "Log",
+  "Sound",
+  "Log",
+  "DiceRolled",
+  "Sound",
+  "DamageDealt",
+  "Log",
+  "Log",
+  "DiceRolled",
+  "Sound",
+  "DamageDealt",
+  "Log",
+  "Sound",
+  "CombatantDefeated",
+  "BattleEnded",
+]
+`;

@@ -1,4 +1,33 @@
 import { Variants } from 'framer-motion';
+import { useMotionSafe } from './hooks/useMotionSafe';
+
+// ===== Combat "juice" kit =====
+// Single gate for all game-feel effects (shake, hitstop, lunge, spring damage
+// numbers, recoil). When juice is disabled, effects degrade to information-only:
+// damage numbers still appear (simple fade), but no motion.
+//
+// Governed by useMotionSafe (OS "prefers reduced motion" OR the in-app Reduced
+// Motion setting) — so the player's setting actually turns combat juice off.
+export function useJuiceEnabled(): boolean {
+  return !useMotionSafe();
+}
+
+// Attacker lunge — a quick, subtle nudge toward the target on attack.
+// `custom` is the direction sign: -1 = lunge up (cats, bottom row),
+// +1 = lunge down (enemy, top). Replaces the old big x-jitter attackVariants
+// for the battle arenas (attackVariants is kept for TrainingArena).
+export const lungeVariants: Variants = {
+  idle: { x: 0, y: 0, scale: 1 },
+  attack: (dir: number = -1) => ({
+    y: [0, 9 * dir, 0],
+    scale: [1, 1.05, 1],
+    transition: {
+      duration: 0.32,
+      times: [0, 0.4, 1],
+      ease: 'easeOut',
+    },
+  }),
+};
 
 // Page transition animations
 export const pageVariants: Variants = {
